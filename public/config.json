@@ -1,0 +1,13 @@
+{
+  "publicUrl": "http://localhost:5173",
+  "defaultAgent": "",
+  "singleAgent": false,
+  "trustPolicy": "refuse",
+  "trustRecheckIntervalSeconds": 900,
+  "veranaIndexerUrl": "https://idx.devnet.verana.network",
+  "veranaGraphUrl": "https://graph.devnet.verana.network",
+  "allowedAgentOrigins": [],
+  "locales": ["en", "es", "fr", "pt"],
+  "soundsEnabled": true,
+  "installPromptEnabled": true
+}

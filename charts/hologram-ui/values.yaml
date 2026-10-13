@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: io2060/hologram-ui
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+podAnnotations: {}
+resources: {}
+
+# Public values only (the UI holds no secrets); see the spec's reference implementation profile.
+env:
+  - name: PORT
+    value: "8080"
+  - name: PUBLIC_URL
+    value: https://ui.example.com
+  - name: VERANA_INDEXER_URL
+    value: https://idx.testnet.verana.network
+  - name: VERANA_GRAPH_URL
+    value: https://graph.testnet.verana.network
+  - name: TRUST_POLICY
+    value: refuse
+  - name: LOCALES
+    value: en,es,fr,pt
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8080
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

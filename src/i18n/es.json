@@ -1,0 +1,206 @@
+{
+  "app": {
+    "name": "Hologram",
+    "agents": "Agentes",
+    "addAgent": "Añadir agente",
+    "findAgents": "Buscar agentes",
+    "settings": "Ajustes",
+    "back": "Volver",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "loading": "Cargando",
+    "offline": "Sin conexión. La conversación sigue legible; el envío se reanuda al volver la conexión.",
+    "install": "Instalar",
+    "installHint": "Usa el menú de tu navegador para añadir esta app a tu pantalla de inicio o dock."
+  },
+  "rail": {
+    "pinned": "Fijados",
+    "notLinked": "Sin vincular",
+    "unread": "{{count}} sin leer"
+  },
+  "column": {
+    "newConversation": "Nueva conversación",
+    "linkedSince": "Vinculado con tu teléfono desde {{time}}",
+    "notLinked": "Sin vincular",
+    "search": "Buscar conversaciones",
+    "open": "Abiertas",
+    "closed": "Cerradas",
+    "noConversations": "Aún no hay conversaciones.",
+    "options": "Opciones del agente",
+    "pin": "Fijar",
+    "unpin": "Desfijar",
+    "linkAgain": "Vincular de nuevo",
+    "endAll": "Terminar todas las conversaciones",
+    "remove": "Quitar agente",
+    "trustCard": "Tarjeta de confianza",
+    "rename": "Renombrar",
+    "end": "Terminar conversación",
+    "untitled": "Nueva conversación"
+  },
+  "trust": {
+    "title": "Tarjeta de confianza",
+    "service": "Servicio",
+    "operator": "Operador",
+    "ecosystems": "Ecosistemas",
+    "result": "Resultado",
+    "trusted": "Confiable",
+    "untrusted": "No confiable",
+    "unverified": "No se pudo verificar",
+    "checkedAt": "Verificado {{time}}",
+    "connect": "Conectar",
+    "continueWithWarning": "Continuar con advertencia",
+    "refused": "Este agente no es confiable. Conexión rechazada.",
+    "warning": "Continuaste con un agente no confiable.",
+    "changed": "Este agente ya no es confiable. Los mensajes nuevos quedan bloqueados hasta que lo reconozcas o lo quites.",
+    "acknowledge": "Entendido",
+    "reasons": {
+      "not-trusted": "El registro Verana no respalda este servicio.",
+      "did-not-found": "El registro no conoce este DID.",
+      "resolution-unavailable": "No se pudo contactar el servicio de resolución de confianza.",
+      "no-service-credential": "No se encontró credencial de servicio."
+    },
+    "unverifiedName": "nombre sin verificar",
+    "did": "DID"
+  },
+  "bind": {
+    "title": "Vincula tu teléfono",
+    "scan": "Escanea este código con la app Hologram en tu teléfono y confirma allí.",
+    "code": "Tu código",
+    "codeHint": "El teléfono muestra el mismo código. Confirma solo si coinciden.",
+    "openApp": "Abrir en la app Hologram",
+    "expired": "El código caducó.",
+    "newCode": "Nuevo código",
+    "refused": "El vínculo fue rechazado en el teléfono o no se completó.",
+    "waiting": "Esperando tu confirmación en el teléfono",
+    "expiresIn": "Caduca en {{seconds}} s"
+  },
+  "closure": {
+    "title": "Conversación cerrada",
+    "user": "Cerrada desde tu teléfono o por ti.",
+    "supersede": "Reemplazada por un dispositivo nuevo: tu teléfono volvió a conectarse.",
+    "channelClosed": "Tu teléfono se desconectó de este agente.",
+    "credentialInvalid": "Tu credencial ya no es válida.",
+    "idleTimeout": "Inactiva demasiado tiempo.",
+    "expired": "El vínculo no se completó a tiempo.",
+    "agent": "Cerrada por el agente.",
+    "reconnect": "Conectar de nuevo"
+  },
+  "composer": {
+    "placeholder": "Escribe un mensaje",
+    "send": "Enviar",
+    "stop": "Detener",
+    "attach": "Adjuntar un archivo",
+    "record": "Grabar una nota de voz",
+    "recording": "Grabando",
+    "stopRecording": "Detener grabación",
+    "play": "Reproducir",
+    "rerecord": "Grabar de nuevo",
+    "discard": "Descartar",
+    "micDenied": "Se denegó el acceso al micrófono. Puedes escribir o adjuntar un archivo.",
+    "micUnavailable": "Las notas de voz no están disponibles en este navegador.",
+    "tooLarge": "Este archivo supera lo que acepta el agente ({{max}} MB).",
+    "notAccepted": "El agente no acepta este tipo de archivo.",
+    "attachments": "Adjuntos"
+  },
+  "conversation": {
+    "interrupted": "interrumpido",
+    "working": "Trabajando",
+    "today": "Hoy",
+    "transcription": "Transcripción",
+    "download": "Descargar",
+    "menuAnswered": "Respondido",
+    "approvals": "Aprobaciones",
+    "requestElevation": "Solicitar acceso"
+  },
+  "approval": {
+    "title": "Aprobación",
+    "sensitivity": "Se necesita aprobación",
+    "elevation": "Solicitud de acceso",
+    "requester": "Solicitado por",
+    "tool": "Acción",
+    "purpose": "Propósito",
+    "justification": "Justificación",
+    "note": "Nota (opcional)",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "withdraw": "Retirar",
+    "status": {
+      "PENDING": "Pendiente",
+      "APPROVED": "Aprobada",
+      "REJECTED": "Rechazada",
+      "CANCELLED": "Retirada",
+      "EXPIRED": "Caducada"
+    },
+    "grantUntil": "Concedido hasta {{time}}",
+    "expires": "Caduca {{time}}"
+  },
+  "elevation": {
+    "title": "Solicitar acceso",
+    "tool": "Acción",
+    "purpose": "Propósito",
+    "choosePurpose": "Elige un propósito",
+    "justification": "Tu justificación",
+    "send": "Enviar solicitud",
+    "hint": "Escribe el motivo con tus palabras. Nada se sugiere ni se rellena."
+  },
+  "capability": {
+    "title": "Continúa en tu teléfono",
+    "authentication": "Autenticación",
+    "credential-exchange": "Intercambio de credenciales",
+    "auth-challenge": "Verificación de identidad",
+    "device": "Confirma en tu teléfono",
+    "face-match": "Verificación facial en curso en tu teléfono",
+    "document": "Lectura del documento en tu teléfono",
+    "status": {
+      "pending": "Esperando tu teléfono",
+      "completed": "Completada",
+      "failed": "Fallida",
+      "expired": "Caducada",
+      "unavailable": "Tu teléfono no está disponible",
+      "degraded": "Omitida"
+    }
+  },
+  "add": {
+    "title": "Añadir un agente",
+    "input": "URL del descriptor o DID",
+    "placeholder": "https://agente.ejemplo o did:webvh:…",
+    "go": "Buscar",
+    "scan": "Escanear un código QR",
+    "scanning": "Apunta la cámara al código QR",
+    "cameraDenied": "Se denegó el acceso a la cámara.",
+    "error": "No se encontró este agente: {{message}}"
+  },
+  "directory": {
+    "title": "Buscar agentes",
+    "filter": "Filtrar por nombre",
+    "includeUntrusted": "Mostrar también servicios no confiables",
+    "empty": "No se encontró ningún agente.",
+    "open": "Abrir",
+    "more": "Más"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "language": "Idioma",
+    "theme": "Tema",
+    "themeSystem": "Sistema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "sounds": "Sonido al recibir mensajes",
+    "about": "Acerca de",
+    "version": "Versión {{version}}",
+    "profile": "Perfil AG-UI {{version}}",
+    "links": {
+      "terms": "Términos",
+      "privacy": "Privacidad",
+      "support": "Soporte"
+    }
+  },
+  "details": {
+    "session": "Sesión",
+    "principal": "Vinculado como",
+    "agent": "Agente",
+    "pending": "Aprobaciones pendientes",
+    "generating": "Generando"
+  }
+}
