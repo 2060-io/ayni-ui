@@ -210,6 +210,34 @@ export class Hub {
     this.set({ view })
   }
 
+  /**
+   * Conversation search (UI-SHELL-015): titles and the cached transcripts of the agent's
+   * conversations, from the device store; the result maps a session id to the matching excerpt.
+   */
+  public async searchConversations(agentDid: string, query: string): Promise<Record<string, string>> {
+    const q = query.trim().toLowerCase()
+    const out: Record<string, string> = {}
+    if (!q) return out
+    for (const session of this.snapshot.sessions.filter((s) => s.agentDid === agentDid)) {
+      if ((session.title || '').toLowerCase().includes(q)) {
+        out[session.sessionId] = session.title
+        continue
+      }
+      const transcript =
+        this.snapshot.transcripts[session.sessionId] ?? (await this.store.getTranscript(session.sessionId))
+      for (const m of transcript?.messages ?? []) {
+        if (m.role === 'activity') continue
+        const index = m.content.toLowerCase().indexOf(q)
+        if (index < 0) continue
+        const start = Math.max(0, index - 30)
+        out[session.sessionId] =
+          `${start > 0 ? '…' : ''}${m.content.slice(start, index + q.length + 60).replace(/\s+/g, ' ')}`
+        break
+      }
+    }
+    return out
+  }
+
   /** Reply: the composer quotes this message until sent or cancelled (UI-CONV-018). */
   public setReply(sessionId: string, quote: ReplyQuote | null): void {
     this.set({ replyTo: { ...this.snapshot.replyTo, [sessionId]: quote ?? undefined } })

@@ -1,6 +1,6 @@
 /** The conversation column (UI-SHELL-002/012, UI-SESS-004/008, UI-AGENTS-005): every connection action lives here. */
 import { Link2, MoreVertical, Plus, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -14,7 +14,26 @@ export function Column() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [trustOpen, setTrustOpen] = useState(false)
   const [filter, setFilter] = useState('')
+  const [matches, setMatches] = useState<Record<string, string> | null>(null)
   const agent = snap.agents.find((a) => a.did === snap.selectedAgentDid)
+  const agentDid = agent?.did
+  // search titles and cached transcripts, debounced (UI-SHELL-015)
+  useEffect(() => {
+    if (!agentDid || !filter.trim()) {
+      setMatches(null)
+      return
+    }
+    let live = true
+    const timer = setTimeout(() => {
+      void hub.searchConversations(agentDid, filter).then((found) => {
+        if (live) setMatches(found)
+      })
+    }, 150)
+    return () => {
+      live = false
+      clearTimeout(timer)
+    }
+  }, [filter, agentDid, hub])
   if (!agent) {
     return (
       <aside className="column">
@@ -23,7 +42,7 @@ export function Column() {
     )
   }
   const sessions = snap.sessions.filter(
-    (s) => s.agentDid === agent.did && (!filter || (s.title || '').toLowerCase().includes(filter.toLowerCase()))
+    (s) => s.agentDid === agent.did && (!matches || matches[s.sessionId] !== undefined)
   )
   const open = sessions
     .filter((s) => s.state !== 'closed')
@@ -104,13 +123,25 @@ export function Column() {
         />
       </div>
       <div className="list">
-        {open.length === 0 && closed.length === 0 ? <div className="center">{t('column.noConversations')}</div> : null}
+        {open.length === 0 && closed.length === 0 ? (
+          <div className="center">{matches ? t('column.noMatch') : t('column.noConversations')}</div>
+        ) : null}
         {open.map((s) => (
-          <ConversationRow key={s.sessionId} id={s.sessionId} selected={snap.selectedSessionId === s.sessionId} />
+          <ConversationRow
+            key={s.sessionId}
+            id={s.sessionId}
+            selected={snap.selectedSessionId === s.sessionId}
+            snippet={matches?.[s.sessionId]}
+          />
         ))}
         {closed.length ? <div className="section-label">{t('column.closed')}</div> : null}
         {closed.map((s) => (
-          <ConversationRow key={s.sessionId} id={s.sessionId} selected={snap.selectedSessionId === s.sessionId} />
+          <ConversationRow
+            key={s.sessionId}
+            id={s.sessionId}
+            selected={snap.selectedSessionId === s.sessionId}
+            snippet={matches?.[s.sessionId]}
+          />
         ))}
       </div>
       {trustOpen ? <TrustCardDialog agent={agent} onClose={() => setTrustOpen(false)} /> : null}
@@ -118,7 +149,7 @@ export function Column() {
   )
 }
 
-function ConversationRow({ id, selected }: { id: string; selected: boolean }) {
+function ConversationRow({ id, selected, snippet }: { id: string; selected: boolean; snippet?: string }) {
   const snap = useSnapshot()
   const hub = useHub()
   const { t, i18n } = useTranslation()
@@ -141,11 +172,13 @@ function ConversationRow({ id, selected }: { id: string; selected: boolean }) {
         <span className="title">{title}</span>
         <span className="time">{s.lastMessageAt ? formatTime(s.lastMessageAt, i18n.language) : ''}</span>
         <span className="preview">
-          {s.state === 'provisional'
-            ? t('column.notLinked')
-            : s.state === 'closed'
-              ? t('closure.title')
-              : s.lastPreview}
+          {snippet && snippet !== title
+            ? snippet
+            : s.state === 'provisional'
+              ? t('column.notLinked')
+              : s.state === 'closed'
+                ? t('closure.title')
+                : s.lastPreview}
         </span>
         {s.unreadCount ? <span className="count">{s.unreadCount}</span> : <span />}
       </button>

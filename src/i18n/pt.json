@@ -40,7 +40,8 @@
     "trustCard": "Cartão de confiança",
     "rename": "Renomear",
     "end": "Terminar conversa",
-    "untitled": "Nova conversa"
+    "untitled": "Nova conversa",
+    "noMatch": "Nenhuma conversa corresponde"
   },
   "trust": {
     "title": "Cartão de confiança",
