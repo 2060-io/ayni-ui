@@ -70,7 +70,7 @@ export function Conversation() {
     if (!currentHit) return
     stickToBottom.current = false
     const el = listRef.current?.querySelector(`[data-hit="${currentHit.messageId}:${currentHit.ordinal}"]`)
-    el?.scrollIntoView({ block: 'center' })
+    if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center' })
   }, [currentHit])
 
   useEffect(() => {
