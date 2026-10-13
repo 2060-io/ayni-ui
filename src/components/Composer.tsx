@@ -238,7 +238,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
         <textarea
           ref={areaRef}
           rows={1}
-          placeholder={closed ? t('composer.placeholderReconnect') : t('composer.placeholder')}
+          placeholder={t('composer.placeholder')}
           aria-label={t('composer.placeholder')}
           value={text}
           disabled={disabled}

@@ -142,6 +142,9 @@ export function Conversation() {
 
   const trustBlocked = agent.trust.result !== 'trusted' && !agent.trustAcknowledged
   const closed = session.state === 'closed'
+  // routine closures (idle, by the person, by the agent) say nothing: writing wakes the conversation (D26);
+  // channel-level closures need the person's attention once (UI-SESS-009)
+  const attention = closed && ['supersede', 'channelClosed', 'credentialInvalid'].includes(session.closedReason ?? '')
   const reasonKey = CLOSURE_REASON_KEYS[session.closedReason ?? 'agent'] ?? 'closure.agent'
   const contextual = session.hologram?.contextualMenu.items ?? []
   const detailsOpen = snap.prefs.detailsOpen !== false
@@ -262,10 +265,9 @@ export function Conversation() {
           </button>
         </div>
       ) : null}
-      {closed ? (
+      {attention ? (
         <div className="banner info" role="status">
-          <strong>{t('closure.title')}:</strong> {t(reasonKey)}
-          {t('closure.writeToReconnect')}
+          {t(reasonKey)} {t('closure.writeToReconnect')}
         </div>
       ) : null}
       {search && session.state !== 'provisional' ? (

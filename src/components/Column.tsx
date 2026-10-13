@@ -51,12 +51,8 @@ export function Column() {
   const sessions = snap.sessions.filter(
     (s) => s.agentDid === agent.did && (!matches || matches[s.sessionId] !== undefined)
   )
-  const open = sessions
-    .filter((s) => s.state !== 'closed')
-    .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
-  const closed = sessions
-    .filter((s) => s.state === 'closed')
-    .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+  // closed conversations are listed like the others: writing wakes them (D26)
+  const open = sessions.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
   const bound = open.find((s) => s.state === 'bound')
   const run = (fn: () => Promise<unknown>) => {
     setMenuOpen(false)
@@ -130,20 +126,10 @@ export function Column() {
         />
       </div>
       <div className="list">
-        {open.length === 0 && closed.length === 0 ? (
+        {open.length === 0 ? (
           <div className="center">{matches ? t('column.noMatch') : t('column.noConversations')}</div>
         ) : null}
         {open.map((s) => (
-          <ConversationRow
-            key={s.sessionId}
-            id={s.sessionId}
-            selected={snap.selectedSessionId === s.sessionId}
-            match={matches?.[s.sessionId]}
-            query={matches ? filter : undefined}
-          />
-        ))}
-        {closed.length ? <div className="section-label">{t('column.closed')}</div> : null}
-        {closed.map((s) => (
           <ConversationRow
             key={s.sessionId}
             id={s.sessionId}
@@ -205,9 +191,7 @@ function ConversationRow({
             ? match.snippet
             : s.state === 'provisional'
               ? t('column.notLinked')
-              : s.state === 'closed'
-                ? t('closure.title')
-                : s.lastPreview}
+              : s.lastPreview}
         </span>
         {match?.count ? (
           <span className="matches">{t('column.matches', { count: match.count })}</span>
