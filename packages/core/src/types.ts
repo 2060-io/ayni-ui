@@ -35,6 +35,8 @@ export interface AgentRecord {
   /** most recent message in any conversation (rail order, UI-SHELL-011) */
   lastMessageAt: string
   trustAcknowledged?: boolean
+  /** opaque handle the agent gave this browser profile at binding: later sessions ask the phone to re-link */
+  deviceHandle?: string
 }
 
 export interface SessionRecord {
@@ -55,6 +57,9 @@ export interface SessionRecord {
   draft: string
   hologram: HologramState | null
   idleTimeoutSeconds?: number
+  /** the agent asked the phone to re-link this provisional session */
+  rebindAsked?: boolean
+  deviceHandle?: string
 }
 
 export type TranscriptMessage =
