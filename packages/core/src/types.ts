@@ -60,6 +60,10 @@ export interface SessionRecord {
   /** the agent asked the phone to re-link this provisional session */
   rebindAsked?: boolean
   deviceHandle?: string
+  /** the closed session this one resumes */
+  resumedFromSessionId?: string
+  /** text to send as soon as the session binds (written on a closed conversation to wake it up) */
+  pendingText?: string
 }
 
 export type TranscriptMessage =

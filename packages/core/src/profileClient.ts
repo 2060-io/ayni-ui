@@ -71,12 +71,18 @@ export class ProfileClient {
     client: ClientDescription,
     locale?: string,
     siblingOfToken?: string,
-    deviceHandle?: string
+    deviceHandle?: string,
+    resumeSessionId?: string
   ): Promise<CreateSessionResponse> {
     const response = await this.fetchFn(this.url(), {
       method: 'POST',
       headers: this.headers(siblingOfToken, { 'content-type': 'application/json' }),
-      body: JSON.stringify({ client, locale, ...(deviceHandle && !siblingOfToken ? { deviceHandle } : {}) }),
+      body: JSON.stringify({
+        client,
+        locale,
+        ...(deviceHandle && !siblingOfToken ? { deviceHandle } : {}),
+        ...(resumeSessionId ? { resumeSessionId } : {}),
+      }),
     })
     if (!response.ok) throw await parseError(response)
     return response.json()
