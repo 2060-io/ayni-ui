@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -24,6 +24,7 @@ import { type HighlightSpec, highlight } from './Highlight.js'
 import { Markdown } from './Markdown.js'
 import { MessageTools, type Popover, plainText, ReactionPill, useLongPress } from './MessageActions.js'
 import { TrustCardDialog } from './TrustCard.js'
+import { useDismiss } from './useDismiss.js'
 
 export function Conversation() {
   const snap = useSnapshot()
@@ -31,6 +32,12 @@ export function Conversation() {
   const { t } = useTranslation()
   const [trustOpen, setTrustOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const headerRef = useRef<HTMLElement>(null)
+  useDismiss(
+    menuOpen,
+    headerRef,
+    useCallback(() => setMenuOpen(false), [])
+  )
   const [elevation, setElevation] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const session = snap.sessions.find((s) => s.sessionId === snap.selectedSessionId)
@@ -138,7 +145,7 @@ export function Conversation() {
 
   return (
     <>
-      <header className="conv-header relative">
+      <header className="conv-header relative" ref={headerRef}>
         <button type="button" className="icon-btn back" aria-label={t('app.back')} onClick={() => hub.setView('list')}>
           <ArrowLeft size={20} />
         </button>

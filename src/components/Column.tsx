@@ -1,17 +1,24 @@
 /** The conversation column (UI-SHELL-002/012, UI-SESS-004/008, UI-AGENTS-005): every connection action lives here. */
 import { Link2, MoreVertical, Plus, ShieldCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 import { TrustCardDialog } from './TrustCard.js'
+import { useDismiss } from './useDismiss.js'
 
 export function Column() {
   const snap = useSnapshot()
   const hub = useHub()
   const { t, i18n } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const headerRef = useRef<HTMLDivElement>(null)
+  useDismiss(
+    menuOpen,
+    headerRef,
+    useCallback(() => setMenuOpen(false), [])
+  )
   const [trustOpen, setTrustOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const [matches, setMatches] = useState<Record<string, { snippet: string; count: number }> | null>(null)
@@ -57,7 +64,7 @@ export function Column() {
   }
   return (
     <aside className="column">
-      <div className="column-header relative">
+      <div className="column-header relative" ref={headerRef}>
         <div className="row-between">
           <h2 className="row-between" style={{ gap: 8 }}>
             <Avatar name={agent.name} src={agent.logoRef} size={28} /> {agent.name}
@@ -166,11 +173,17 @@ function ConversationRow({
   const hub = useHub()
   const { t, i18n } = useTranslation()
   const [menu, setMenu] = useState(false)
+  const rowRef = useRef<HTMLDivElement>(null)
+  useDismiss(
+    menu,
+    rowRef,
+    useCallback(() => setMenu(false), [])
+  )
   const s = snap.sessions.find((x) => x.sessionId === id)
   if (!s) return null
   const title = s.title || t('column.untitled')
   return (
-    <div className="relative">
+    <div className="relative" ref={rowRef}>
       <button
         type="button"
         className={['conv-row', selected ? 'selected' : ''].join(' ')}
