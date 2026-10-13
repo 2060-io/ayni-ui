@@ -49,10 +49,15 @@ async function parseError(response: Response): Promise<ProfileError> {
 }
 
 export class ProfileClient {
+  private readonly fetchFn: typeof fetch
+
   public constructor(
     private readonly sessionsUrl: string,
-    private readonly fetchFn: typeof fetch = fetch
-  ) {}
+    fetchFn: typeof fetch = fetch
+  ) {
+    // a browser's fetch refuses to run as a method of another object ("Illegal invocation")
+    this.fetchFn = (input, init) => fetchFn(input, init)
+  }
 
   private url(path = ''): string {
     return `${this.sessionsUrl.replace(/\/+$/, '')}${path}`
