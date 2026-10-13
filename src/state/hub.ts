@@ -701,6 +701,8 @@ export class Hub {
       } else if (!controller.signal.aborted) throw e
     } finally {
       this.runs.delete(sessionId)
+      // the run's own RunFinished may still be queued: let it land before judging the transcript
+      await this.eventQueue.catch(() => undefined)
       const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
       if (t.run?.runId === runId) {
         const closed = {
