@@ -41,7 +41,9 @@
     "rename": "Rename",
     "end": "End conversation",
     "untitled": "New conversation",
-    "noMatch": "No conversation matches"
+    "noMatch": "No conversation matches",
+    "matches": "{{count}} matches",
+    "matches_one": "{{count}} match"
   },
   "trust": {
     "title": "Trust card",
@@ -148,7 +150,16 @@
       "hearts": "Hearts and symbols",
       "objects": "Objects",
       "symbols": "Signs"
-    }
+    },
+    "search": "Search in conversation",
+    "searchPlaceholder": "Search this conversation",
+    "matchCount": "{{current}} of {{total}}",
+    "noMatches": "No matches",
+    "searchEarlier": "Search earlier messages",
+    "searchedAll": "Whole conversation searched",
+    "prevMatch": "Previous match",
+    "nextMatch": "Next match",
+    "closeSearch": "Close search"
   },
   "approval": {
     "title": "Approval",

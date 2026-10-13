@@ -1,8 +1,18 @@
 /** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
 import { ACTIVITY, CLOSURE_REASONS } from '@2060.io/hologram-agui-profile'
-import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@2060.io/hologram-ui-core'
-import { ArrowLeft, Loader2, Menu as MenuIcon, PanelRight, ShieldCheck } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { CLOSURE_REASON_KEYS, findOccurrences, type TranscriptMessage } from '@2060.io/hologram-ui-core'
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Menu as MenuIcon,
+  PanelRight,
+  Search,
+  ShieldCheck,
+  X,
+} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -10,6 +20,7 @@ import { AttachmentView } from './AttachmentView.js'
 import { Binding } from './Binding.js'
 import { ApprovalCard, CapabilityCard, ElevationForm, GeneratingCard, MenuCard } from './Cards.js'
 import { Composer } from './Composer.js'
+import { type HighlightSpec, highlight } from './Highlight.js'
 import { Markdown } from './Markdown.js'
 import { MessageTools, type Popover, plainText, ReactionPill, useLongPress } from './MessageActions.js'
 import { TrustCardDialog } from './TrustCard.js'
@@ -33,6 +44,34 @@ export function Conversation() {
       : 0
   const stickToBottom = useRef(true)
   const loadingOlder = session ? !!snap.loadingOlder[session.sessionId] : false
+  const search = session ? snap.search[session.sessionId] : undefined
+  const hits = useMemo(() => (search ? findOccurrences(messages, search.query) : []), [messages, search])
+  const current = search ? Math.min(search.current, Math.max(0, hits.length - 1)) : 0
+  const currentHit = hits[current]
+  const searchInput = useRef<HTMLInputElement>(null)
+
+  // Ctrl+F / Cmd+F opens the bar unless the person is typing somewhere else (UI-CONV-020)
+  useEffect(() => {
+    if (!session) return
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'f') return
+      const active = document.activeElement as HTMLElement | null
+      if (active && /^(input|textarea)$/i.test(active.tagName) && !active.closest('.conversation')) return
+      e.preventDefault()
+      hub.openSearch(session.sessionId, snap.search[session.sessionId]?.query ?? '')
+      requestAnimationFrame(() => searchInput.current?.select())
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [session, hub, snap.search])
+
+  // the current hit scrolls into view
+  useEffect(() => {
+    if (!currentHit) return
+    stickToBottom.current = false
+    const el = listRef.current?.querySelector(`[data-hit="${currentHit.messageId}:${currentHit.ordinal}"]`)
+    el?.scrollIntoView({ block: 'center' })
+  }, [currentHit])
 
   useEffect(() => {
     const el = listRef.current
@@ -92,6 +131,10 @@ export function Conversation() {
   const detailsOpen = snap.prefs.detailsOpen !== false
   const me = session.principal?.displayName
   const thinking = transcript?.run && !messages.some((m) => m.role !== 'activity' && m.streaming)
+  const step = (delta: number) => {
+    if (!hits.length) return
+    hub.setSearch(session.sessionId, { current: (current + delta + hits.length) % hits.length })
+  }
 
   return (
     <>
@@ -130,6 +173,23 @@ export function Conversation() {
         <button type="button" className="icon-btn" aria-label={t('trust.title')} onClick={() => setTrustOpen(true)}>
           <ShieldCheck size={20} />
         </button>
+        {session.state !== 'provisional' ? (
+          <button
+            type="button"
+            className={['icon-btn', search ? 'on' : ''].join(' ')}
+            aria-label={t('conversation.search')}
+            aria-pressed={!!search}
+            onClick={() => {
+              if (search) hub.closeSearch(session.sessionId)
+              else {
+                hub.openSearch(session.sessionId)
+                requestAnimationFrame(() => searchInput.current?.focus())
+              }
+            }}
+          >
+            <Search size={20} />
+          </button>
+        ) : null}
         <button
           type="button"
           className={['icon-btn', 'details-toggle', detailsOpen ? 'on' : ''].join(' ')}
@@ -192,6 +252,74 @@ export function Conversation() {
           {t('closure.writeToReconnect')}
         </div>
       ) : null}
+      {search && session.state !== 'provisional' ? (
+        <search className="search-bar" aria-label={t('conversation.search')}>
+          <input
+            ref={searchInput}
+            className="input"
+            type="search"
+            placeholder={t('conversation.searchPlaceholder')}
+            aria-label={t('conversation.searchPlaceholder')}
+            value={search.query}
+            onChange={(e) => hub.setSearch(session.sessionId, { query: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                step(e.shiftKey ? -1 : 1)
+              } else if (e.key === 'Escape') hub.closeSearch(session.sessionId)
+            }}
+          />
+          <span className="count" aria-live="polite">
+            {search.query.trim()
+              ? hits.length
+                ? t('conversation.matchCount', { current: current + 1, total: hits.length })
+                : t('conversation.noMatches')
+              : ''}
+          </span>
+          <button
+            type="button"
+            className="tool"
+            aria-label={t('conversation.prevMatch')}
+            disabled={!hits.length}
+            onClick={() => step(-1)}
+          >
+            <ChevronUp size={18} />
+          </button>
+          <button
+            type="button"
+            className="tool"
+            aria-label={t('conversation.nextMatch')}
+            disabled={!hits.length}
+            onClick={() => step(1)}
+          >
+            <ChevronDown size={18} />
+          </button>
+          {transcript && !transcript.complete ? (
+            <button
+              type="button"
+              className="btn small"
+              disabled={loadingOlder}
+              onClick={() =>
+                void hub.loadAll(session.sessionId).catch((e) => hub.notify('error', String(e.message ?? e)))
+              }
+            >
+              {t('conversation.searchEarlier')}
+            </button>
+          ) : search.query.trim() ? (
+            <span className="muted" style={{ fontSize: 12 }}>
+              {t('conversation.searchedAll')}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            className="tool"
+            aria-label={t('conversation.closeSearch')}
+            onClick={() => hub.closeSearch(session.sessionId)}
+          >
+            <X size={18} />
+          </button>
+        </search>
+      ) : null}
       {session.state === 'provisional' ? (
         <Binding session={session} />
       ) : (
@@ -216,6 +344,16 @@ export function Conversation() {
                 reactions={transcript?.reactions[m.id] ?? []}
                 me={me}
                 canReact={!!agent.descriptor.features.reactions && session.state === 'bound'}
+                hl={
+                  search?.query.trim()
+                    ? {
+                        query: search.query.trim(),
+                        messageId: m.id,
+                        current: currentHit?.messageId === m.id ? currentHit.ordinal : -1,
+                        counter: { n: 0 },
+                      }
+                    : undefined
+                }
               />
             ))}
             {Object.entries(transcript?.routed ?? {})
@@ -274,12 +412,14 @@ function Message({
   reactions,
   me,
   canReact,
+  hl,
 }: {
   m: TranscriptMessage
   sessionId: string
   reactions: { emoji: string; by: string }[]
   me: string | undefined
   canReact: boolean
+  hl?: HighlightSpec
 }) {
   const { t, i18n } = useTranslation()
   const hub = useHub()
@@ -355,7 +495,7 @@ function Message({
             </a>
           ) : null}
           <span id={`msg-${m.id}`} className="body">
-            {m.role === 'assistant' ? <Markdown text={m.content} /> : m.content}
+            {m.role === 'assistant' ? <Markdown text={m.content} hl={hl} /> : highlight(m.content, hl, m.id)}
           </span>
           <span className="meta">
             {m.interrupted ? <span className="interrupted">{t('conversation.interrupted')}</span> : null}

@@ -156,7 +156,7 @@ a {
   .app.single {
     grid-template-columns: minmax(0, 1fr);
   }
-  .conversation {
+  .app .conversation {
     display: none;
   }
   .app.show-conversation .conversation {
@@ -351,7 +351,7 @@ fieldset.quick {
 .conv-row {
   width: 100%;
   text-align: left;
-  padding: 10px 12px;
+  padding: 10px 40px 10px 12px;
   border-bottom: 1px solid var(--border);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1317,4 +1317,55 @@ fieldset.menu {
   padding: 0;
   margin: 6px 0 0;
   min-width: 0;
+}
+
+/* in-conversation search (UI-CONV-020) */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+.search-bar .input {
+  flex: 1;
+  min-width: 160px;
+  height: 36px;
+  padding: 0 12px;
+}
+.search-bar .count {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 56px;
+  text-align: center;
+}
+.search-bar .tool {
+  width: 36px;
+  height: 36px;
+}
+mark.hit {
+  background: color-mix(in srgb, var(--warning) 35%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+mark.hit.current {
+  background: var(--warning);
+  color: #fff;
+}
+.msg.user mark.hit {
+  background: color-mix(in srgb, var(--accent-contrast) 35%, transparent);
+}
+.msg.user mark.hit.current {
+  background: var(--accent-contrast);
+  color: var(--accent);
+}
+.conv-row .matches {
+  justify-self: end;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
 }

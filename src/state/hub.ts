@@ -11,8 +11,10 @@ import {
   BroadcastSyncBus,
   CLIENT,
   addAgent as coreAddAgent,
+  countOccurrences,
   type DeviceStore,
   emptyTranscript,
+  excerpt,
   IndexedDbStore,
   mergeHistory,
   type Preferences,
@@ -54,6 +56,8 @@ export interface Snapshot {
   inspect: { sessionId: string; messageId: string } | null
   /** older history pages being fetched, per session (UI-CONV-012) */
   loadingOlder: Record<string, boolean>
+  /** in-conversation search, per session (UI-CONV-020): the query and the current hit */
+  search: Record<string, { query: string; current: number } | undefined>
 }
 
 type Listener = () => void
@@ -89,6 +93,7 @@ export class Hub {
       prefill: {},
       inspect: null,
       loadingOlder: {},
+      search: {},
     }
   }
 
@@ -214,28 +219,55 @@ export class Hub {
    * Conversation search (UI-SHELL-015): titles and the cached transcripts of the agent's
    * conversations, from the device store; the result maps a session id to the matching excerpt.
    */
-  public async searchConversations(agentDid: string, query: string): Promise<Record<string, string>> {
+  public async searchConversations(
+    agentDid: string,
+    query: string
+  ): Promise<Record<string, { snippet: string; count: number }>> {
     const q = query.trim().toLowerCase()
-    const out: Record<string, string> = {}
+    const out: Record<string, { snippet: string; count: number }> = {}
     if (!q) return out
     for (const session of this.snapshot.sessions.filter((s) => s.agentDid === agentDid)) {
-      if ((session.title || '').toLowerCase().includes(q)) {
-        out[session.sessionId] = session.title
-        continue
-      }
       const transcript =
         this.snapshot.transcripts[session.sessionId] ?? (await this.store.getTranscript(session.sessionId))
+      let count = 0
+      let snippet: string | undefined
       for (const m of transcript?.messages ?? []) {
         if (m.role === 'activity') continue
-        const index = m.content.toLowerCase().indexOf(q)
-        if (index < 0) continue
-        const start = Math.max(0, index - 30)
-        out[session.sessionId] =
-          `${start > 0 ? '…' : ''}${m.content.slice(start, index + q.length + 60).replace(/\s+/g, ' ')}`
-        break
+        const n = countOccurrences(m.content, q)
+        if (!n) continue
+        count += n
+        snippet ??= excerpt(m.content, q)
       }
+      if ((session.title || '').toLowerCase().includes(q))
+        out[session.sessionId] = { snippet: snippet ?? session.title, count }
+      else if (count) out[session.sessionId] = { snippet: snippet ?? '', count }
     }
     return out
+  }
+
+  /** In-conversation search (UI-CONV-020): the bar's query and the current hit, per session. */
+  public openSearch(sessionId: string, query = ''): void {
+    this.set({ search: { ...this.snapshot.search, [sessionId]: { query, current: 0 } } })
+  }
+
+  public setSearch(sessionId: string, patch: Partial<{ query: string; current: number }>): void {
+    const existing = this.snapshot.search[sessionId] ?? { query: '', current: 0 }
+    const next = { ...existing, ...patch }
+    if (patch.query !== undefined && patch.query !== existing.query) next.current = 0
+    this.set({ search: { ...this.snapshot.search, [sessionId]: next } })
+  }
+
+  public closeSearch(sessionId: string): void {
+    this.set({ search: { ...this.snapshot.search, [sessionId]: undefined } })
+  }
+
+  /** Loads every earlier page so the search covers the whole conversation (UI-CONV-020). */
+  public async loadAll(sessionId: string): Promise<void> {
+    for (let i = 0; i < 200; i++) {
+      const t = this.snapshot.transcripts[sessionId]
+      if (!t || t.complete) return
+      await this.loadOlder(sessionId)
+    }
   }
 
   /** Reply: the composer quotes this message until sent or cancelled (UI-CONV-018). */

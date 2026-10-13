@@ -41,7 +41,9 @@
     "rename": "Renomear",
     "end": "Terminar conversa",
     "untitled": "Nova conversa",
-    "noMatch": "Nenhuma conversa corresponde"
+    "noMatch": "Nenhuma conversa corresponde",
+    "matches": "{{count}} ocorrências",
+    "matches_one": "{{count}} ocorrência"
   },
   "trust": {
     "title": "Cartão de confiança",
@@ -148,7 +150,16 @@
       "hearts": "Corações e símbolos",
       "objects": "Objetos",
       "symbols": "Sinais"
-    }
+    },
+    "search": "Buscar na conversa",
+    "searchPlaceholder": "Buscar nesta conversa",
+    "matchCount": "{{current}} de {{total}}",
+    "noMatches": "Nenhuma ocorrência",
+    "searchEarlier": "Buscar em mensagens anteriores",
+    "searchedAll": "Conversa inteira pesquisada",
+    "prevMatch": "Ocorrência anterior",
+    "nextMatch": "Próxima ocorrência",
+    "closeSearch": "Fechar a busca"
   },
   "approval": {
     "title": "Aprovação",

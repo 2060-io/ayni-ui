@@ -41,7 +41,9 @@
     "rename": "Renombrar",
     "end": "Terminar conversación",
     "untitled": "Nueva conversación",
-    "noMatch": "Ninguna conversación coincide"
+    "noMatch": "Ninguna conversación coincide",
+    "matches": "{{count}} coincidencias",
+    "matches_one": "{{count}} coincidencia"
   },
   "trust": {
     "title": "Tarjeta de confianza",
@@ -148,7 +150,16 @@
       "hearts": "Corazones y símbolos",
       "objects": "Objetos",
       "symbols": "Señales"
-    }
+    },
+    "search": "Buscar en la conversación",
+    "searchPlaceholder": "Buscar en esta conversación",
+    "matchCount": "{{current}} de {{total}}",
+    "noMatches": "Sin coincidencias",
+    "searchEarlier": "Buscar en mensajes anteriores",
+    "searchedAll": "Conversación completa buscada",
+    "prevMatch": "Coincidencia anterior",
+    "nextMatch": "Coincidencia siguiente",
+    "closeSearch": "Cerrar la búsqueda"
   },
   "approval": {
     "title": "Aprobación",

@@ -14,7 +14,7 @@ export function Column() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [trustOpen, setTrustOpen] = useState(false)
   const [filter, setFilter] = useState('')
-  const [matches, setMatches] = useState<Record<string, string> | null>(null)
+  const [matches, setMatches] = useState<Record<string, { snippet: string; count: number }> | null>(null)
   const agent = snap.agents.find((a) => a.did === snap.selectedAgentDid)
   const agentDid = agent?.did
   // search titles and cached transcripts, debounced (UI-SHELL-015)
@@ -131,7 +131,8 @@ export function Column() {
             key={s.sessionId}
             id={s.sessionId}
             selected={snap.selectedSessionId === s.sessionId}
-            snippet={matches?.[s.sessionId]}
+            match={matches?.[s.sessionId]}
+            query={matches ? filter : undefined}
           />
         ))}
         {closed.length ? <div className="section-label">{t('column.closed')}</div> : null}
@@ -140,7 +141,8 @@ export function Column() {
             key={s.sessionId}
             id={s.sessionId}
             selected={snap.selectedSessionId === s.sessionId}
-            snippet={matches?.[s.sessionId]}
+            match={matches?.[s.sessionId]}
+            query={matches ? filter : undefined}
           />
         ))}
       </div>
@@ -149,7 +151,17 @@ export function Column() {
   )
 }
 
-function ConversationRow({ id, selected, snippet }: { id: string; selected: boolean; snippet?: string }) {
+function ConversationRow({
+  id,
+  selected,
+  match,
+  query,
+}: {
+  id: string
+  selected: boolean
+  match?: { snippet: string; count: number }
+  query?: string
+}) {
   const snap = useSnapshot()
   const hub = useHub()
   const { t, i18n } = useTranslation()
@@ -162,7 +174,11 @@ function ConversationRow({ id, selected, snippet }: { id: string; selected: bool
       <button
         type="button"
         className={['conv-row', selected ? 'selected' : ''].join(' ')}
-        onClick={() => hub.selectSession(s.sessionId)}
+        onClick={() => {
+          hub.selectSession(s.sessionId)
+          // an active search follows the person into the conversation (UI-CONV-020)
+          if (query?.trim() && match?.count) hub.openSearch(s.sessionId, query)
+        }}
         onContextMenu={(e) => {
           e.preventDefault()
           setMenu(true)
@@ -172,15 +188,21 @@ function ConversationRow({ id, selected, snippet }: { id: string; selected: bool
         <span className="title">{title}</span>
         <span className="time">{s.lastMessageAt ? formatTime(s.lastMessageAt, i18n.language) : ''}</span>
         <span className="preview">
-          {snippet && snippet !== title
-            ? snippet
+          {match?.snippet && match.snippet !== title
+            ? match.snippet
             : s.state === 'provisional'
               ? t('column.notLinked')
               : s.state === 'closed'
                 ? t('closure.title')
                 : s.lastPreview}
         </span>
-        {s.unreadCount ? <span className="count">{s.unreadCount}</span> : <span />}
+        {match?.count ? (
+          <span className="matches">{t('column.matches', { count: match.count })}</span>
+        ) : s.unreadCount ? (
+          <span className="count">{s.unreadCount}</span>
+        ) : (
+          <span />
+        )}
       </button>
       <button
         type="button"

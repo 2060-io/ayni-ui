@@ -98,6 +98,7 @@ function hubWithConversation(): Hub {
     selectedSessionId: 's1',
     view: 'conversation',
     replyTo: { s1: { id: 'a1', text: 'Order 4471 has two invoices.', role: 'assistant' } },
+    search: { s1: { query: 'invoice', current: 1 } },
   }
   return hub
 }
@@ -160,5 +161,16 @@ describe('conversation surface', () => {
     })
     const items = [...el.querySelectorAll('.row.mine [role="menuitem"]')].map((b) => b.textContent?.trim())
     expect(items).toEqual(['Reply', 'React', 'Copy text', 'Edit and resend', 'Message info'])
+  })
+})
+
+describe('in-conversation search (UI-CONV-020)', () => {
+  it('shows the count, marks every hit and singles out the current one', async () => {
+    const el = await render(hubWithConversation())
+    expect(el.querySelector('.search-bar .count')?.textContent).toBe('2 of 2')
+    const marks = el.querySelectorAll('mark.hit')
+    expect(marks.length).toBe(2)
+    expect(el.querySelector('mark.hit.current')?.getAttribute('data-hit')).toBe('a1:1')
+    expect(el.querySelector('.msg.assistant strong')?.textContent).toBe('two')
   })
 })

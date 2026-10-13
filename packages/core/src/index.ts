@@ -31,3 +31,4 @@ export function orderAgents<T extends { pinned: boolean; pinOrder: number; lastM
   const inactive = rest.filter((a) => !linked(a)).sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
   return [...pinned, ...active, ...inactive]
 }
+export * from './search.js'
