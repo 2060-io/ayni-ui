@@ -924,8 +924,7 @@ fieldset.quick {
   line-height: 1.45;
   min-height: 40px;
   max-height: calc(1.45em * 6 + 20px);
-  overflow-y: auto;
-  field-sizing: content;
+  overflow-y: hidden;
 }
 .composer textarea:focus-visible {
   outline-offset: 0;

@@ -49,9 +49,12 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   useEffect(() => {
     const el = areaRef.current
     if (!el) return
-    // one line by default, up to six, then the field scrolls (UI-CONV-013)
+    // one line by default, up to six, then the field scrolls; no scrollbar before that (UI-CONV-013)
+    const max = 1.45 * 15 * 6 + 20
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 1.45 * 15 * 6 + 20)}px`
+    const needed = el.scrollHeight
+    el.style.height = `${Math.min(needed, max)}px`
+    el.style.overflowY = needed > max ? 'auto' : 'hidden'
   }, [text])
   useEffect(() => {
     if (!recording) return
