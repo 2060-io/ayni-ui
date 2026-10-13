@@ -210,7 +210,7 @@ describe('rail order (UI-SHELL-011)', () => {
   })
 })
 
-describe('reactions and replies (UI-CONV-011/018/019, PROF-ACT-003, PROF-HIST-006)', () => {
+describe('reactions and replies (UI-CONV-011/018/019, PROF-RUN-010, PROF-HIST-006)', () => {
   const react = (t: ReturnType<typeof emptyTranscript>, by: string, emoji: string, action: 'add' | 'remove') =>
     reduce(
       t,

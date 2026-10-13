@@ -217,7 +217,7 @@ export interface ApprovalUpdateValue {
 }
 
 /**
- * One reaction per person per message (PROF-ACT-003): an `add` replaces whatever the same `by`
+ * One reaction per person per message (PROF-RUN-010): an `add` replaces whatever the same `by`
  * had on that message; a `remove` clears it.
  */
 export interface ReactionValue {

@@ -228,7 +228,7 @@ export function reduce(
           signals.push('approval')
           break
         case CUSTOM_EVENT.reaction: {
-          // one reaction per person per message: an add replaces, a remove clears (PROF-ACT-003)
+          // one reaction per person per message: an add replaces, a remove clears (PROF-RUN-010)
           const messageId = String(value.messageId)
           const list = (t.reactions[messageId] ?? []).filter((r) => r.by !== String(value.by))
           if (value.action === 'add') list.push({ emoji: String(value.emoji), by: String(value.by) })
