@@ -121,6 +121,7 @@ export class Hub {
       void this.addAgent(params.get('agent') ?? '').catch((e) => this.notify('error', String(e.message ?? e)))
     for (const s of this.snapshot.sessions) if (s.state !== 'closed' && s.sessionToken) void this.lead(s.sessionId)
     setInterval(() => this.retryLeadership(), 5000)
+    setInterval(() => void this.pollProvisional(), 4000)
     setInterval(() => this.recheckTrustAll(), this.snapshot.config.trustRecheckIntervalSeconds * 1000)
   }
 
@@ -487,46 +488,90 @@ export class Hub {
     }
   }
 
+  /** Provisional sessions poll their status: the QR screen leaves even if the stream missed the binding. */
+  private async pollProvisional(): Promise<void> {
+    for (const session of this.snapshot.sessions) {
+      if (session.state !== 'provisional' || !session.sessionToken || !this.snapshot.leaders[session.sessionId])
+        continue
+      try {
+        const { client, token } = this.clientOf(session)
+        const status = await client.status(session.sessionId, token)
+        if (status.state === session.state) continue
+        const next: SessionRecord = {
+          ...session,
+          state: status.state,
+          closedReason: status.reason,
+          principal: status.principal ?? session.principal,
+          binding: undefined,
+          deviceHandle: status.deviceHandle ?? session.deviceHandle,
+          sessionToken: status.state === 'closed' ? null : session.sessionToken,
+        }
+        await this.saveSession(next)
+        if (status.state === 'bound') {
+          await this.loadHistory(session.sessionId).catch(() => undefined)
+          const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
+          if (agent && next.deviceHandle && agent.deviceHandle !== next.deviceHandle)
+            await this.store.putAgent({ ...agent, deviceHandle: next.deviceHandle })
+          await this.reload()
+        }
+      } catch (e) {
+        if (e instanceof ProfileError && e.status === 410) {
+          await this.saveSession({
+            ...session,
+            state: 'closed',
+            closedReason: (e.reason as SessionRecord['closedReason']) ?? 'agent',
+            sessionToken: null,
+            binding: undefined,
+          })
+        }
+      }
+    }
+  }
+
   private eventQueue = Promise.resolve()
 
   private onEvent(sessionId: string, event: AgUiEvent, id: number | undefined, fromRun: boolean): Promise<void> {
-    this.eventQueue = this.eventQueue.then(async () => {
-      const session = await this.store.getSession(sessionId)
-      if (!session) return
-      const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
-      const onScreen = this.visible && this.snapshot.selectedSessionId === sessionId && this.snapshot.view !== 'list'
-      const { transcript: t, session: s, signals } = reduce(transcript, session, event, fromRun, onScreen)
-      const next = { ...s, lastEventId: id !== undefined ? Math.max(s.lastEventId, id) : s.lastEventId }
-      if (signals.includes('message') && !next.title) {
-        const firstUser = t.messages.find((m) => m.role === 'user')
-        next.title = (firstUser && firstUser.role !== 'activity' ? firstUser.content : next.lastPreview).slice(0, 60)
-      }
-      await this.store.putTranscript(t)
-      await this.store.putSession(next)
-      this.snapshot = {
-        ...this.snapshot,
-        transcripts: { ...this.snapshot.transcripts, [sessionId]: t },
-        sessions: this.snapshot.sessions.map((x) => (x.sessionId === sessionId ? next : x)),
-      }
-      if (signals.includes('message')) {
-        const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
-        if (agent) await this.store.putAgent({ ...agent, lastMessageAt: next.lastMessageAt })
-        if (!onScreen && this.snapshot.prefs.sounds && this.snapshot.config.soundsEnabled) playPing()
-      }
-      if (signals.includes('bound') && !fromRun) {
-        await this.loadHistory(sessionId)
-        const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
-        if (agent && next.deviceHandle && agent.deviceHandle !== next.deviceHandle) {
-          await this.store.putAgent({ ...agent, deviceHandle: next.deviceHandle })
+    // one failing event must not poison the queue for the events after it
+    this.eventQueue = this.eventQueue
+      .catch(() => undefined)
+      .then(async () => {
+        const session = await this.store.getSession(sessionId)
+        if (!session) return
+        const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+        const onScreen = this.visible && this.snapshot.selectedSessionId === sessionId && this.snapshot.view !== 'list'
+        const { transcript: t, session: s, signals } = reduce(transcript, session, event, fromRun, onScreen)
+        const next = { ...s, lastEventId: id !== undefined ? Math.max(s.lastEventId, id) : s.lastEventId }
+        if (signals.includes('message') && !next.title) {
+          const firstUser = t.messages.find((m) => m.role === 'user')
+          next.title = (firstUser && firstUser.role !== 'activity' ? firstUser.content : next.lastPreview).slice(0, 60)
         }
-      }
-      if (signals.includes('closed')) this.stopLeading(sessionId)
-      this.set({})
-      this.updateTitle()
-      this.bus?.post({ kind: 'transcript', sessionId })
-      if (signals.length) this.bus?.post({ kind: 'changed', what: 'sessions', id: sessionId })
-      if (event.type === 'CUSTOM' && event.name === CUSTOM_EVENT.sessionBound) await this.reload()
-    })
+        await this.store.putTranscript(t)
+        await this.store.putSession(next)
+        this.snapshot = {
+          ...this.snapshot,
+          transcripts: { ...this.snapshot.transcripts, [sessionId]: t },
+          sessions: this.snapshot.sessions.map((x) => (x.sessionId === sessionId ? next : x)),
+        }
+        if (signals.includes('message')) {
+          const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
+          if (agent) await this.store.putAgent({ ...agent, lastMessageAt: next.lastMessageAt })
+          if (!onScreen && this.snapshot.prefs.sounds && this.snapshot.config.soundsEnabled) playPing()
+        }
+        if (signals.includes('bound') && !fromRun) {
+          await this.loadHistory(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
+          const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
+          if (agent && next.deviceHandle && agent.deviceHandle !== next.deviceHandle) {
+            await this.store.putAgent({ ...agent, deviceHandle: next.deviceHandle })
+          }
+        }
+        if (signals.includes('closed')) this.stopLeading(sessionId)
+        this.set({})
+        this.updateTitle()
+        this.bus?.post({ kind: 'transcript', sessionId })
+        if (signals.length) this.bus?.post({ kind: 'changed', what: 'sessions', id: sessionId })
+        if (event.type === 'CUSTOM' && event.name === CUSTOM_EVENT.sessionBound) await this.reload()
+      })
+    this.eventQueue = this.eventQueue.catch((e) => this.notify('error', String((e as Error).message ?? e)))
     return this.eventQueue
   }
 
