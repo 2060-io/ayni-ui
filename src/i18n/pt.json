@@ -73,7 +73,8 @@
     "newCode": "Novo código",
     "refused": "A ligação foi recusada no telemóvel ou não foi concluída.",
     "waiting": "À espera da sua confirmação no telemóvel",
-    "expiresIn": "Expira em {{seconds}} s"
+    "expiresIn": "Expira em {{seconds}} s",
+    "manual": "Já está ligado a este agente na app? Abra aí o menu do agente, escolha \"Link a web session\" e escreva este código."
   },
   "closure": {
     "title": "Conversa fechada",

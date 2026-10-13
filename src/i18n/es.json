@@ -73,7 +73,8 @@
     "newCode": "Nuevo código",
     "refused": "El vínculo fue rechazado en el teléfono o no se completó.",
     "waiting": "Esperando tu confirmación en el teléfono",
-    "expiresIn": "Caduca en {{seconds}} s"
+    "expiresIn": "Caduca en {{seconds}} s",
+    "manual": "¿Ya estás conectado a este agente en la app? Abre allí el menú del agente, elige \"Link a web session\" y escribe este código."
   },
   "closure": {
     "title": "Conversación cerrada",
