@@ -97,7 +97,13 @@ export function TrustCardDialog({
       {connect ? (
         <div className="column-actions" style={{ marginTop: 14 }}>
           {trusted ? (
-            <button type="button" className="btn primary" onClick={() => void hub.connect(agent.did).then(onClose)}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() =>
+                void hub.connect(agent.did).then(onClose, (e) => hub.notify('error', String(e.message ?? e)))
+              }
+            >
               {t('trust.connect')}
             </button>
           ) : warnAllowed ? (
