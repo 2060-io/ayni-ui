@@ -54,5 +54,13 @@
     with a plus for attachments, a microphone and a round send button; the right panel hides from
     a header toggle (a preference of the browser profile); the rail shows pinned agents above a
     pin separator and drag and drop across it pins or unpins, within it reorders.
-15. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+15. **Paired devices** (D30, UI-BIND-011, UI-SESS-010, UI-AGENTS-006). The agent's device handle
+    and secret live on the agent record in IndexedDB; every new session of that agent sends them as
+    `deviceProof` and the agent binds it at once, so an idle closure costs nothing on the next
+    message. The rotated secret returned by each bound session (create response, bound event, or the
+    status of a freshly bound session) replaces the stored one; a `pairing: expired|invalid` answer
+    drops it and the ordinary binding screen appears. "Disconnect from this agent" revokes the
+    pairing with the proof, ends the conversations and clears their local data; "Linked devices"
+    lists the paired browsers from the agent and unlinks any of them.
+16. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
+import { DevicesDialog } from './Devices.js'
 import { TrustCardDialog } from './TrustCard.js'
 import { useDismiss } from './useDismiss.js'
 
@@ -20,6 +21,7 @@ export function Column() {
     useCallback(() => setMenuOpen(false), [])
   )
   const [trustOpen, setTrustOpen] = useState(false)
+  const [devicesOpen, setDevicesOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const [matches, setMatches] = useState<Record<string, { snippet: string; count: number }> | null>(null)
   const agent = snap.agents.find((a) => a.did === snap.selectedAgentDid)
@@ -98,12 +100,30 @@ export function Column() {
             <button type="button" role="menuitem" onClick={() => run(() => hub.togglePin(agent.did))}>
               {agent.pinned ? t('column.unpin') : t('column.pin')}
             </button>
-            <button type="button" role="menuitem" onClick={() => run(() => hub.connect(agent.did))}>
-              {t('column.linkAgain')}
-            </button>
+            {bound ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setDevicesOpen(true)
+                }}
+              >
+                {t('column.devices')}
+              </button>
+            ) : (
+              <button type="button" role="menuitem" onClick={() => run(() => hub.connect(agent.did))}>
+                {t('column.linkAgain')}
+              </button>
+            )}
             <button type="button" role="menuitem" onClick={() => run(() => hub.endAllConversations(agent.did))}>
               {t('column.endAll')}
             </button>
+            {agent.deviceSecret ? (
+              <button type="button" role="menuitem" onClick={() => run(() => hub.disconnectAgent(agent.did))}>
+                {t('column.disconnect')}
+              </button>
+            ) : null}
             <button
               type="button"
               role="menuitem"
@@ -140,6 +160,7 @@ export function Column() {
         ))}
       </div>
       {trustOpen ? <TrustCardDialog agent={agent} onClose={() => setTrustOpen(false)} /> : null}
+      {devicesOpen ? <DevicesDialog agent={agent} onClose={() => setDevicesOpen(false)} /> : null}
     </aside>
   )
 }

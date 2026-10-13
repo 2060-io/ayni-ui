@@ -199,6 +199,7 @@ export function reduce(
             binding: undefined,
             principal: value.principal as SessionRecord['principal'],
             deviceHandle: (value.deviceHandle as string | undefined) ?? s.deviceHandle,
+            deviceSecret: (value.deviceSecret as string | undefined) ?? s.deviceSecret,
           }
           signals.push('bound')
           break

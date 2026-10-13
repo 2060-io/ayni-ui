@@ -392,14 +392,30 @@ export class Hub {
     if (!agent) throw new Error('agent not found')
     if (!this.canConnect(agent)) throw new Error('agent is not trusted')
     await recheckTrust(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
+    // a paired device binds silently with its proof (UI-BIND-011); a rejected proof is dropped
     const created = await this.client(agent).create(
       { ...CLIENT, platform: platformDescription() },
       this.snapshot.prefs.locale ?? navigator.language,
       undefined,
       agent.deviceHandle,
-      resume?.sessionId
+      resume?.sessionId,
+      agent.deviceSecret
     )
+    if (created.pairing) {
+      await this.store.putAgent({
+        ...agent,
+        deviceSecret: undefined,
+        deviceHandle: created.pairing === 'invalid' ? undefined : agent.deviceHandle,
+      })
+    } else if (created.deviceSecret) {
+      await this.store.putAgent({
+        ...agent,
+        deviceHandle: created.deviceHandle ?? agent.deviceHandle,
+        deviceSecret: created.deviceSecret,
+      })
+    }
     const old = resume ? this.snapshot.sessions.find((x) => x.sessionId === resume.sessionId) : undefined
+    const bound = created.state === 'bound'
     const session: SessionRecord = {
       sessionId: created.sessionId,
       agentDid,
@@ -417,8 +433,9 @@ export class Hub {
       hologram: null,
       idleTimeoutSeconds: created.idleTimeoutSeconds,
       rebindAsked: created.rebind === 'asked',
+      deviceHandle: created.deviceHandle,
       resumedFromSessionId: created.resumedFromSessionId ?? resume?.sessionId,
-      pendingText: resume?.text,
+      pendingText: bound ? undefined : resume?.text,
     }
     if (old) session.title = old.title
     await this.store.putSession(session)
@@ -427,7 +444,46 @@ export class Hub {
     this.bus?.post({ kind: 'changed', what: 'sessions' })
     this.selectSession(session.sessionId)
     void this.lead(session.sessionId)
+    if (bound) {
+      await this.loadHistory(session.sessionId).catch(() => undefined)
+      if (resume?.text) await this.send(session.sessionId, resume.text)
+    }
     return session
+  }
+
+  /**
+   * Disconnect from an agent (UI-AGENTS-006): revokes the pairing with the device proof, closes the
+   * agent's conversations and clears their local data; the agent stays listed, unpaired.
+   */
+  public async disconnectAgent(did: string): Promise<void> {
+    const agent = this.snapshot.agents.find((a) => a.did === did)
+    if (!agent) return
+    if (agent.deviceHandle && agent.deviceSecret)
+      await this.client(agent)
+        .revokeDevice(agent.deviceHandle, { deviceProof: agent.deviceSecret })
+        .catch(() => undefined)
+    await this.endAllConversations(did)
+    const current = this.snapshot.agents.find((a) => a.did === did)
+    if (current) await this.store.putAgent({ ...current, deviceHandle: undefined, deviceSecret: undefined })
+    await this.reload()
+    this.bus?.post({ kind: 'changed', what: 'agents' })
+  }
+
+  /** The paired browsers of this Principal with the agent (PROF-SESS-011). */
+  public async listDevices(did: string) {
+    const bound = this.snapshot.sessions.find((s) => s.agentDid === did && s.state === 'bound' && s.sessionToken)
+    if (!bound) return []
+    const { client, token } = this.clientOf(bound)
+    return (await client.devices(token)).devices
+  }
+
+  public async unlinkDevice(did: string, handle: string): Promise<void> {
+    const agent = this.snapshot.agents.find((a) => a.did === did)
+    if (agent?.deviceHandle === handle) return this.disconnectAgent(did)
+    const bound = this.snapshot.sessions.find((s) => s.agentDid === did && s.state === 'bound' && s.sessionToken)
+    if (!bound) throw new Error('no bound conversation')
+    const { client, token } = this.clientOf(bound)
+    await client.revokeDevice(handle, { token })
   }
 
   /** New conversation: a sibling when a bound one exists on this device, else the binding flow (UI-SESS-008). */
@@ -645,6 +701,17 @@ export class Hub {
     }
   }
 
+  /** The device handle and secret a binding handed over move to the agent record (UI-BIND-010/011). */
+  private async adoptPairing(session: SessionRecord): Promise<void> {
+    const agent = this.snapshot.agents.find((a) => a.did === session.agentDid)
+    if (!agent) return
+    const handle = session.deviceHandle ?? agent.deviceHandle
+    const secret = session.deviceSecret ?? agent.deviceSecret
+    if (handle !== agent.deviceHandle || secret !== agent.deviceSecret)
+      await this.store.putAgent({ ...agent, deviceHandle: handle, deviceSecret: secret })
+    if (session.deviceSecret) await this.saveSession({ ...session, deviceSecret: undefined }, false)
+  }
+
   private async flushPending(sessionId: string): Promise<void> {
     const session = await this.store.getSession(sessionId)
     if (!session?.pendingText || session.state !== 'bound') return
@@ -669,15 +736,14 @@ export class Hub {
           principal: status.principal ?? session.principal,
           binding: undefined,
           deviceHandle: status.deviceHandle ?? session.deviceHandle,
+          deviceSecret: status.deviceSecret ?? session.deviceSecret,
           sessionToken: status.state === 'closed' ? null : session.sessionToken,
         }
         await this.saveSession(next)
         if (status.state === 'bound') {
           await this.loadHistory(session.sessionId).catch(() => undefined)
           void this.flushPending(session.sessionId)
-          const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
-          if (agent && next.deviceHandle && agent.deviceHandle !== next.deviceHandle)
-            await this.store.putAgent({ ...agent, deviceHandle: next.deviceHandle })
+          await this.adoptPairing(next)
           await this.reload()
         }
       } catch (e) {
@@ -726,10 +792,7 @@ export class Hub {
         if (signals.includes('bound') && !fromRun) {
           await this.loadHistory(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
           void this.flushPending(sessionId)
-          const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
-          if (agent && next.deviceHandle && agent.deviceHandle !== next.deviceHandle) {
-            await this.store.putAgent({ ...agent, deviceHandle: next.deviceHandle })
-          }
+          await this.adoptPairing(next)
         }
         if (signals.includes('closed')) this.stopLeading(sessionId)
         this.set({})

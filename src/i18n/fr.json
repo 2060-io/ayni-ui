@@ -43,7 +43,9 @@
     "untitled": "Nouvelle conversation",
     "noMatch": "Aucune conversation ne correspond",
     "matches": "{{count}} résultats",
-    "matches_one": "{{count}} résultat"
+    "matches_one": "{{count}} résultat",
+    "devices": "Appareils liés",
+    "disconnect": "Se déconnecter de cet agent"
   },
   "trust": {
     "title": "Carte de confiance",
@@ -267,5 +269,14 @@
       "bound": "Liée",
       "closed": "Fermée"
     }
+  },
+  "devices": {
+    "title": "Appareils liés",
+    "hint": "Navigateurs que votre téléphone a liés à {{name}}. Un navigateur lié ouvre des conversations sans solliciter le téléphone pendant 30 jours après sa dernière utilisation.",
+    "none": "Aucun appareil lié.",
+    "thisBrowser": "ce navigateur",
+    "linked": "Lié {{time}}",
+    "lastUsed": "dernière utilisation {{time}}",
+    "unlink": "Délier"
   }
 }

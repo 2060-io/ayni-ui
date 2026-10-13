@@ -3,6 +3,7 @@ import type {
   BindingMaterial,
   ClientDescription,
   CreateSessionResponse,
+  DevicesResponse,
   HistoryPage,
   HologramAction,
   SessionStatus,
@@ -72,7 +73,8 @@ export class ProfileClient {
     locale?: string,
     siblingOfToken?: string,
     deviceHandle?: string,
-    resumeSessionId?: string
+    resumeSessionId?: string,
+    deviceProof?: string
   ): Promise<CreateSessionResponse> {
     const response = await this.fetchFn(this.url(), {
       method: 'POST',
@@ -81,11 +83,29 @@ export class ProfileClient {
         client,
         locale,
         ...(deviceHandle && !siblingOfToken ? { deviceHandle } : {}),
+        ...(deviceHandle && deviceProof && !siblingOfToken ? { deviceProof } : {}),
         ...(resumeSessionId ? { resumeSessionId } : {}),
       }),
     })
     if (!response.ok) throw await parseError(response)
     return response.json()
+  }
+
+  /** The Principal's paired devices (PROF-SESS-011). */
+  public async devices(token: string): Promise<DevicesResponse> {
+    const response = await this.fetchFn(this.url('/devices'), { headers: this.headers(token) })
+    if (!response.ok) throw await parseError(response)
+    return response.json()
+  }
+
+  /** Revokes a pairing with a bound token, or with the device's own proof when no session is bound (PROF-SESS-012). */
+  public async revokeDevice(handle: string, auth: { token: string } | { deviceProof: string }): Promise<void> {
+    const response = await this.fetchFn(this.url(`/devices/${encodeURIComponent(handle)}`), {
+      method: 'DELETE',
+      headers: this.headers('token' in auth ? auth.token : undefined, { 'content-type': 'application/json' }),
+      body: JSON.stringify('deviceProof' in auth ? { deviceProof: auth.deviceProof } : {}),
+    })
+    if (!response.ok && response.status !== 404) throw await parseError(response)
   }
 
   public async status(sessionId: string, token: string): Promise<SessionStatus> {

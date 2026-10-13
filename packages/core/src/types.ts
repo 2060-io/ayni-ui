@@ -37,6 +37,8 @@ export interface AgentRecord {
   trustAcknowledged?: boolean
   /** opaque handle the agent gave this browser profile at binding: later sessions ask the phone to re-link */
   deviceHandle?: string
+  /** pairing secret from the agent (D30): sent as deviceProof, replaced by every rotation, never leaves the device store */
+  deviceSecret?: string
 }
 
 export interface SessionRecord {
@@ -60,6 +62,8 @@ export interface SessionRecord {
   /** the agent asked the phone to re-link this provisional session */
   rebindAsked?: boolean
   deviceHandle?: string
+  /** a device secret the agent handed with this session, moved to the agent record once seen */
+  deviceSecret?: string
   /** the closed session this one resumes */
   resumedFromSessionId?: string
   /** text to send as soon as the session binds (written on a closed conversation to wake it up) */

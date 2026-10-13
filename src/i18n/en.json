@@ -43,7 +43,9 @@
     "untitled": "New conversation",
     "noMatch": "No conversation matches",
     "matches": "{{count}} matches",
-    "matches_one": "{{count}} match"
+    "matches_one": "{{count}} match",
+    "devices": "Linked devices",
+    "disconnect": "Disconnect from this agent"
   },
   "trust": {
     "title": "Trust card",
@@ -267,5 +269,14 @@
       "bound": "Linked",
       "closed": "Closed"
     }
+  },
+  "devices": {
+    "title": "Linked devices",
+    "hint": "Browsers your phone linked to {{name}}. A linked browser opens new conversations without asking your phone, for 30 days after its last use.",
+    "none": "No linked device.",
+    "thisBrowser": "this browser",
+    "linked": "Linked {{time}}",
+    "lastUsed": "last used {{time}}",
+    "unlink": "Unlink"
   }
 }

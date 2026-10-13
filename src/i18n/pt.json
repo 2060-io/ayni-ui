@@ -43,7 +43,9 @@
     "untitled": "Nova conversa",
     "noMatch": "Nenhuma conversa corresponde",
     "matches": "{{count}} ocorrências",
-    "matches_one": "{{count}} ocorrência"
+    "matches_one": "{{count}} ocorrência",
+    "devices": "Dispositivos vinculados",
+    "disconnect": "Desconectar deste agente"
   },
   "trust": {
     "title": "Cartão de confiança",
@@ -267,5 +269,14 @@
       "bound": "Vinculada",
       "closed": "Encerrada"
     }
+  },
+  "devices": {
+    "title": "Dispositivos vinculados",
+    "hint": "Navegadores que seu telefone vinculou a {{name}}. Um navegador vinculado abre conversas sem perguntar ao telefone por 30 dias após o último uso.",
+    "none": "Nenhum dispositivo vinculado.",
+    "thisBrowser": "este navegador",
+    "linked": "Vinculado {{time}}",
+    "lastUsed": "último uso {{time}}",
+    "unlink": "Desvincular"
   }
 }
