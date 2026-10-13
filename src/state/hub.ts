@@ -208,6 +208,9 @@ export class Hub {
     if (sessionId) {
       void this.loadTranscript(sessionId)
       void this.markRead(sessionId)
+      // a conversation listed by the agent but never opened here: open it now (UI-SESS-013)
+      if (session && !session.sessionToken && session.conversationId && session.sessionId === session.conversationId)
+        void this.resume(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
     }
   }
 
@@ -387,7 +390,7 @@ export class Hub {
   }
 
   /** Connect: a provisional session with binding material (UI-BIND-001). */
-  public async connect(agentDid: string, resume?: { sessionId: string; text?: string }): Promise<SessionRecord> {
+  public async connect(agentDid: string, resume?: ResumeTarget): Promise<SessionRecord> {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent) throw new Error('agent not found')
     if (!this.canConnect(agent)) throw new Error('agent is not trusted')
@@ -399,7 +402,8 @@ export class Hub {
       undefined,
       agent.deviceHandle,
       resume?.sessionId,
-      agent.deviceSecret
+      agent.deviceSecret,
+      resume?.conversationId
     )
     if (created.pairing) {
       await this.store.putAgent({
@@ -434,6 +438,7 @@ export class Hub {
       idleTimeoutSeconds: created.idleTimeoutSeconds,
       rebindAsked: created.rebind === 'asked',
       deviceHandle: created.deviceHandle,
+      conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
       resumedFromSessionId: created.resumedFromSessionId ?? resume?.sessionId,
       pendingText: bound ? undefined : resume?.text,
     }
@@ -446,9 +451,106 @@ export class Hub {
     void this.lead(session.sessionId)
     if (bound) {
       await this.loadHistory(session.sessionId).catch(() => undefined)
+      await this.syncConversations(agentDid).catch(() => undefined)
       if (resume?.text) await this.send(session.sessionId, resume.text)
     }
     return session
+  }
+
+  /**
+   * The agent's list of the person's conversations (UI-SESS-011): titles and archived state come
+   * from the agent; conversations opened elsewhere appear as records with no session yet; ones the
+   * agent no longer lists (closed for good elsewhere) leave.
+   */
+  public async syncConversations(agentDid: string): Promise<void> {
+    const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
+    if (!bound) return
+    const { client, token } = this.clientOf(bound)
+    const { conversations } = await client.conversations(token)
+    const listed = new Map(conversations.map((c) => [c.id, c]))
+    const local = this.snapshot.sessions.filter((s) => s.agentDid === agentDid)
+    for (const s of local) {
+      if (!s.conversationId) continue
+      const c = listed.get(s.conversationId)
+      if (!c) {
+        if (s.state === 'bound') continue // attached a moment ago, the list is just older
+        await this.store.deleteSession(s.sessionId)
+        await this.store.deleteTranscript(s.sessionId)
+        continue
+      }
+      listed.delete(c.id)
+      const next: SessionRecord = {
+        ...s,
+        title: c.title || s.title,
+        archived: c.state === 'archived',
+        lastPreview: c.lastPreview ?? s.lastPreview,
+        lastMessageAt: c.lastActivityAt > s.lastMessageAt ? c.lastActivityAt : s.lastMessageAt,
+      }
+      if (JSON.stringify(next) !== JSON.stringify(s)) await this.store.putSession(next)
+    }
+    for (const c of listed.values()) {
+      await this.store.putSession({
+        sessionId: c.id,
+        agentDid,
+        sessionToken: null,
+        title: c.title,
+        createdAt: c.createdAt,
+        state: 'closed',
+        lastEventId: 0,
+        unreadCount: 0,
+        lastPreview: c.lastPreview ?? '',
+        lastMessageAt: c.lastActivityAt,
+        draft: '',
+        hologram: null,
+        conversationId: c.id,
+        archived: c.state === 'archived',
+      })
+    }
+    await this.reload()
+    this.bus?.post({ kind: 'changed', what: 'sessions' })
+  }
+
+  /** A bound token for the agent, opening the conversation silently on a paired device when none is bound. */
+  private async tokenFor(agentDid: string, conversationId?: string): Promise<{ client: ProfileClient; token: string }> {
+    const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
+    if (bound) return this.clientOf(bound)
+    const opened = await this.connect(agentDid, conversationId ? { conversationId } : undefined)
+    if (opened.state !== 'bound' || !opened.sessionToken) throw new Error('link your phone first')
+    return this.clientOf(opened)
+  }
+
+  /** Archive or unarchive (UI-SESS-012): the agent closes the open sessions of an archived conversation. */
+  public async setArchived(sessionId: string, archived: boolean): Promise<void> {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!session?.conversationId) throw new Error('conversation not known to the agent yet')
+    const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
+    await client.patchConversation(token, session.conversationId, { state: archived ? 'archived' : 'active' })
+    const current = this.snapshot.sessions.find((s) => s.sessionId === sessionId) ?? session
+    if (archived) this.stopLeading(sessionId)
+    await this.saveSession({
+      ...current,
+      archived,
+      state: archived ? 'closed' : current.state,
+      sessionToken: archived ? null : current.sessionToken,
+      binding: archived ? undefined : current.binding,
+    })
+    if (archived && this.snapshot.selectedSessionId === sessionId) this.selectAgent(session.agentDid)
+  }
+
+  public async archiveAll(agentDid: string): Promise<void> {
+    for (const s of this.snapshot.sessions.filter((x) => x.agentDid === agentDid && !x.archived && x.conversationId))
+      await this.setArchived(s.sessionId, true)
+  }
+
+  /** Close for good (UI-SESS-004): the agent marks it final; nothing of it stays on this device. */
+  public async closeForGood(sessionId: string): Promise<void> {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!session) return
+    if (session.conversationId) {
+      const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
+      await client.deleteConversation(token, session.conversationId)
+    }
+    await this.closeConversation(sessionId, true)
   }
 
   /**
@@ -487,10 +589,7 @@ export class Hub {
   }
 
   /** New conversation: a sibling when a bound one exists on this device, else the binding flow (UI-SESS-008). */
-  public async newConversation(
-    agentDid: string,
-    resume?: { sessionId: string; text?: string }
-  ): Promise<SessionRecord> {
+  public async newConversation(agentDid: string, resume?: ResumeTarget): Promise<SessionRecord> {
     const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
     if (!bound) return this.connect(agentDid, resume)
     const { client, token } = this.clientOf(bound)
@@ -499,7 +598,9 @@ export class Hub {
       this.snapshot.prefs.locale ?? navigator.language,
       token,
       undefined,
-      resume?.sessionId
+      resume?.sessionId,
+      undefined,
+      resume?.conversationId
     )
     const old = resume ? this.snapshot.sessions.find((x) => x.sessionId === resume.sessionId) : undefined
     const session: SessionRecord = {
@@ -518,6 +619,7 @@ export class Hub {
       draft: '',
       hologram: null,
       idleTimeoutSeconds: created.idleTimeoutSeconds,
+      conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
       resumedFromSessionId: created.resumedFromSessionId,
     }
     if (old) session.title = old.title
@@ -527,6 +629,7 @@ export class Hub {
     this.bus?.post({ kind: 'changed', what: 'sessions' })
     this.selectSession(session.sessionId)
     void this.lead(session.sessionId)
+    if (resume?.conversationId || resume?.sessionId) await this.loadHistory(session.sessionId).catch(() => undefined)
     if (resume?.text) await this.send(session.sessionId, resume.text)
     return session
   }
@@ -550,7 +653,13 @@ export class Hub {
     const closed = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
     if (!closed) throw new Error('session not found')
     if (closed.state !== 'closed') return closed
-    return this.newConversation(closed.agentDid, { sessionId, text })
+    // a listed conversation never opened here has no session id of its own, only the conversation's
+    const ownSession = closed.sessionId !== closed.conversationId
+    return this.newConversation(closed.agentDid, {
+      sessionId: ownSession ? sessionId : undefined,
+      conversationId: closed.conversationId,
+      text,
+    })
   }
 
   public async refreshBinding(sessionId: string): Promise<void> {
@@ -588,7 +697,12 @@ export class Hub {
 
   public async renameConversation(sessionId: string, title: string): Promise<void> {
     const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
-    if (session) await this.saveSession({ ...session, title })
+    if (!session) return
+    await this.saveSession({ ...session, title })
+    if (session.conversationId) {
+      const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
+      await client.patchConversation(token, session.conversationId, { title })
+    }
   }
 
   public async setDraft(sessionId: string, draft: string): Promise<void> {
@@ -656,10 +770,12 @@ export class Hub {
           principal: status.principal ?? session.principal,
           binding: status.binding ?? (status.state === 'provisional' ? session.binding : undefined),
           closedReason: status.reason,
+          conversationId: status.conversationId ?? session.conversationId,
         })
         if (status.state === 'closed') return
         if (status.state === 'bound' && !(await this.store.getTranscript(sessionId))?.messages.length)
           await this.loadHistory(sessionId)
+        if (status.state === 'bound') void this.syncConversations(session.agentDid).catch(() => undefined)
         const controller = new AbortController()
         this.streams.set(sessionId, controller)
         attempt = 0
@@ -737,6 +853,7 @@ export class Hub {
           binding: undefined,
           deviceHandle: status.deviceHandle ?? session.deviceHandle,
           deviceSecret: status.deviceSecret ?? session.deviceSecret,
+          conversationId: status.conversationId ?? session.conversationId,
           sessionToken: status.state === 'closed' ? null : session.sessionToken,
         }
         await this.saveSession(next)
@@ -745,6 +862,7 @@ export class Hub {
           void this.flushPending(session.sessionId)
           await this.adoptPairing(next)
           await this.reload()
+          await this.syncConversations(next.agentDid).catch(() => undefined)
         }
       } catch (e) {
         if (e instanceof ProfileError && e.status === 410) {
@@ -793,6 +911,7 @@ export class Hub {
           await this.loadHistory(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
           void this.flushPending(sessionId)
           await this.adoptPairing(next)
+          void this.syncConversations(next.agentDid).catch(() => undefined)
         }
         if (signals.includes('closed')) this.stopLeading(sessionId)
         this.set({})
@@ -1002,6 +1121,13 @@ export class Hub {
     this.set({ prefs })
     this.bus?.post({ kind: 'changed', what: 'preferences' })
   }
+}
+
+/** What a new session continues: a local session, the agent's conversation, and text to send once bound. */
+export interface ResumeTarget {
+  sessionId?: string
+  conversationId?: string
+  text?: string
 }
 
 type LocalAction = { type: 'run'; text?: string; action?: HologramAction; replyTo?: ReplyQuote } | { type: 'cancel' }

@@ -1,5 +1,5 @@
 /** The conversation column (UI-SHELL-002/012, UI-SESS-004/008, UI-AGENTS-005): every connection action lives here. */
-import { Link2, MoreVertical, Plus, ShieldCheck } from 'lucide-react'
+import { Archive, ChevronDown, ChevronRight, Link2, MoreVertical, Plus, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
@@ -22,6 +22,7 @@ export function Column() {
   )
   const [trustOpen, setTrustOpen] = useState(false)
   const [devicesOpen, setDevicesOpen] = useState(false)
+  const [archivedOpen, setArchivedOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const [matches, setMatches] = useState<Record<string, { snippet: string; count: number }> | null>(null)
   const agent = snap.agents.find((a) => a.did === snap.selectedAgentDid)
@@ -53,8 +54,10 @@ export function Column() {
   const sessions = snap.sessions.filter(
     (s) => s.agentDid === agent.did && (!matches || matches[s.sessionId] !== undefined)
   )
-  // closed conversations are listed like the others: writing wakes them (D26)
-  const open = sessions.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+  // closed conversations are listed like the others: writing wakes them (D26); archived ones sit apart (D31)
+  const sorted = sessions.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+  const open = sorted.filter((s) => !s.archived)
+  const archived = sorted.filter((s) => s.archived)
   const bound = open.find((s) => s.state === 'bound')
   const run = (fn: () => Promise<unknown>) => {
     setMenuOpen(false)
@@ -116,8 +119,8 @@ export function Column() {
                 {t('column.linkAgain')}
               </button>
             )}
-            <button type="button" role="menuitem" onClick={() => run(() => hub.endAllConversations(agent.did))}>
-              {t('column.endAll')}
+            <button type="button" role="menuitem" onClick={() => run(() => hub.archiveAll(agent.did))}>
+              {t('column.archiveAll')}
             </button>
             {agent.deviceSecret ? (
               <button type="button" role="menuitem" onClick={() => run(() => hub.disconnectAgent(agent.did))}>
@@ -146,7 +149,7 @@ export function Column() {
         />
       </div>
       <div className="list">
-        {open.length === 0 ? (
+        {open.length === 0 && archived.length === 0 ? (
           <div className="center">{matches ? t('column.noMatch') : t('column.noConversations')}</div>
         ) : null}
         {open.map((s) => (
@@ -158,6 +161,28 @@ export function Column() {
             query={matches ? filter : undefined}
           />
         ))}
+        {archived.length ? (
+          <button
+            type="button"
+            className="section-toggle"
+            aria-expanded={archivedOpen || !!matches}
+            onClick={() => setArchivedOpen((v) => !v)}
+          >
+            {archivedOpen || matches ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            <Archive size={14} aria-hidden="true" /> {t('column.archived')} ({archived.length})
+          </button>
+        ) : null}
+        {archivedOpen || matches
+          ? archived.map((s) => (
+              <ConversationRow
+                key={s.sessionId}
+                id={s.sessionId}
+                selected={snap.selectedSessionId === s.sessionId}
+                match={matches?.[s.sessionId]}
+                query={matches ? filter : undefined}
+              />
+            ))
+          : null}
       </div>
       {trustOpen ? <TrustCardDialog agent={agent} onClose={() => setTrustOpen(false)} /> : null}
       {devicesOpen ? <DevicesDialog agent={agent} onClose={() => setDevicesOpen(false)} /> : null}
@@ -244,15 +269,29 @@ function ConversationRow({
           >
             {t('column.rename')}
           </button>
+          {s.conversationId ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false)
+                void hub.setArchived(s.sessionId, !s.archived).catch((e) => hub.notify('error', String(e.message ?? e)))
+              }}
+            >
+              {s.archived ? t('column.unarchive') : t('column.archive')}
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"
+            className="danger"
             onClick={() => {
               setMenu(false)
-              void hub.closeConversation(s.sessionId)
+              if (!confirm(t('column.closeForGoodConfirm'))) return
+              void hub.closeForGood(s.sessionId).catch((e) => hub.notify('error', String(e.message ?? e)))
             }}
           >
-            {t('column.end')}
+            {t('column.closeForGood')}
           </button>
         </div>
       ) : null}

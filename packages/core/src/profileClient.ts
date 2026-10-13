@@ -2,6 +2,8 @@
 import type {
   BindingMaterial,
   ClientDescription,
+  ConversationPatch,
+  ConversationsResponse,
   CreateSessionResponse,
   DevicesResponse,
   HistoryPage,
@@ -74,7 +76,8 @@ export class ProfileClient {
     siblingOfToken?: string,
     deviceHandle?: string,
     resumeSessionId?: string,
-    deviceProof?: string
+    deviceProof?: string,
+    conversationId?: string
   ): Promise<CreateSessionResponse> {
     const response = await this.fetchFn(this.url(), {
       method: 'POST',
@@ -84,11 +87,37 @@ export class ProfileClient {
         locale,
         ...(deviceHandle && !siblingOfToken ? { deviceHandle } : {}),
         ...(deviceHandle && deviceProof && !siblingOfToken ? { deviceProof } : {}),
-        ...(resumeSessionId ? { resumeSessionId } : {}),
+        ...(conversationId ? { conversationId } : resumeSessionId ? { resumeSessionId } : {}),
       }),
     })
     if (!response.ok) throw await parseError(response)
     return response.json()
+  }
+
+  /** The Principal's conversations with this agent (PROF-CONV-001). */
+  public async conversations(token: string): Promise<ConversationsResponse> {
+    const response = await this.fetchFn(this.url('/conversations'), { headers: this.headers(token) })
+    if (!response.ok) throw await parseError(response)
+    return response.json()
+  }
+
+  /** Rename, archive or unarchive (PROF-CONV-002/003). */
+  public async patchConversation(token: string, id: string, patch: ConversationPatch): Promise<void> {
+    const response = await this.fetchFn(this.url(`/conversations/${encodeURIComponent(id)}`), {
+      method: 'PATCH',
+      headers: this.headers(token, { 'content-type': 'application/json' }),
+      body: JSON.stringify(patch),
+    })
+    if (!response.ok) throw await parseError(response)
+  }
+
+  /** Close for good (PROF-CONV-004). */
+  public async deleteConversation(token: string, id: string): Promise<void> {
+    const response = await this.fetchFn(this.url(`/conversations/${encodeURIComponent(id)}`), {
+      method: 'DELETE',
+      headers: this.headers(token),
+    })
+    if (!response.ok && response.status !== 404) throw await parseError(response)
   }
 
   /** The Principal's paired devices (PROF-SESS-011). */

@@ -66,6 +66,10 @@ export interface SessionRecord {
   deviceSecret?: string
   /** the closed session this one resumes */
   resumedFromSessionId?: string
+  /** the agent's conversation this record serves (D31); a record with no token and this id is a listed conversation not yet opened here */
+  conversationId?: string
+  /** mirrored from the agent's conversation state (D31) */
+  archived?: boolean
   /** text to send as soon as the session binds (written on a closed conversation to wake it up) */
   pendingText?: string
 }

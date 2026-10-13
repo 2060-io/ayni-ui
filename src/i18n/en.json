@@ -45,7 +45,13 @@
     "matches": "{{count}} matches",
     "matches_one": "{{count}} match",
     "devices": "Linked devices",
-    "disconnect": "Disconnect from this agent"
+    "disconnect": "Disconnect from this agent",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "archived": "Archived",
+    "archiveAll": "Archive all conversations",
+    "closeForGood": "Close for good",
+    "closeForGoodConfirm": "Close this conversation for good? It disappears from your devices. The agent keeps its record as its policy says."
   },
   "trust": {
     "title": "Trust card",

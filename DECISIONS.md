@@ -62,5 +62,14 @@
     drops it and the ordinary binding screen appears. "Disconnect from this agent" revokes the
     pairing with the proof, ends the conversations and clears their local data; "Linked devices"
     lists the paired browsers from the agent and unlinks any of them.
-16. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+16. **The list is the agent's** (D31, UI-SESS-001/004/011/012/013). After every binding and on every
+    reconnect the hub fetches the agent's conversations and reconciles the local records by
+    conversation id: titles and archived state come from the agent, conversations opened elsewhere
+    become records with no session (their id is the conversation id) and open silently on a paired
+    device when selected, conversations the agent no longer lists are dropped. Archive and unarchive
+    go through the agent and close the session; "Archive all" replaces "End all conversations";
+    "Close for good" asks for confirmation, calls the conversation delete and clears the local data.
+    Renames go through the agent too. Records from before this change (no conversation id) stay
+    listed and attach to a conversation the next time they bind.
+17. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

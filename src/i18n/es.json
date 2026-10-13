@@ -45,7 +45,13 @@
     "matches": "{{count}} coincidencias",
     "matches_one": "{{count}} coincidencia",
     "devices": "Dispositivos vinculados",
-    "disconnect": "Desconectar de este agente"
+    "disconnect": "Desconectar de este agente",
+    "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "archived": "Archivadas",
+    "archiveAll": "Archivar todas las conversaciones",
+    "closeForGood": "Cerrar definitivamente",
+    "closeForGoodConfirm": "¿Cerrar esta conversación definitivamente? Desaparece de tus dispositivos. El agente conserva su registro según su política."
   },
   "trust": {
     "title": "Tarjeta de confianza",

@@ -45,7 +45,13 @@
     "matches": "{{count}} résultats",
     "matches_one": "{{count}} résultat",
     "devices": "Appareils liés",
-    "disconnect": "Se déconnecter de cet agent"
+    "disconnect": "Se déconnecter de cet agent",
+    "archive": "Archiver",
+    "unarchive": "Désarchiver",
+    "archived": "Archivées",
+    "archiveAll": "Archiver toutes les conversations",
+    "closeForGood": "Fermer définitivement",
+    "closeForGoodConfirm": "Fermer cette conversation définitivement ? Elle disparaît de vos appareils. L’agent conserve son enregistrement selon sa politique."
   },
   "trust": {
     "title": "Carte de confiance",

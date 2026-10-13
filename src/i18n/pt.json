@@ -45,7 +45,13 @@
     "matches": "{{count}} ocorrências",
     "matches_one": "{{count}} ocorrência",
     "devices": "Dispositivos vinculados",
-    "disconnect": "Desconectar deste agente"
+    "disconnect": "Desconectar deste agente",
+    "archive": "Arquivar",
+    "unarchive": "Desarquivar",
+    "archived": "Arquivadas",
+    "archiveAll": "Arquivar todas as conversas",
+    "closeForGood": "Fechar definitivamente",
+    "closeForGoodConfirm": "Fechar esta conversa definitivamente? Ela desaparece dos seus dispositivos. O agente mantém seu registro conforme sua política."
   },
   "trust": {
     "title": "Cartão de confiança",
