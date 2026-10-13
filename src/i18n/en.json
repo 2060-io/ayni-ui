@@ -86,7 +86,8 @@
     "idleTimeout": "Inactive for too long.",
     "expired": "The link was never completed in time.",
     "agent": "Closed by the agent.",
-    "reconnect": "Connect again"
+    "reconnect": "Connect again",
+    "writeToReconnect": "Write a message to pick the conversation up where it stopped."
   },
   "composer": {
     "placeholder": "Write a message",
@@ -103,7 +104,8 @@
     "micUnavailable": "Voice notes are not available in this browser.",
     "tooLarge": "This file is larger than the agent accepts ({{max}} MB).",
     "notAccepted": "This file type is not accepted by the agent.",
-    "attachments": "Attachments"
+    "attachments": "Attachments",
+    "placeholderReconnect": "Write to continue the conversation"
   },
   "conversation": {
     "interrupted": "interrupted",

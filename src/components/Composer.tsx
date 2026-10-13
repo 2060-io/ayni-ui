@@ -51,6 +51,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
     return () => clearInterval(timer)
   }, [recording])
 
+  const closed = session?.state === 'closed'
   const canSend = !disabled && !running && snap.online && (text.trim().length > 0 || pending.length > 0 || !!review)
 
   const send = async () => {
@@ -68,6 +69,11 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
       const body = text
       setText('')
       setPending([])
+      if (closed) {
+        // writing on a closed conversation wakes it up: the text goes out once the resumed session is bound
+        await hub.resume(sessionId, body)
+        return
+      }
       await hub.send(sessionId, body, ids)
     } catch (e) {
       setError(String((e as Error).message))
@@ -226,7 +232,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
         <textarea
           ref={areaRef}
           rows={1}
-          placeholder={t('composer.placeholder')}
+          placeholder={closed ? t('composer.placeholderReconnect') : t('composer.placeholder')}
           aria-label={t('composer.placeholder')}
           value={text}
           disabled={disabled}

@@ -266,7 +266,7 @@ export class Hub {
   }
 
   /** Connect: a provisional session with binding material (UI-BIND-001). */
-  public async connect(agentDid: string): Promise<SessionRecord> {
+  public async connect(agentDid: string, resume?: { sessionId: string; text?: string }): Promise<SessionRecord> {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent) throw new Error('agent not found')
     if (!this.canConnect(agent)) throw new Error('agent is not trusted')
@@ -275,8 +275,10 @@ export class Hub {
       { ...CLIENT, platform: platformDescription() },
       this.snapshot.prefs.locale ?? navigator.language,
       undefined,
-      agent.deviceHandle
+      agent.deviceHandle,
+      resume?.sessionId
     )
+    const old = resume ? this.snapshot.sessions.find((x) => x.sessionId === resume.sessionId) : undefined
     const session: SessionRecord = {
       sessionId: created.sessionId,
       agentDid,
@@ -294,9 +296,12 @@ export class Hub {
       hologram: null,
       idleTimeoutSeconds: created.idleTimeoutSeconds,
       rebindAsked: created.rebind === 'asked',
+      resumedFromSessionId: created.resumedFromSessionId ?? resume?.sessionId,
+      pendingText: resume?.text,
     }
+    if (old) session.title = old.title
     await this.store.putSession(session)
-    await this.store.putTranscript(emptyTranscript(session.sessionId))
+    await this.store.putTranscript(await this.inheritTranscript(session, old))
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
     this.selectSession(session.sessionId)
@@ -305,15 +310,21 @@ export class Hub {
   }
 
   /** New conversation: a sibling when a bound one exists on this device, else the binding flow (UI-SESS-008). */
-  public async newConversation(agentDid: string): Promise<SessionRecord> {
+  public async newConversation(
+    agentDid: string,
+    resume?: { sessionId: string; text?: string }
+  ): Promise<SessionRecord> {
     const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
-    if (!bound) return this.connect(agentDid)
+    if (!bound) return this.connect(agentDid, resume)
     const { client, token } = this.clientOf(bound)
     const created = await client.create(
       { ...CLIENT, platform: platformDescription() },
       this.snapshot.prefs.locale ?? navigator.language,
-      token
+      token,
+      undefined,
+      resume?.sessionId
     )
+    const old = resume ? this.snapshot.sessions.find((x) => x.sessionId === resume.sessionId) : undefined
     const session: SessionRecord = {
       sessionId: created.sessionId,
       agentDid,
@@ -330,14 +341,39 @@ export class Hub {
       draft: '',
       hologram: null,
       idleTimeoutSeconds: created.idleTimeoutSeconds,
+      resumedFromSessionId: created.resumedFromSessionId,
     }
+    if (old) session.title = old.title
     await this.store.putSession(session)
-    await this.store.putTranscript(emptyTranscript(session.sessionId))
+    await this.store.putTranscript(await this.inheritTranscript(session, old))
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
     this.selectSession(session.sessionId)
     void this.lead(session.sessionId)
+    if (resume?.text) await this.send(session.sessionId, resume.text)
     return session
+  }
+
+  /** A resumed session takes over the closed conversation's local transcript and replaces its record. */
+  private async inheritTranscript(session: SessionRecord, old: SessionRecord | undefined) {
+    const fresh = emptyTranscript(session.sessionId)
+    if (!old) return fresh
+    const previous = await this.store.getTranscript(old.sessionId)
+    await this.store.deleteSession(old.sessionId)
+    await this.store.deleteTranscript(old.sessionId)
+    const { [old.sessionId]: _dropped, ...transcripts } = this.snapshot.transcripts
+    this.snapshot = { ...this.snapshot, transcripts }
+    return previous
+      ? { ...previous, sessionId: session.sessionId, run: null, complete: false, oldestLoadedId: null }
+      : fresh
+  }
+
+  /** Writing on a closed conversation wakes it up: a new session resumes it and sends the text once bound. */
+  public async resume(sessionId: string, text?: string): Promise<SessionRecord> {
+    const closed = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!closed) throw new Error('session not found')
+    if (closed.state !== 'closed') return closed
+    return this.newConversation(closed.agentDid, { sessionId, text })
   }
 
   public async refreshBinding(sessionId: string): Promise<void> {
@@ -488,6 +524,14 @@ export class Hub {
     }
   }
 
+  private async flushPending(sessionId: string): Promise<void> {
+    const session = await this.store.getSession(sessionId)
+    if (!session?.pendingText || session.state !== 'bound') return
+    const text = session.pendingText
+    await this.saveSession({ ...session, pendingText: undefined })
+    await this.send(sessionId, text).catch((e) => this.notify('error', String((e as Error).message)))
+  }
+
   /** Provisional sessions poll their status: the QR screen leaves even if the stream missed the binding. */
   private async pollProvisional(): Promise<void> {
     for (const session of this.snapshot.sessions) {
@@ -509,6 +553,7 @@ export class Hub {
         await this.saveSession(next)
         if (status.state === 'bound') {
           await this.loadHistory(session.sessionId).catch(() => undefined)
+          void this.flushPending(session.sessionId)
           const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
           if (agent && next.deviceHandle && agent.deviceHandle !== next.deviceHandle)
             await this.store.putAgent({ ...agent, deviceHandle: next.deviceHandle })
@@ -559,6 +604,7 @@ export class Hub {
         }
         if (signals.includes('bound') && !fromRun) {
           await this.loadHistory(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
+          void this.flushPending(sessionId)
           const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
           if (agent && next.deviceHandle && agent.deviceHandle !== next.deviceHandle) {
             await this.store.putAgent({ ...agent, deviceHandle: next.deviceHandle })

@@ -146,13 +146,7 @@ export function Conversation() {
       {closed ? (
         <div className="banner info" role="status">
           <strong>{t('closure.title')}:</strong> {t(reasonKey)}
-          <button
-            type="button"
-            className="btn small primary"
-            onClick={() => void hub.connect(agent.did).catch((e) => hub.notify('error', String(e.message ?? e)))}
-          >
-            {t('closure.reconnect')}
-          </button>
+          {t('closure.writeToReconnect')}
         </div>
       ) : null}
       {session.state === 'provisional' ? (
@@ -205,8 +199,8 @@ export function Conversation() {
             ) : null}
             {elevation ? <ElevationForm session={session} onClose={() => setElevation(false)} /> : null}
           </div>
-          {session.state === 'bound' ? (
-            <Composer sessionId={session.sessionId} disabled={closed || trustBlocked} />
+          {session.state === 'bound' || closed ? (
+            <Composer sessionId={session.sessionId} disabled={trustBlocked} />
           ) : null}
         </>
       )}

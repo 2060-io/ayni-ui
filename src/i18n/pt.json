@@ -86,7 +86,8 @@
     "idleTimeout": "Inativa durante demasiado tempo.",
     "expired": "A ligação não foi concluída a tempo.",
     "agent": "Fechada pelo agente.",
-    "reconnect": "Ligar de novo"
+    "reconnect": "Ligar de novo",
+    "writeToReconnect": "Escreva uma mensagem para retomar a conversa onde parou."
   },
   "composer": {
     "placeholder": "Escreva uma mensagem",
@@ -103,7 +104,8 @@
     "micUnavailable": "As notas de voz não estão disponíveis neste navegador.",
     "tooLarge": "Este ficheiro excede o que o agente aceita ({{max}} MB).",
     "notAccepted": "O agente não aceita este tipo de ficheiro.",
-    "attachments": "Anexos"
+    "attachments": "Anexos",
+    "placeholderReconnect": "Escreva para continuar a conversa"
   },
   "conversation": {
     "interrupted": "interrompido",
