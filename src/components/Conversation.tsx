@@ -198,6 +198,10 @@ export function Conversation() {
                   <span key={s}>{s}…</span>
                 ))}
               </div>
+            ) : transcript?.run && !messages.some((m) => m.role !== 'activity' && m.streaming) ? (
+              <div className="progress" aria-live="polite">
+                {t('conversation.thinking')}
+              </div>
             ) : null}
             {elevation ? <ElevationForm session={session} onClose={() => setElevation(false)} /> : null}
           </div>

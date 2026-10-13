@@ -111,7 +111,8 @@
     "download": "Transferir",
     "menuAnswered": "Respondido",
     "approvals": "Aprovações",
-    "requestElevation": "Pedir acesso"
+    "requestElevation": "Pedir acesso",
+    "thinking": "A pensar…"
   },
   "approval": {
     "title": "Aprovação",

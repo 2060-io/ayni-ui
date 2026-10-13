@@ -111,7 +111,8 @@
     "download": "Télécharger",
     "menuAnswered": "Répondu",
     "approvals": "Approbations",
-    "requestElevation": "Demander un accès"
+    "requestElevation": "Demander un accès",
+    "thinking": "Réflexion…"
   },
   "approval": {
     "title": "Approbation",

@@ -14,7 +14,11 @@
     "install": "Install",
     "installHint": "Use your browser's menu to add this app to your home screen or dock."
   },
-  "rail": { "pinned": "Pinned", "notLinked": "Not linked", "unread": "{{count}} unread" },
+  "rail": {
+    "pinned": "Pinned",
+    "notLinked": "Not linked",
+    "unread": "{{count}} unread"
+  },
   "column": {
     "newConversation": "New conversation",
     "linkedSince": "Linked via your phone since {{time}}",
@@ -107,7 +111,8 @@
     "download": "Download",
     "menuAnswered": "Answered",
     "approvals": "Approvals",
-    "requestElevation": "Request access"
+    "requestElevation": "Request access",
+    "thinking": "Thinking…"
   },
   "approval": {
     "title": "Approval",
@@ -186,7 +191,11 @@
     "about": "About",
     "version": "Version {{version}}",
     "profile": "AG-UI profile {{version}}",
-    "links": { "terms": "Terms", "privacy": "Privacy", "support": "Support" }
+    "links": {
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "support": "Support"
+    }
   },
   "details": {
     "session": "Session",
