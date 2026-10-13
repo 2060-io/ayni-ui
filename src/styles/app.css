@@ -145,6 +145,10 @@ a {
     display: none;
   }
 }
+.icon-btn.back,
+.btn.back {
+  display: none;
+}
 @media (max-width: 760px) {
   .app {
     grid-template-columns: var(--rail) minmax(0, 1fr);
@@ -169,10 +173,6 @@ a {
   .btn.back {
     display: inline-flex;
   }
-}
-.icon-btn.back,
-.btn.back {
-  display: none;
 }
 
 .rail {
