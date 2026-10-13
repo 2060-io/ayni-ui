@@ -163,11 +163,15 @@ a {
   .app.show-conversation .column {
     display: none;
   }
-  .back {
+  .icon-btn.back {
+    display: grid;
+  }
+  .btn.back {
     display: inline-flex;
   }
 }
-.back {
+.icon-btn.back,
+.btn.back {
   display: none;
 }
 
