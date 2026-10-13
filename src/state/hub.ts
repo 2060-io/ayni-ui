@@ -272,7 +272,9 @@ export class Hub {
     await recheckTrust(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
     const created = await this.client(agent).create(
       { ...CLIENT, platform: platformDescription() },
-      this.snapshot.prefs.locale ?? navigator.language
+      this.snapshot.prefs.locale ?? navigator.language,
+      undefined,
+      agent.deviceHandle
     )
     const session: SessionRecord = {
       sessionId: created.sessionId,
@@ -290,6 +292,7 @@ export class Hub {
       draft: '',
       hologram: null,
       idleTimeoutSeconds: created.idleTimeoutSeconds,
+      rebindAsked: created.rebind === 'asked',
     }
     await this.store.putSession(session)
     await this.store.putTranscript(emptyTranscript(session.sessionId))
@@ -510,7 +513,13 @@ export class Hub {
         if (agent) await this.store.putAgent({ ...agent, lastMessageAt: next.lastMessageAt })
         if (!onScreen && this.snapshot.prefs.sounds && this.snapshot.config.soundsEnabled) playPing()
       }
-      if (signals.includes('bound') && !fromRun) await this.loadHistory(sessionId)
+      if (signals.includes('bound') && !fromRun) {
+        await this.loadHistory(sessionId)
+        const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
+        if (agent && next.deviceHandle && agent.deviceHandle !== next.deviceHandle) {
+          await this.store.putAgent({ ...agent, deviceHandle: next.deviceHandle })
+        }
+      }
       if (signals.includes('closed')) this.stopLeading(sessionId)
       this.set({})
       this.updateTitle()

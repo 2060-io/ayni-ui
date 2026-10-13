@@ -74,7 +74,8 @@
     "refused": "Le lien a été refusé sur le téléphone ou n'a pas abouti.",
     "waiting": "En attente de votre confirmation sur le téléphone",
     "expiresIn": "Expire dans {{seconds}} s",
-    "manual": "Déjà connecté à cet agent dans l'application ? Ouvrez-y le menu de l'agent, choisissez « Link a web session » et saisissez ce code."
+    "manual": "Déjà connecté à cet agent dans l'application ? Ouvrez-y le menu de l'agent, choisissez « Link a web session » et saisissez ce code.",
+    "phoneAsked": "Votre téléphone a reçu la question de lier cette page : répondez Oui et choisissez le code affiché ici."
   },
   "closure": {
     "title": "Conversation fermée",

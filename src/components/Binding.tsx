@@ -43,7 +43,7 @@ export function Binding({ session }: { session: SessionRecord }) {
             </div>
             <div className="muted">{t('bind.codeHint')}</div>
             <div className="muted" style={{ marginTop: 6 }}>
-              {t('bind.manual')}
+              {session.rebindAsked ? t('bind.phoneAsked') : t('bind.manual')}
             </div>
             <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
               {t('bind.expiresIn', { seconds: left })}

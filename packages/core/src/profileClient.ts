@@ -70,12 +70,13 @@ export class ProfileClient {
   public async create(
     client: ClientDescription,
     locale?: string,
-    siblingOfToken?: string
+    siblingOfToken?: string,
+    deviceHandle?: string
   ): Promise<CreateSessionResponse> {
     const response = await this.fetchFn(this.url(), {
       method: 'POST',
       headers: this.headers(siblingOfToken, { 'content-type': 'application/json' }),
-      body: JSON.stringify({ client, locale }),
+      body: JSON.stringify({ client, locale, ...(deviceHandle && !siblingOfToken ? { deviceHandle } : {}) }),
     })
     if (!response.ok) throw await parseError(response)
     return response.json()

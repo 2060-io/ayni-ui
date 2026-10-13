@@ -74,7 +74,8 @@
     "refused": "El vínculo fue rechazado en el teléfono o no se completó.",
     "waiting": "Esperando tu confirmación en el teléfono",
     "expiresIn": "Caduca en {{seconds}} s",
-    "manual": "¿Ya estás conectado a este agente en la app? Abre allí el menú del agente, elige \"Link a web session\" y escribe este código."
+    "manual": "¿Ya estás conectado a este agente en la app? Abre allí el menú del agente, elige \"Link a web session\" y escribe este código.",
+    "phoneAsked": "Se preguntó a tu teléfono si quieres vincular esta página: responde Sí allí y elige el código que ves aquí."
   },
   "closure": {
     "title": "Conversación cerrada",

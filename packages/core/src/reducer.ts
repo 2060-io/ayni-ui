@@ -182,7 +182,13 @@ export function reduce(
           break
         }
         case CUSTOM_EVENT.sessionBound:
-          s = { ...s, state: 'bound', binding: undefined, principal: value.principal as SessionRecord['principal'] }
+          s = {
+            ...s,
+            state: 'bound',
+            binding: undefined,
+            principal: value.principal as SessionRecord['principal'],
+            deviceHandle: (value.deviceHandle as string | undefined) ?? s.deviceHandle,
+          }
           signals.push('bound')
           break
         case CUSTOM_EVENT.sessionToken:

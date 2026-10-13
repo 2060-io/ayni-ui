@@ -74,7 +74,8 @@
     "refused": "The link was refused on the phone, or it did not complete.",
     "waiting": "Waiting for your confirmation on the phone",
     "expiresIn": "Expires in {{seconds}} s",
-    "manual": "Already connected to this agent in the app? Open the agent's menu there, choose \"Link a web session\" and type this code."
+    "manual": "Already connected to this agent in the app? Open the agent's menu there, choose \"Link a web session\" and type this code.",
+    "phoneAsked": "Your phone was asked whether to link this page: answer Yes there and pick the code shown here."
   },
   "closure": {
     "title": "Conversation closed",
