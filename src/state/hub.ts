@@ -18,6 +18,7 @@ import {
   type Preferences,
   ProfileClient,
   ProfileError,
+  type ReplyQuote,
   type RuntimeConfig,
   recheckTrust,
   reduce,
@@ -45,6 +46,14 @@ export interface Snapshot {
   leaders: Record<string, boolean>
   notice: { kind: 'info' | 'error'; text: string } | null
   pending: Record<string, string | undefined>
+  /** the message being answered, per session (UI-CONV-018) */
+  replyTo: Record<string, ReplyQuote | undefined>
+  /** text pushed into the composer (edit and resend), per session; `nonce` makes each push distinct */
+  prefill: Record<string, { text: string; nonce: number } | undefined>
+  /** the message whose details the right panel shows (UI-CONV-019) */
+  inspect: { sessionId: string; messageId: string } | null
+  /** older history pages being fetched, per session (UI-CONV-012) */
+  loadingOlder: Record<string, boolean>
 }
 
 type Listener = () => void
@@ -76,6 +85,10 @@ export class Hub {
       leaders: {},
       notice: null,
       pending: {},
+      replyTo: {},
+      prefill: {},
+      inspect: null,
+      loadingOlder: {},
     }
   }
 
@@ -197,6 +210,33 @@ export class Hub {
     this.set({ view })
   }
 
+  /** Reply: the composer quotes this message until sent or cancelled (UI-CONV-018). */
+  public setReply(sessionId: string, quote: ReplyQuote | null): void {
+    this.set({ replyTo: { ...this.snapshot.replyTo, [sessionId]: quote ?? undefined } })
+  }
+
+  /** Puts text into the composer of a conversation (edit and resend, UI-CONV-017). */
+  public prefill(sessionId: string, text: string): void {
+    this.set({ prefill: { ...this.snapshot.prefill, [sessionId]: { text, nonce: Date.now() } } })
+  }
+
+  /** Message info in the right panel (UI-CONV-019); null closes it. */
+  public inspect(sessionId: string, messageId: string | null): void {
+    this.set({ inspect: messageId ? { sessionId, messageId } : null })
+    if (messageId && this.snapshot.prefs.detailsOpen === false) void this.setPreferences({ detailsOpen: true })
+  }
+
+  /** The right panel can be hidden to widen the conversation (UI-SHELL-014). */
+  public async toggleDetails(): Promise<void> {
+    await this.setPreferences({ detailsOpen: this.snapshot.prefs.detailsOpen === false })
+  }
+
+  /** Recently used emojis, newest first, at most 24 (UI-CONV-017). */
+  public async rememberEmoji(emoji: string): Promise<void> {
+    const recent = [emoji, ...(this.snapshot.prefs.recentEmojis ?? []).filter((e) => e !== emoji)].slice(0, 24)
+    await this.setPreferences({ recentEmojis: recent })
+  }
+
   // ---- agents (UI-AGENTS-001..005) ------------------------------------------------------------------
 
   public async addAgent(input: string): Promise<AgentRecord> {
@@ -221,6 +261,27 @@ export class Hub {
     if (!agent) return
     const maxOrder = Math.max(0, ...this.snapshot.agents.filter((a) => a.pinned).map((a) => a.pinOrder))
     await this.store.putAgent({ ...agent, pinned: !agent.pinned, pinOrder: agent.pinned ? 0 : maxOrder + 1 })
+    await this.reload()
+    this.bus?.post({ kind: 'changed', what: 'agents' })
+  }
+
+  /**
+   * Drag and drop on the rail (UI-SHELL-011): drops `did` into the pinned area before `beforeDid`
+   * (at the end when null), or into the unpinned area when `pinned` is false.
+   */
+  public async movePin(did: string, pinned: boolean, beforeDid: string | null = null): Promise<void> {
+    const agent = this.snapshot.agents.find((a) => a.did === did)
+    if (!agent) return
+    if (!pinned) {
+      if (agent.pinned) await this.store.putAgent({ ...agent, pinned: false, pinOrder: 0 })
+    } else {
+      const ordered = this.snapshot.agents
+        .filter((a) => a.pinned && a.did !== did)
+        .sort((a, b) => a.pinOrder - b.pinOrder)
+      const index = beforeDid ? ordered.findIndex((a) => a.did === beforeDid) : -1
+      const next = index < 0 ? [...ordered, agent] : [...ordered.slice(0, index), agent, ...ordered.slice(index)]
+      await Promise.all(next.map((a, i) => this.store.putAgent({ ...a, pinned: true, pinOrder: i + 1 })))
+    }
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'agents' })
   }
@@ -640,17 +701,33 @@ export class Hub {
     this.bus?.post({ kind: 'transcript', sessionId })
   }
 
+  /** Older messages load as soon as the top of the transcript comes into view (UI-CONV-012). */
   public async loadOlder(sessionId: string): Promise<void> {
     const t = this.snapshot.transcripts[sessionId]
-    if (!t || t.complete) return
-    await this.loadHistory(sessionId, t.oldestLoadedId ?? t.messages[0]?.id)
+    if (!t || t.complete || this.snapshot.loadingOlder[sessionId]) return
+    this.set({ loadingOlder: { ...this.snapshot.loadingOlder, [sessionId]: true } })
+    try {
+      await this.loadHistory(sessionId, t.oldestLoadedId ?? t.messages[0]?.id)
+    } finally {
+      this.set({ loadingOlder: { ...this.snapshot.loadingOlder, [sessionId]: false } })
+    }
   }
 
   // ---- turns and actions (UI-CONV-001/003/015, UI-APPR-*, UI-MEDIA-003) -------------------------------------
 
-  public async send(sessionId: string, text: string, attachmentIds: string[] = []): Promise<void> {
-    const action: HologramAction | undefined = attachmentIds.length ? { kind: 'attachments', attachmentIds } : undefined
-    await this.dispatch(sessionId, { type: 'run', text, action })
+  public async send(
+    sessionId: string,
+    text: string,
+    attachmentIds: string[] = [],
+    replyTo: ReplyQuote | null = this.snapshot.replyTo[sessionId] ?? null
+  ): Promise<void> {
+    const action: HologramAction | undefined = attachmentIds.length
+      ? { kind: 'attachments', attachmentIds, replyTo: replyTo?.id }
+      : replyTo
+        ? { kind: 'text', replyTo: replyTo.id }
+        : undefined
+    this.setReply(sessionId, null)
+    await this.dispatch(sessionId, { type: 'run', text, action, replyTo: replyTo ?? undefined })
   }
 
   public async act(sessionId: string, action: HologramAction, text?: string): Promise<void> {
@@ -713,8 +790,13 @@ export class Hub {
         role: 'user' as const,
         content: action.text,
         at: new Date().toISOString(),
+        replyTo: action.replyTo,
       }
-      const next = { ...transcript, messages: [...transcript.messages, userMessage], run: { runId, steps: [] } }
+      const next = {
+        ...transcript,
+        messages: [...transcript.messages, userMessage],
+        run: { runId, steps: [], log: [] },
+      }
       await this.store.putTranscript(next)
       const title = session.title || action.text.slice(0, 60)
       await this.store.putSession({
@@ -799,7 +881,7 @@ export class Hub {
   }
 }
 
-type LocalAction = { type: 'run'; text?: string; action?: HologramAction } | { type: 'cancel' }
+type LocalAction = { type: 'run'; text?: string; action?: HologramAction; replyTo?: ReplyQuote } | { type: 'cancel' }
 
 export function platformDescription(): string {
   const ua = navigator.userAgent

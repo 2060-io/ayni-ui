@@ -66,6 +66,12 @@ export interface SessionRecord {
   pendingText?: string
 }
 
+export interface ReplyQuote {
+  id: string
+  text: string
+  role: 'user' | 'assistant'
+}
+
 export type TranscriptMessage =
   | {
       id: string
@@ -75,6 +81,10 @@ export type TranscriptMessage =
       streaming?: boolean
       interrupted?: boolean
       entryId?: string
+      /** the message this one answers (UI-CONV-018) */
+      replyTo?: ReplyQuote
+      /** step labels the agent reported while producing this reply (UI-CONV-019) */
+      steps?: string[]
     }
   | {
       id: string
@@ -87,7 +97,10 @@ export type TranscriptMessage =
 
 export interface RunProgress {
   runId: string
+  /** steps in progress */
   steps: string[]
+  /** every step label reported during the run, in order */
+  log: string[]
 }
 
 export interface Transcript {
@@ -98,6 +111,7 @@ export interface Transcript {
   /** the run in progress, if any (one at a time per session, UI-CONV-003) */
   run: RunProgress | null
   routed: Record<string, { kind: string; challengeType?: string; status: string; message?: string; at: string }>
+  /** current reactions per message, one per person (UI-CONV-011) */
   reactions: Record<string, { emoji: string; by: string }[]>
 }
 
@@ -105,6 +119,10 @@ export interface Preferences {
   locale?: string
   theme: 'system' | 'light' | 'dark'
   sounds: boolean
+  /** the right panel is shown (UI-SHELL-014); default true */
+  detailsOpen?: boolean
+  /** emojis picked recently, newest first (UI-CONV-017) */
+  recentEmojis?: string[]
 }
 
 export interface RuntimeConfig {

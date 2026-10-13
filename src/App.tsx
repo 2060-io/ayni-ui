@@ -18,7 +18,13 @@ function Shell() {
   }, [snap.prefs.theme])
   if (!snap.ready) return <div className="center">{t('app.loading')}</div>
   const showConversation = snap.view === 'conversation' && snap.selectedSessionId
-  const classes = ['app', snap.config.singleAgent ? 'single' : '', showConversation ? 'show-conversation' : '']
+  const detailsOpen = snap.prefs.detailsOpen !== false
+  const classes = [
+    'app',
+    snap.config.singleAgent ? 'single' : '',
+    showConversation ? 'show-conversation' : '',
+    detailsOpen ? '' : 'no-details',
+  ]
     .filter(Boolean)
     .join(' ')
   const main =
@@ -38,9 +44,11 @@ function Shell() {
       <section className="conversation" aria-live="off">
         {main}
       </section>
-      <aside className="details">
-        <Details />
-      </aside>
+      {detailsOpen ? (
+        <aside className="details">
+          <Details />
+        </aside>
+      ) : null}
       {snap.notice ? (
         <div className="toast" role="status">
           {snap.notice.text}

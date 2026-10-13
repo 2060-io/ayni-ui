@@ -62,7 +62,7 @@ export function reduce(
   const at = now()
   switch (event.type) {
     case 'RUN_STARTED':
-      t = { ...t, run: { runId: String(event.runId), steps: [] } }
+      t = { ...t, run: { runId: String(event.runId), steps: [], log: [] } }
       break
     case 'RUN_FINISHED':
     case 'RUN_ERROR': {
@@ -73,9 +73,14 @@ export function reduce(
       t = { ...t, messages, run: null }
       break
     }
-    case 'STEP_STARTED':
-      t = { ...t, run: { runId: t.run?.runId ?? '', steps: [...(t.run?.steps ?? []), String(event.stepName)] } }
+    case 'STEP_STARTED': {
+      const name = String(event.stepName)
+      t = {
+        ...t,
+        run: { runId: t.run?.runId ?? '', steps: [...(t.run?.steps ?? []), name], log: [...(t.run?.log ?? []), name] },
+      }
       break
+    }
     case 'STEP_FINISHED':
       t = { ...t, run: t.run ? { ...t.run, steps: t.run.steps.filter((x) => x !== String(event.stepName)) } : null }
       break
@@ -102,7 +107,13 @@ export function reduce(
       const id = String(event.messageId)
       const existing = t.messages.find((m) => m.id === id)
       if (existing && existing.role !== 'activity') {
-        t = { ...t, messages: upsertMessage(t.messages, { ...existing, streaming: false }) }
+        // the steps reported so far belong to this reply (UI-CONV-019)
+        const steps = existing.role === 'assistant' && t.run?.log.length ? t.run.log : existing.steps
+        t = {
+          ...t,
+          messages: upsertMessage(t.messages, { ...existing, streaming: false, steps }),
+          run: t.run && existing.role === 'assistant' ? { ...t.run, log: [] } : t.run,
+        }
         if (existing.role === 'assistant') {
           signals.push('message')
           s = {
@@ -166,7 +177,7 @@ export function reduce(
     }
     case 'MESSAGES_SNAPSHOT': {
       const incoming = (event.messages as Record<string, unknown>[]) ?? []
-      t = { ...t, messages: incoming.map(toTranscriptMessage) }
+      t = { ...t, messages: incoming.map(toTranscriptMessage), reactions: { ...t.reactions, ...reactionsOf(incoming) } }
       break
     }
     case 'CUSTOM': {
@@ -217,8 +228,9 @@ export function reduce(
           signals.push('approval')
           break
         case CUSTOM_EVENT.reaction: {
+          // one reaction per person per message: an add replaces, a remove clears (PROF-ACT-003)
           const messageId = String(value.messageId)
-          const list = (t.reactions[messageId] ?? []).filter((r) => !(r.emoji === value.emoji && r.by === value.by))
+          const list = (t.reactions[messageId] ?? []).filter((r) => r.by !== String(value.by))
           if (value.action === 'add') list.push({ emoji: String(value.emoji), by: String(value.by) })
           t = { ...t, reactions: { ...t.reactions, [messageId]: list } }
           break
@@ -236,7 +248,12 @@ export function reduce(
 
 /** History messages (MessagesSnapshot shape) to transcript messages (UI-CONV-012). */
 export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessage {
-  const meta = (m.metadata ?? {}) as { createdAt?: string; completion?: string; entryId?: string }
+  const meta = (m.metadata ?? {}) as {
+    createdAt?: string
+    completion?: string
+    entryId?: string
+    replyTo?: { id: string; text: string; role: 'user' | 'assistant' }
+  }
   const at = meta.createdAt ?? now()
   if (m.role === 'activity') {
     return {
@@ -255,7 +272,18 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     content: typeof m.content === 'string' ? m.content : '',
     at,
     interrupted: meta.completion === 'interrupted',
+    replyTo: meta.replyTo,
   }
+}
+
+/** Current reactions carried by history messages (`metadata.reactions`, PROF-HIST-006). */
+export function reactionsOf(page: Record<string, unknown>[]): Record<string, { emoji: string; by: string }[]> {
+  const out: Record<string, { emoji: string; by: string }[]> = {}
+  for (const m of page) {
+    const meta = (m.metadata ?? {}) as { reactions?: { emoji: string; by: string }[] }
+    if (meta.reactions?.length) out[String(m.id)] = meta.reactions.map((r) => ({ emoji: r.emoji, by: r.by }))
+  }
+  return out
 }
 
 /** Merges a history page (newest last) into the transcript without duplicates (UI-CONV-012, UI-PRIV-003). */
@@ -267,5 +295,12 @@ export function mergeHistory(
   const known = new Set(transcript.messages.map((m) => m.id))
   const older = page.map(toTranscriptMessage).filter((m) => !known.has(m.id))
   const messages = [...older, ...transcript.messages].sort((a, b) => a.at.localeCompare(b.at))
-  return { ...transcript, messages, oldestLoadedId: nextBefore, complete: nextBefore === null || page.length === 0 }
+  const reactions = { ...transcript.reactions, ...reactionsOf(page) }
+  return {
+    ...transcript,
+    messages,
+    reactions,
+    oldestLoadedId: nextBefore,
+    complete: nextBefore === null || page.length === 0,
+  }
 }

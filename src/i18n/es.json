@@ -12,12 +12,16 @@
     "loading": "Cargando",
     "offline": "Sin conexión. La conversación sigue legible; el envío se reanuda al volver la conexión.",
     "install": "Instalar",
-    "installHint": "Usa el menú de tu navegador para añadir esta app a tu pantalla de inicio o dock."
+    "installHint": "Usa el menú de tu navegador para añadir esta app a tu pantalla de inicio o dock.",
+    "hidePanel": "Ocultar el panel lateral",
+    "showPanel": "Mostrar el panel lateral"
   },
   "rail": {
     "pinned": "Fijados",
     "notLinked": "Sin vincular",
-    "unread": "{{count}} sin leer"
+    "unread": "{{count}} sin leer",
+    "pinnedHint": "Agentes fijados encima de la línea. Arrastra un agente a través de ella para fijarlo o soltarlo.",
+    "recent": "Recientes"
   },
   "column": {
     "newConversation": "Nueva conversación",
@@ -116,7 +120,34 @@
     "menuAnswered": "Respondido",
     "approvals": "Aprobaciones",
     "requestElevation": "Solicitar acceso",
-    "thinking": "Pensando…"
+    "thinking": "Pensando…",
+    "react": "Reaccionar",
+    "reply": "Responder",
+    "more": "Más acciones",
+    "copyText": "Copiar texto",
+    "copyMarkdown": "Copiar como Markdown",
+    "editResend": "Editar y reenviar",
+    "info": "Información del mensaje",
+    "copied": "Copiado",
+    "copyFailed": "No se pudo copiar",
+    "loadingOlder": "Cargando mensajes anteriores",
+    "replyingTo": "Respondiendo a {{name}}",
+    "cancelReply": "Cancelar respuesta",
+    "you": "Tú",
+    "agent": "Agente",
+    "yourReaction": "Tu reacción: {{emoji}}. Cámbiala o quítala",
+    "allEmojis": "Todos los emojis",
+    "searchEmoji": "Buscar emoji",
+    "noEmoji": "Ningún emoji coincide",
+    "noRecent": "Todavía no has usado ninguno",
+    "emoji": {
+      "recent": "Recientes",
+      "smileys": "Caras",
+      "gestures": "Gestos",
+      "hearts": "Corazones y símbolos",
+      "objects": "Objetos",
+      "symbols": "Señales"
+    }
   },
   "approval": {
     "title": "Aprobación",
@@ -206,6 +237,23 @@
     "principal": "Vinculado como",
     "agent": "Agente",
     "pending": "Aprobaciones pendientes",
-    "generating": "Generando"
+    "generating": "Generando",
+    "message": "Información del mensaje",
+    "fromYou": "De ti",
+    "fromAgent": "De {{name}}",
+    "fromSystem": "Mensaje del sistema",
+    "sent": "Enviado",
+    "outcome": "Resultado",
+    "reactions": "Reacciones",
+    "steps": "Qué hizo el agente",
+    "record": "Registro",
+    "messageId": "Id del mensaje",
+    "sessionId": "Sesión",
+    "copyId": "Copiar id",
+    "state": {
+      "provisional": "Sin vincular",
+      "bound": "Vinculada",
+      "closed": "Cerrada"
+    }
   }
 }

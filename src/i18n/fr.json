@@ -12,12 +12,16 @@
     "loading": "Chargement",
     "offline": "Vous êtes hors ligne. La conversation reste lisible ; l'envoi reprend au retour de la connexion.",
     "install": "Installer",
-    "installHint": "Utilisez le menu de votre navigateur pour ajouter cette application à votre écran d'accueil ou à votre dock."
+    "installHint": "Utilisez le menu de votre navigateur pour ajouter cette application à votre écran d'accueil ou à votre dock.",
+    "hidePanel": "Masquer le panneau latéral",
+    "showPanel": "Afficher le panneau latéral"
   },
   "rail": {
     "pinned": "Épinglés",
     "notLinked": "Non lié",
-    "unread": "{{count}} non lu(s)"
+    "unread": "{{count}} non lu(s)",
+    "pinnedHint": "Agents épinglés au-dessus de la ligne. Glissez un agent de l’autre côté pour l’épingler ou le détacher.",
+    "recent": "Récents"
   },
   "column": {
     "newConversation": "Nouvelle conversation",
@@ -116,7 +120,34 @@
     "menuAnswered": "Répondu",
     "approvals": "Approbations",
     "requestElevation": "Demander un accès",
-    "thinking": "Réflexion…"
+    "thinking": "Réflexion…",
+    "react": "Réagir",
+    "reply": "Répondre",
+    "more": "Plus d’actions",
+    "copyText": "Copier le texte",
+    "copyMarkdown": "Copier en Markdown",
+    "editResend": "Modifier et renvoyer",
+    "info": "Infos du message",
+    "copied": "Copié",
+    "copyFailed": "Copie impossible",
+    "loadingOlder": "Chargement des messages précédents",
+    "replyingTo": "Réponse à {{name}}",
+    "cancelReply": "Annuler la réponse",
+    "you": "Vous",
+    "agent": "Agent",
+    "yourReaction": "Votre réaction : {{emoji}}. Changez-la ou retirez-la",
+    "allEmojis": "Tous les emojis",
+    "searchEmoji": "Rechercher un emoji",
+    "noEmoji": "Aucun emoji ne correspond",
+    "noRecent": "Aucun emoji utilisé pour l’instant",
+    "emoji": {
+      "recent": "Récents",
+      "smileys": "Visages",
+      "gestures": "Gestes",
+      "hearts": "Cœurs et symboles",
+      "objects": "Objets",
+      "symbols": "Signes"
+    }
   },
   "approval": {
     "title": "Approbation",
@@ -206,6 +237,23 @@
     "principal": "Lié en tant que",
     "agent": "Agent",
     "pending": "Approbations en attente",
-    "generating": "Génération"
+    "generating": "Génération",
+    "message": "Infos du message",
+    "fromYou": "De vous",
+    "fromAgent": "De {{name}}",
+    "fromSystem": "Message système",
+    "sent": "Envoyé",
+    "outcome": "Résultat",
+    "reactions": "Réactions",
+    "steps": "Ce que l’agent a fait",
+    "record": "Enregistrement",
+    "messageId": "Id du message",
+    "sessionId": "Session",
+    "copyId": "Copier l’id",
+    "state": {
+      "provisional": "Pas encore liée",
+      "bound": "Liée",
+      "closed": "Fermée"
+    }
   }
 }

@@ -12,12 +12,16 @@
     "loading": "A carregar",
     "offline": "Está offline. A conversa continua legível; o envio retoma quando a ligação voltar.",
     "install": "Instalar",
-    "installHint": "Use o menu do navegador para adicionar esta app ao ecrã inicial ou à dock."
+    "installHint": "Use o menu do navegador para adicionar esta app ao ecrã inicial ou à dock.",
+    "hidePanel": "Ocultar o painel lateral",
+    "showPanel": "Mostrar o painel lateral"
   },
   "rail": {
     "pinned": "Fixados",
     "notLinked": "Não ligado",
-    "unread": "{{count}} por ler"
+    "unread": "{{count}} por ler",
+    "pinnedHint": "Agentes fixados acima da linha. Arraste um agente através dela para fixar ou soltar.",
+    "recent": "Recentes"
   },
   "column": {
     "newConversation": "Nova conversa",
@@ -116,7 +120,34 @@
     "menuAnswered": "Respondido",
     "approvals": "Aprovações",
     "requestElevation": "Pedir acesso",
-    "thinking": "A pensar…"
+    "thinking": "A pensar…",
+    "react": "Reagir",
+    "reply": "Responder",
+    "more": "Mais ações",
+    "copyText": "Copiar texto",
+    "copyMarkdown": "Copiar como Markdown",
+    "editResend": "Editar e reenviar",
+    "info": "Informações da mensagem",
+    "copied": "Copiado",
+    "copyFailed": "Não foi possível copiar",
+    "loadingOlder": "Carregando mensagens anteriores",
+    "replyingTo": "Respondendo a {{name}}",
+    "cancelReply": "Cancelar resposta",
+    "you": "Você",
+    "agent": "Agente",
+    "yourReaction": "Sua reação: {{emoji}}. Altere ou remova",
+    "allEmojis": "Todos os emojis",
+    "searchEmoji": "Buscar emoji",
+    "noEmoji": "Nenhum emoji corresponde",
+    "noRecent": "Nenhum usado ainda",
+    "emoji": {
+      "recent": "Recentes",
+      "smileys": "Rostos",
+      "gestures": "Gestos",
+      "hearts": "Corações e símbolos",
+      "objects": "Objetos",
+      "symbols": "Sinais"
+    }
   },
   "approval": {
     "title": "Aprovação",
@@ -206,6 +237,23 @@
     "principal": "Ligado como",
     "agent": "Agente",
     "pending": "Aprovações pendentes",
-    "generating": "A gerar"
+    "generating": "A gerar",
+    "message": "Informações da mensagem",
+    "fromYou": "De você",
+    "fromAgent": "De {{name}}",
+    "fromSystem": "Mensagem do sistema",
+    "sent": "Enviado",
+    "outcome": "Resultado",
+    "reactions": "Reações",
+    "steps": "O que o agente fez",
+    "record": "Registro",
+    "messageId": "Id da mensagem",
+    "sessionId": "Sessão",
+    "copyId": "Copiar id",
+    "state": {
+      "provisional": "Ainda não vinculada",
+      "bound": "Vinculada",
+      "closed": "Encerrada"
+    }
   }
 }

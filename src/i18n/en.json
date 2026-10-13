@@ -12,12 +12,16 @@
     "loading": "Loading",
     "offline": "You are offline. The transcript stays readable; sending resumes when the connection is back.",
     "install": "Install",
-    "installHint": "Use your browser's menu to add this app to your home screen or dock."
+    "installHint": "Use your browser's menu to add this app to your home screen or dock.",
+    "hidePanel": "Hide the side panel",
+    "showPanel": "Show the side panel"
   },
   "rail": {
     "pinned": "Pinned",
     "notLinked": "Not linked",
-    "unread": "{{count}} unread"
+    "unread": "{{count}} unread",
+    "pinnedHint": "Pinned agents above the line. Drag an agent across it to pin or unpin it.",
+    "recent": "Recent"
   },
   "column": {
     "newConversation": "New conversation",
@@ -116,7 +120,34 @@
     "menuAnswered": "Answered",
     "approvals": "Approvals",
     "requestElevation": "Request access",
-    "thinking": "Thinking…"
+    "thinking": "Thinking…",
+    "react": "React",
+    "reply": "Reply",
+    "more": "More actions",
+    "copyText": "Copy text",
+    "copyMarkdown": "Copy as Markdown",
+    "editResend": "Edit and resend",
+    "info": "Message info",
+    "copied": "Copied",
+    "copyFailed": "Could not copy",
+    "loadingOlder": "Loading earlier messages",
+    "replyingTo": "Replying to {{name}}",
+    "cancelReply": "Cancel reply",
+    "you": "You",
+    "agent": "Agent",
+    "yourReaction": "Your reaction: {{emoji}}. Change or remove it",
+    "allEmojis": "All emojis",
+    "searchEmoji": "Search emoji",
+    "noEmoji": "No emoji matches",
+    "noRecent": "Nothing used yet",
+    "emoji": {
+      "recent": "Recent",
+      "smileys": "Smileys",
+      "gestures": "Gestures",
+      "hearts": "Hearts and symbols",
+      "objects": "Objects",
+      "symbols": "Signs"
+    }
   },
   "approval": {
     "title": "Approval",
@@ -206,6 +237,23 @@
     "principal": "Linked as",
     "agent": "Agent",
     "pending": "Pending approvals",
-    "generating": "Generating"
+    "generating": "Generating",
+    "message": "Message info",
+    "fromYou": "From you",
+    "fromAgent": "From {{name}}",
+    "fromSystem": "System message",
+    "sent": "Sent",
+    "outcome": "Outcome",
+    "reactions": "Reactions",
+    "steps": "What the agent did",
+    "record": "Record",
+    "messageId": "Message id",
+    "sessionId": "Session",
+    "copyId": "Copy id",
+    "state": {
+      "provisional": "Not linked yet",
+      "bound": "Linked",
+      "closed": "Closed"
+    }
   }
 }

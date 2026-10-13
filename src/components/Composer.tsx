@@ -1,5 +1,5 @@
-/** The composer (UI-CONV-003/013/014/015, UI-MEDIA-003..007): grows to eight lines, Enter rules, Stop, attachments, voice notes. */
-import { Mic, Paperclip, Send, Square, Trash2, X } from 'lucide-react'
+/** The composer (UI-CONV-003/013/014/015/018, UI-MEDIA-003..007): one line that grows to six, Enter rules, Stop, reply quote, attachments, voice notes. */
+import { ArrowUp, Mic, Plus, Reply, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -30,11 +30,18 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   const areaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const running = hub.isRunning(sessionId)
+  const replyTo = snap.replyTo[sessionId]
+  const prefill = snap.prefill[sessionId]
 
   // drafts per conversation (UI-SHELL-010)
   useEffect(() => {
     setText(session?.draft ?? '')
   }, [sessionId])
+  // edit and resend, or a reply started from a message: the field takes the text and the focus
+  useEffect(() => {
+    if (prefill) setText(prefill.text)
+    if (prefill || replyTo) areaRef.current?.focus()
+  }, [prefill, replyTo])
   useEffect(() => {
     const timer = setTimeout(() => void hub.setDraft(sessionId, text), 400)
     return () => clearTimeout(timer)
@@ -42,8 +49,9 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   useEffect(() => {
     const el = areaRef.current
     if (!el) return
+    // one line by default, up to six, then the field scrolls (UI-CONV-013)
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 1.4 * 15 * 8 + 20)}px`
+    el.style.height = `${Math.min(el.scrollHeight, 1.45 * 15 * 6 + 20)}px`
   }, [text])
   useEffect(() => {
     if (!recording) return
@@ -85,7 +93,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
     if (e.key === 'Enter' && !e.shiftKey && !isTouch()) {
       e.preventDefault()
       void send()
-    }
+    } else if (e.key === 'Escape' && replyTo) hub.setReply(sessionId, null)
   }
 
   const addFiles = async (files: FileList | null) => {
@@ -154,6 +162,27 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
           </button>
         </div>
       ) : null}
+      {replyTo ? (
+        <div className="reply-strip">
+          <Reply size={16} aria-hidden="true" />
+          <span className="reply-body">
+            <span className="reply-who">
+              {t('conversation.replyingTo', {
+                name: replyTo.role === 'user' ? t('conversation.you') : (agent?.name ?? ''),
+              })}
+            </span>
+            <span className="reply-text">{replyTo.text}</span>
+          </span>
+          <button
+            type="button"
+            className="tool"
+            aria-label={t('conversation.cancelReply')}
+            onClick={() => hub.setReply(sessionId, null)}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      ) : null}
       {pending.length || review ? (
         <div className="chips">
           {pending.map((p) => (
@@ -195,39 +224,13 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
         {uploads ? (
           <button
             type="button"
-            className="icon-btn"
+            className="icon-btn round"
             aria-label={t('composer.attach')}
             disabled={disabled}
             onClick={() => fileRef.current?.click()}
           >
-            <Paperclip size={20} />
+            <Plus size={22} />
           </button>
-        ) : null}
-        {agent?.descriptor.features.voiceNotes !== false && uploads ? (
-          recording ? (
-            <button
-              type="button"
-              className="icon-btn danger"
-              aria-label={t('composer.stopRecording')}
-              onClick={() => recording.recorder.stop()}
-            >
-              <Square size={18} />
-              <span className="sr-only">{t('composer.recording')}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label={t('composer.record')}
-              disabled={disabled}
-              onClick={() => void startRecording()}
-            >
-              <Mic size={20} />
-            </button>
-          )
-        ) : null}
-        {recording ? (
-          <span className="muted" aria-live="polite">{`${t('composer.recording')} ${elapsed}s`}</span>
         ) : null}
         <textarea
           ref={areaRef}
@@ -239,24 +242,50 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
         />
+        {recording ? (
+          <span className="muted recording" aria-live="polite">{`${t('composer.recording')} ${elapsed}s`}</span>
+        ) : null}
+        {agent?.descriptor.features.voiceNotes !== false && uploads ? (
+          recording ? (
+            <button
+              type="button"
+              className="icon-btn round danger"
+              aria-label={t('composer.stopRecording')}
+              onClick={() => recording.recorder.stop()}
+            >
+              <Square size={16} />
+              <span className="sr-only">{t('composer.recording')}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="icon-btn round"
+              aria-label={t('composer.record')}
+              disabled={disabled}
+              onClick={() => void startRecording()}
+            >
+              <Mic size={20} />
+            </button>
+          )
+        ) : null}
         {running ? (
           <button
             type="button"
-            className="icon-btn danger"
+            className="send danger"
             aria-label={t('composer.stop')}
             onClick={() => void hub.stop(sessionId)}
           >
-            <Square size={18} />
+            <Square size={14} />
           </button>
         ) : (
           <button
             type="button"
-            className="icon-btn primary"
+            className="send"
             aria-label={t('composer.send')}
             disabled={!canSend}
             onClick={() => void send()}
           >
-            <Send size={18} />
+            <ArrowUp size={18} />
           </button>
         )}
       </div>

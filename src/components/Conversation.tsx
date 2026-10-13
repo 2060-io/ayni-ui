@@ -1,7 +1,7 @@
-/** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001): banners, transcript, composer; binding while provisional. */
+/** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
 import { ACTIVITY, CLOSURE_REASONS } from '@2060.io/hologram-agui-profile'
 import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@2060.io/hologram-ui-core'
-import { ArrowLeft, Menu as MenuIcon, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Loader2, Menu as MenuIcon, PanelRight, ShieldCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
@@ -11,6 +11,7 @@ import { Binding } from './Binding.js'
 import { ApprovalCard, CapabilityCard, ElevationForm, GeneratingCard, MenuCard } from './Cards.js'
 import { Composer } from './Composer.js'
 import { Markdown } from './Markdown.js'
+import { MessageTools, type Popover, plainText, ReactionPill, useLongPress } from './MessageActions.js'
 import { TrustCardDialog } from './TrustCard.js'
 
 export function Conversation() {
@@ -30,11 +31,28 @@ export function Conversation() {
     messages[messages.length - 1] && messages[messages.length - 1].role !== 'activity'
       ? (messages[messages.length - 1] as { content: string }).content.length
       : 0
+  const stickToBottom = useRef(true)
+  const loadingOlder = session ? !!snap.loadingOlder[session.sessionId] : false
 
   useEffect(() => {
     const el = listRef.current
-    if (el) el.scrollTop = el.scrollHeight
+    if (el && stickToBottom.current) el.scrollTop = el.scrollHeight
   }, [lastId, lastContent, session?.sessionId])
+
+  // older pages load as the top comes into view, keeping the scroll position (UI-CONV-012)
+  const onScroll = () => {
+    const el = listRef.current
+    if (!el || !session) return
+    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    if (el.scrollTop < 80 && transcript && !transcript.complete && !loadingOlder && messages.length) {
+      const before = el.scrollHeight
+      void hub.loadOlder(session.sessionId).then(() => {
+        requestAnimationFrame(() => {
+          if (listRef.current) listRef.current.scrollTop += listRef.current.scrollHeight - before
+        })
+      })
+    }
+  }
 
   // viewed receipts for agent messages on screen in a visible tab (UI-CONV-010)
   const receipted = useRef(new Set<string>())
@@ -71,6 +89,9 @@ export function Conversation() {
   const closed = session.state === 'closed'
   const reasonKey = CLOSURE_REASON_KEYS[session.closedReason ?? 'agent'] ?? 'closure.agent'
   const contextual = session.hologram?.contextualMenu.items ?? []
+  const detailsOpen = snap.prefs.detailsOpen !== false
+  const me = session.principal?.displayName
+  const thinking = transcript?.run && !messages.some((m) => m.role !== 'activity' && m.streaming)
 
   return (
     <>
@@ -78,7 +99,20 @@ export function Conversation() {
         <button type="button" className="icon-btn back" aria-label={t('app.back')} onClick={() => hub.setView('list')}>
           <ArrowLeft size={20} />
         </button>
-        <h1>{session.title || t('column.untitled')}</h1>
+        <div className="conv-title">
+          <h1>{session.title || t('column.untitled')}</h1>
+          <span className="conv-sub">
+            {agent.name}
+            {agent.trust.result === 'trusted' ? (
+              <span className="trusted">
+                <ShieldCheck size={13} aria-hidden="true" /> {t('trust.trusted')}
+                {agent.trust.operator?.name ? ` · ${agent.trust.operator.name}` : ''}
+              </span>
+            ) : (
+              <span className={`result ${agent.trust.result}`}>{t(`trust.${agent.trust.result}`)}</span>
+            )}
+          </span>
+        </div>
         {session.state === 'bound' && contextual.length ? (
           <button
             type="button"
@@ -95,6 +129,15 @@ export function Conversation() {
         ) : null}
         <button type="button" className="icon-btn" aria-label={t('trust.title')} onClick={() => setTrustOpen(true)}>
           <ShieldCheck size={20} />
+        </button>
+        <button
+          type="button"
+          className={['icon-btn', 'details-toggle', detailsOpen ? 'on' : ''].join(' ')}
+          aria-label={detailsOpen ? t('app.hidePanel') : t('app.showPanel')}
+          aria-pressed={detailsOpen}
+          onClick={() => void hub.toggleDetails()}
+        >
+          <PanelRight size={20} />
         </button>
         {menuOpen ? (
           <div className="menu-popover" role="menu">
@@ -153,24 +196,26 @@ export function Conversation() {
         <Binding session={session} />
       ) : (
         <>
-          <div className="transcript" ref={listRef} aria-live="polite" aria-relevant="additions text">
-            {!transcript?.complete && messages.length ? (
-              <button
-                type="button"
-                className="btn small"
-                style={{ alignSelf: 'center' }}
-                onClick={() => void hub.loadOlder(session.sessionId)}
-              >
-                {t('directory.more')}
-              </button>
+          <div
+            className="transcript"
+            ref={listRef}
+            onScroll={onScroll}
+            aria-live="polite"
+            aria-relevant="additions text"
+          >
+            {loadingOlder ? (
+              <div className="loading-older" role="status">
+                <Loader2 size={14} className="spin" aria-hidden="true" /> {t('conversation.loadingOlder')}
+              </div>
             ) : null}
             {messages.map((m) => (
               <Message
                 key={m.id}
                 m={m}
                 sessionId={session.sessionId}
-                reactions={transcript?.reactions[m.id]}
-                agentFeatures={agent.descriptor.features}
+                reactions={transcript?.reactions[m.id] ?? []}
+                me={me}
+                canReact={!!agent.descriptor.features.reactions && session.state === 'bound'}
               />
             ))}
             {Object.entries(transcript?.routed ?? {})
@@ -188,12 +233,14 @@ export function Conversation() {
               ))}
             {transcript?.run?.steps.length ? (
               <div className="progress steps" aria-live="polite">
+                <Dots />
                 {transcript.run.steps.map((s) => (
                   <span key={s}>{s}…</span>
                 ))}
               </div>
-            ) : transcript?.run && !messages.some((m) => m.role !== 'activity' && m.streaming) ? (
-              <div className="progress" aria-live="polite">
+            ) : thinking ? (
+              <div className="progress thinking" role="status" aria-live="polite">
+                <Dots />
                 {t('conversation.thinking')}
               </div>
             ) : null}
@@ -210,19 +257,47 @@ export function Conversation() {
   )
 }
 
+/** Three bouncing dots: the agent is working (UI-CONV-016). */
+function Dots() {
+  return (
+    <span className="dots" aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+  )
+}
+
 function Message({
   m,
   sessionId,
   reactions,
-  agentFeatures,
+  me,
+  canReact,
 }: {
   m: TranscriptMessage
   sessionId: string
-  reactions?: { emoji: string; by: string }[]
-  agentFeatures: { reactions: boolean }
+  reactions: { emoji: string; by: string }[]
+  me: string | undefined
+  canReact: boolean
 }) {
   const { t, i18n } = useTranslation()
   const hub = useHub()
+  const [open, setOpen] = useState<Popover>(null)
+  const longPress = useLongPress(() => setOpen('menu'))
+  useEffect(() => {
+    if (!open) return
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== 'Escape') return
+      setOpen(null)
+    }
+    document.addEventListener('keydown', close)
+    document.addEventListener('pointerdown', close)
+    return () => {
+      document.removeEventListener('keydown', close)
+      document.removeEventListener('pointerdown', close)
+    }
+  }, [open])
   if (m.role === 'activity') {
     switch (m.activityType) {
       case ACTIVITY.menu:
@@ -239,47 +314,68 @@ function Message({
         return null
     }
   }
-  const _mine = m.role === 'user'
+  if (m.role === 'system') return <div className="msg system">{m.content}</div>
+  const mine = m.role === 'user'
+  const reply = () =>
+    hub.setReply(sessionId, {
+      id: m.id,
+      text: plainText(m.content).slice(0, 200),
+      role: m.role as 'user' | 'assistant',
+    })
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
-    <div className={`msg ${m.role}`}>
-      {m.role === 'assistant' ? <Markdown text={m.content} /> : m.content}
-      <div className="meta">
-        {formatTime(m.at, i18n.language)}
-        {m.interrupted ? <span className="interrupted">({t('conversation.interrupted')})</span> : null}
-        {m.role === 'assistant' && agentFeatures.reactions && !m.streaming ? (
-          <fieldset className="reactions">
-            {['👍', '👎', '❤️'].map((emoji) => {
-              const has = reactions?.some((r) => r.emoji === emoji)
-              return (
-                <button
-                  key={emoji}
-                  type="button"
-                  className="react-btn"
-                  aria-pressed={has}
-                  onClick={() =>
-                    void hub.act(sessionId, {
-                      kind: 'reaction',
-                      messageId: m.id,
-                      emoji,
-                      action: has ? 'remove' : 'add',
-                    })
-                  }
-                >
-                  {emoji}
-                </button>
-              )
-            })}
-          </fieldset>
-        ) : reactions?.length ? (
-          <span className="reactions">
-            {reactions.map((r, i) => (
-              <span key={i} title={r.by}>
-                {r.emoji}
+    <article
+      className={['row', mine ? 'mine' : 'theirs', open ? 'open' : ''].join(' ')}
+      aria-label={mine ? t('conversation.you') : t('conversation.agent')}
+      onContextMenu={(e) => {
+        if (window.getSelection()?.toString()) return
+        e.preventDefault()
+        setOpen('menu')
+      }}
+      onPointerDown={stop}
+      {...longPress}
+    >
+      <div className={`bubble-wrap ${reactions.length ? 'reacted' : ''}`}>
+        <div className={`msg ${m.role}`}>
+          {m.replyTo ? (
+            <a
+              className="quote"
+              href={`#msg-${m.replyTo.id}`}
+              onClick={(e) => {
+                e.preventDefault()
+                document
+                  .getElementById(`msg-${m.replyTo?.id ?? ''}`)
+                  ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+              }}
+            >
+              <span className="quote-who">
+                {m.replyTo.role === 'user' ? t('conversation.you') : t('conversation.agent')}
               </span>
-            ))}
+              <span className="quote-text">{m.replyTo.text}</span>
+            </a>
+          ) : null}
+          <span id={`msg-${m.id}`} className="body">
+            {m.role === 'assistant' ? <Markdown text={m.content} /> : m.content}
           </span>
-        ) : null}
+          <span className="meta">
+            {m.interrupted ? <span className="interrupted">{t('conversation.interrupted')}</span> : null}
+            {formatTime(m.at, i18n.language)}
+          </span>
+        </div>
+        <ReactionPill reactions={reactions} me={me} onOwn={canReact ? () => setOpen('quick') : undefined} />
       </div>
-    </div>
+      {!m.streaming ? (
+        <MessageTools
+          sessionId={sessionId}
+          message={m}
+          reactions={reactions}
+          me={me}
+          canReact={canReact}
+          open={open}
+          setOpen={setOpen}
+          onReply={reply}
+        />
+      ) : null}
+    </article>
   )
 }

@@ -30,5 +30,29 @@
    close every conversation of the agent (the agent closes them; the UI reflects each).
 9. **Voice notes** use `MediaRecorder` with the first supported container among webm/opus, ogg/opus
    and mp4; the agent lists accepted types in the descriptor.
-10. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+10. **Message actions** (UI-CONV-017). A toolbar appears at the edge of a message on hover, focus
+    or while one of its popovers is open: react, reply, more. Right-click opens the same menu as
+    "more"; on touch screens a long press opens a bottom sheet with the quick reactions and the
+    menu. Menu items: Reply, React, Copy text, Copy as Markdown (agent messages), Edit and resend
+    (own messages), Message info. Forward, Select, Pin and Delete were left out on purpose: the
+    transcript is sealed on the agent side and a delete would only hide locally.
+11. **Reactions** (UI-CONV-011). One reaction per person per message, rendered as a pill overlapping
+    the inner bottom corner of the bubble, the same on both sides; the viewer's own reaction is
+    highlighted and reopens the quick bar, where picking another replaces it and picking the same
+    removes it. The quick bar holds six emojis; "more" opens a bundled picker (search by English
+    name, recently used from the preferences, five categories). No emoji dataset is downloaded:
+    the set ships in `src/emoji.ts` so it works offline and under the CSP. Reactions come back from
+    history through `metadata.reactions`.
+12. **Replies** (UI-CONV-018). Reply puts a quote strip above the composer; the run carries
+    `replyTo` and the sent bubble shows the quote, which scrolls to the original.
+13. **Message info** (UI-CONV-019) replaces the right panel's content for one message: time,
+    outcome, reply, reactions, the step labels received while the reply streamed, and the ids.
+    The step labels are the UI's own record of the run; the agent keeps tool calls off the wire.
+14. **Transcript and composer** (UI-CONV-012/013/016, UI-SHELL-011/014). No scrollbar and no
+    "more" button: older pages load when the top comes into view, keeping the scroll position;
+    the thinking indicator is three bouncing dots; the composer is one line that grows to six,
+    with a plus for attachments, a microphone and a round send button; the right panel hides from
+    a header toggle (a preference of the browser profile); the rail shows pinned agents above a
+    pin separator and drag and drop across it pins or unpins, within it reorders.
+15. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

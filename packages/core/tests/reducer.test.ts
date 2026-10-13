@@ -209,3 +209,93 @@ describe('rail order (UI-SHELL-011)', () => {
     expect(orderAgents(agents, linked).map((a) => a.did)).toEqual(['c', 'b', 'e', 'a', 'd'])
   })
 })
+
+describe('reactions and replies (UI-CONV-011/018/019, PROF-ACT-003, PROF-HIST-006)', () => {
+  const react = (t: ReturnType<typeof emptyTranscript>, by: string, emoji: string, action: 'add' | 'remove') =>
+    reduce(
+      t,
+      session(),
+      { type: 'CUSTOM', name: 'hologram.reaction', value: { messageId: 'm1', emoji, action, by } },
+      false,
+      true
+    ).transcript
+
+  it('keeps one reaction per person: an add replaces, a remove clears', () => {
+    let t = react(emptyTranscript('s1'), 'Ana', '👍', 'add')
+    t = react(t, 'Ana', '❤️', 'add')
+    t = react(t, 'Agent', '👀', 'add')
+    expect(t.reactions.m1).toEqual([
+      { emoji: '❤️', by: 'Ana' },
+      { emoji: '👀', by: 'Agent' },
+    ])
+    t = react(t, 'Ana', '❤️', 'remove')
+    expect(t.reactions.m1).toEqual([{ emoji: '👀', by: 'Agent' }])
+  })
+
+  it('restores reactions and reply quotes from history metadata', () => {
+    const page = [
+      {
+        id: 'a1',
+        role: 'assistant',
+        content: 'Order 4471 has two invoices.',
+        metadata: { createdAt: '2026-01-01T00:00:01.000Z', reactions: [{ emoji: '👍', by: 'Ana' }] },
+      },
+      {
+        id: 'u2',
+        role: 'user',
+        content: 'Refund the duplicate.',
+        metadata: {
+          createdAt: '2026-01-01T00:00:02.000Z',
+          replyTo: { id: 'a1', text: 'Order 4471 has two invoices.', role: 'assistant' },
+        },
+      },
+    ]
+    const t = mergeHistory(emptyTranscript('s1'), page, null)
+    expect(t.reactions.a1).toEqual([{ emoji: '👍', by: 'Ana' }])
+    const reply = t.messages.find((m) => m.id === 'u2')
+    expect(reply && reply.role !== 'activity' ? reply.replyTo?.id : undefined).toBe('a1')
+    expect(t.complete).toBe(true)
+  })
+
+  it('attaches the steps of a run to the reply it produced', () => {
+    let { transcript: t, session: s } = reduce(
+      emptyTranscript('s1'),
+      session(),
+      { type: 'RUN_STARTED', runId: 'r' },
+      true,
+      true
+    )
+    ;({ transcript: t, session: s } = reduce(
+      t,
+      s,
+      { type: 'STEP_STARTED', stepName: 'Searching invoices' },
+      true,
+      true
+    ))
+    ;({ transcript: t, session: s } = reduce(
+      t,
+      s,
+      { type: 'STEP_FINISHED', stepName: 'Searching invoices' },
+      true,
+      true
+    ))
+    ;({ transcript: t, session: s } = reduce(
+      t,
+      s,
+      { type: 'TEXT_MESSAGE_START', messageId: 'a', role: 'assistant' },
+      true,
+      true
+    ))
+    ;({ transcript: t, session: s } = reduce(
+      t,
+      s,
+      { type: 'TEXT_MESSAGE_CONTENT', messageId: 'a', delta: 'Done' },
+      true,
+      true
+    ))
+    ;({ transcript: t } = reduce(t, s, { type: 'TEXT_MESSAGE_END', messageId: 'a' }, true, true))
+    const m = t.messages.find((x) => x.id === 'a')
+    expect(m && m.role !== 'activity' ? m.steps : undefined).toEqual(['Searching invoices'])
+    expect(t.run?.log).toEqual([])
+  })
+})
