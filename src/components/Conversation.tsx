@@ -1,6 +1,6 @@
 /** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
 import { ACTIVITY, CLOSURE_REASONS } from '@2060.io/hologram-agui-profile'
-import { CLOSURE_REASON_KEYS, findOccurrences, type TranscriptMessage } from '@2060.io/hologram-ui-core'
+import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@2060.io/hologram-ui-core'
 import {
   ArrowLeft,
   ChevronDown,
@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -52,10 +52,14 @@ export function Conversation() {
   const stickToBottom = useRef(true)
   const loadingOlder = session ? !!snap.loadingOlder[session.sessionId] : false
   const search = session ? snap.search[session.sessionId] : undefined
-  const hits = useMemo(() => (search ? findOccurrences(messages, search.query) : []), [messages, search])
-  const current = search ? Math.min(search.current, Math.max(0, hits.length - 1)) : 0
-  const currentHit = hits[current]
+  const query = search?.query.trim() ?? ''
+  // hits are the marks the renderer produced, in reading order, so count, highlight and scroll agree
+  const [total, setTotal] = useState(0)
+  const current = Math.min(search?.current ?? 0, Math.max(0, total - 1))
   const searchInput = useRef<HTMLInputElement>(null)
+  useLayoutEffect(() => {
+    setTotal(query ? (listRef.current?.querySelectorAll('mark.hit').length ?? 0) : 0)
+  }, [query, messages])
 
   // Ctrl+F / Cmd+F opens the bar unless the person is typing somewhere else (UI-CONV-020)
   useEffect(() => {
@@ -72,17 +76,18 @@ export function Conversation() {
     return () => document.removeEventListener('keydown', onKey)
   }, [session, hub, snap.search])
 
-  // the current hit scrolls to the middle of the transcript (the transcript is the scroll container)
-  const hitKey = currentHit ? `${currentHit.messageId}:${currentHit.ordinal}` : ''
-  useEffect(() => {
+  // the current mark stands out and sits in the middle of the transcript (the scroll container)
+  useLayoutEffect(() => {
     const list = listRef.current
-    if (!hitKey || !list) return
-    stickToBottom.current = false
-    const el = list.querySelector<HTMLElement>(`[data-hit="${hitKey}"]`)
+    if (!list) return
+    const marks = [...list.querySelectorAll<HTMLElement>('mark.hit')]
+    for (const [i, m] of marks.entries()) m.classList.toggle('current', !!query && i === current)
+    const el = query ? marks[current] : undefined
     if (!el) return
+    stickToBottom.current = false
     const top = el.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
     list.scrollTop = Math.max(0, top - list.clientHeight / 2)
-  }, [hitKey])
+  }, [query, current, total])
 
   useEffect(() => {
     const el = listRef.current
@@ -143,8 +148,8 @@ export function Conversation() {
   const me = session.principal?.displayName
   const thinking = transcript?.run && !messages.some((m) => m.role !== 'activity' && m.streaming)
   const step = (delta: number) => {
-    if (!hits.length) return
-    hub.setSearch(session.sessionId, { current: (current + delta + hits.length) % hits.length })
+    if (!total) return
+    hub.setSearch(session.sessionId, { current: (current + delta + total) % total })
   }
 
   return (
@@ -281,9 +286,9 @@ export function Conversation() {
             }}
           />
           <span className="count" aria-live="polite">
-            {search.query.trim()
-              ? hits.length
-                ? t('conversation.matchCount', { current: current + 1, total: hits.length })
+            {query
+              ? total
+                ? t('conversation.matchCount', { current: current + 1, total })
                 : t('conversation.noMatches')
               : ''}
           </span>
@@ -291,7 +296,7 @@ export function Conversation() {
             type="button"
             className="tool"
             aria-label={t('conversation.prevMatch')}
-            disabled={!hits.length}
+            disabled={!total}
             onClick={() => step(-1)}
           >
             <ChevronUp size={18} />
@@ -300,7 +305,7 @@ export function Conversation() {
             type="button"
             className="tool"
             aria-label={t('conversation.nextMatch')}
-            disabled={!hits.length}
+            disabled={!total}
             onClick={() => step(1)}
           >
             <ChevronDown size={18} />
@@ -355,16 +360,7 @@ export function Conversation() {
                 reactions={transcript?.reactions[m.id] ?? []}
                 me={me}
                 canReact={!!agent.descriptor.features.reactions && session.state === 'bound'}
-                hl={
-                  search?.query.trim()
-                    ? {
-                        query: search.query.trim(),
-                        messageId: m.id,
-                        current: currentHit?.messageId === m.id ? currentHit.ordinal : -1,
-                        counter: { n: 0 },
-                      }
-                    : undefined
-                }
+                hl={query ? { query } : undefined}
               />
             ))}
             {Object.entries(transcript?.routed ?? {})

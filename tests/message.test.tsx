@@ -170,7 +170,7 @@ describe('in-conversation search (UI-CONV-020)', () => {
     expect(el.querySelector('.search-bar .count')?.textContent).toBe('1 of 1')
     const marks = el.querySelectorAll('mark.hit')
     expect(marks.length).toBe(1)
-    expect(el.querySelector('mark.hit.current')?.getAttribute('data-hit')).toBe('a1:0')
+    expect(el.querySelector('mark.hit.current')?.textContent).toBe('invoice')
     expect(el.querySelector('.msg.assistant strong')?.textContent).toBe('two')
   })
 
@@ -187,7 +187,7 @@ describe('in-conversation search (UI-CONV-020)', () => {
     const next = el.querySelector('[aria-label="Next match"]') as HTMLButtonElement
     await act(async () => next.click())
     expect(el.querySelector('.search-bar .count')?.textContent).toBe('2 of 3')
-    expect(el.querySelector('mark.hit.current')?.getAttribute('data-hit')).toBe('a1:1')
+    expect([...el.querySelectorAll('mark.hit')].findIndex((m) => m.classList.contains('current'))).toBe(1)
     expect(list.scrollTop).toBe(650)
   })
 })
