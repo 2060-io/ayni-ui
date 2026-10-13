@@ -173,4 +173,21 @@ describe('in-conversation search (UI-CONV-020)', () => {
     expect(el.querySelector('mark.hit.current')?.getAttribute('data-hit')).toBe('a1:0')
     expect(el.querySelector('.msg.assistant strong')?.textContent).toBe('two')
   })
+
+  it('moves the transcript to the current hit when stepping', async () => {
+    const hub = hubWithConversation()
+    hub.setSearch('s1', { query: 'i' })
+    const el = await render(hub)
+    const list = el.querySelector('.transcript') as HTMLDivElement
+    Object.defineProperty(list, 'clientHeight', { value: 100, configurable: true })
+    list.getBoundingClientRect = () => ({ top: 0 }) as DOMRect
+    for (const [i, mark] of [...el.querySelectorAll('mark.hit')].entries())
+      (mark as HTMLElement).getBoundingClientRect = () => ({ top: 400 + i * 300 }) as DOMRect
+    expect(el.querySelector('.search-bar .count')?.textContent).toBe('1 of 3')
+    const next = el.querySelector('[aria-label="Next match"]') as HTMLButtonElement
+    await act(async () => next.click())
+    expect(el.querySelector('.search-bar .count')?.textContent).toBe('2 of 3')
+    expect(el.querySelector('mark.hit.current')?.getAttribute('data-hit')).toBe('a1:1')
+    expect(list.scrollTop).toBe(650)
+  })
 })

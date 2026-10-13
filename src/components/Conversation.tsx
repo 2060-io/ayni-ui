@@ -72,13 +72,17 @@ export function Conversation() {
     return () => document.removeEventListener('keydown', onKey)
   }, [session, hub, snap.search])
 
-  // the current hit scrolls into view
+  // the current hit scrolls to the middle of the transcript (the transcript is the scroll container)
+  const hitKey = currentHit ? `${currentHit.messageId}:${currentHit.ordinal}` : ''
   useEffect(() => {
-    if (!currentHit) return
+    const list = listRef.current
+    if (!hitKey || !list) return
     stickToBottom.current = false
-    const el = listRef.current?.querySelector(`[data-hit="${currentHit.messageId}:${currentHit.ordinal}"]`)
-    if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center' })
-  }, [currentHit])
+    const el = list.querySelector<HTMLElement>(`[data-hit="${hitKey}"]`)
+    if (!el) return
+    const top = el.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
+    list.scrollTop = Math.max(0, top - list.clientHeight / 2)
+  }, [hitKey])
 
   useEffect(() => {
     const el = listRef.current
