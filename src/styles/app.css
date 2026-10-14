@@ -262,8 +262,27 @@ fieldset.quick {
   background: var(--border);
 }
 .rail-item.selected {
+  background: transparent;
+}
+/* a vertical bar to the left of the selected tile (D32) */
+.rail-item.selected::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 2px;
   background: var(--accent);
-  color: var(--accent-contrast);
+}
+.rail-item.selected.ghost {
+  border-color: var(--accent);
+}
+.rail-item .avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 15px;
 }
 .rail-item.inactive {
   opacity: 0.5;
@@ -293,9 +312,6 @@ fieldset.quick {
   color: var(--text);
   font-weight: 600;
   font-size: 13px;
-}
-.rail-item.selected .avatar {
-  outline: 2px solid color-mix(in srgb, var(--accent) 35%, white);
 }
 .badge {
   position: absolute;
