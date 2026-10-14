@@ -76,8 +76,9 @@ export function summarize(result: ResolveResponse, unverified = false): TrustSum
     description: service?.description as string | undefined,
     logoUri: service?.logoUri as string | undefined,
     links: {
-      terms: httpsOnly(service?.termsAndConditions),
-      privacy: httpsOnly(service?.privacyPolicy),
+      terms: httpsOnly(service?.termsAndConditionsUri ?? service?.termsAndConditions),
+      privacy: httpsOnly(service?.privacyPolicyUri ?? service?.privacyPolicy),
+      read: true,
     },
     operator,
     ecosystems: result.ecosystems?.map((e) => ({ id: e.id, name: e.name })),

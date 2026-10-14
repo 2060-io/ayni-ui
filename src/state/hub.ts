@@ -167,9 +167,9 @@ export class Hub {
     ])
     // records written before D32 have no controller yet, or were filed under themselves while trusted: file them now
     // summaries made before the service links were read: refresh them once (network, trusted agents only)
-    for (const a of agents.filter((x) => x.trust.result === 'trusted' && !x.trust.links))
+    for (const a of agents.filter((x) => x.trust.result === 'trusted' && !x.trust.links?.read))
       await recheckTrust(this.store, a, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
-    if (agents.some((x) => x.trust.result === 'trusted' && !x.trust.links)) agents = await this.store.listAgents()
+    if (agents.some((x) => x.trust.result === 'trusted' && !x.trust.links?.read)) agents = await this.store.listAgents()
     const unfiled = agents.filter((a) => {
       const c = controllers.find((x) => x.did === a.controllerDid)
       return (
