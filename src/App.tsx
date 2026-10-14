@@ -17,6 +17,21 @@ function Shell() {
   useEffect(() => {
     document.documentElement.dataset.theme = snap.prefs.theme === 'system' ? '' : snap.prefs.theme
   }, [snap.prefs.theme])
+  // the person's accent overrides the brand's; the contrast colour follows its luminance (UI-THEME-003)
+  useEffect(() => {
+    const root = document.documentElement.style
+    const hex = snap.prefs.accent
+    if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) {
+      root.removeProperty('--accent')
+      root.removeProperty('--accent-contrast')
+      return
+    }
+    const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255)
+    const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+    const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+    root.setProperty('--accent', hex)
+    root.setProperty('--accent-contrast', luminance > 0.4 ? '#111827' : '#ffffff')
+  }, [snap.prefs.accent])
   if (!snap.ready) return <div className="center">{t('app.loading')}</div>
   const showConversation = snap.view === 'conversation' && snap.selectedSessionId
   const sheet = !!snap.inspect && snap.inspect.sessionId === snap.selectedSessionId

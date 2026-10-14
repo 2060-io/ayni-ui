@@ -268,7 +268,10 @@
       "terms": "Terms",
       "privacy": "Privacy",
       "support": "Support"
-    }
+    },
+    "accent": "Accent colour",
+    "accentCustom": "Custom colour",
+    "accentDefault": "Default"
   },
   "details": {
     "session": "Session",

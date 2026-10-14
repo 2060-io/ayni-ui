@@ -159,6 +159,8 @@ export interface Preferences {
   recentEmojis?: string[]
   /** width of the conversation column in px, set by dragging the splitter (D32) */
   columnWidth?: number
+  /** accent colour chosen by the person (hex), overriding the brand's (UI-THEME-003) */
+  accent?: string
 }
 
 export interface RuntimeConfig {

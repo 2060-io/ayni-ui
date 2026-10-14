@@ -268,7 +268,10 @@
       "terms": "Conditions",
       "privacy": "Confidentialité",
       "support": "Assistance"
-    }
+    },
+    "accent": "Couleur d’accent",
+    "accentCustom": "Couleur personnalisée",
+    "accentDefault": "Par défaut"
   },
   "details": {
     "session": "Session",

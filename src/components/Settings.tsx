@@ -19,6 +19,8 @@ if (typeof window !== 'undefined') {
   })
 }
 
+const ACCENTS = ['#0f766e', '#1d4ed8', '#7c3aed', '#b45309', '#be123c', '#0f172a']
+
 export function Settings() {
   const snap = useSnapshot()
   const hub = useHub()
@@ -73,6 +75,38 @@ export function Settings() {
           <option value="dark">{t('settings.themeDark')}</option>
         </select>
       </label>
+      <fieldset className="field accent-field">
+        <legend>{t('settings.accent')}</legend>
+        <div className="swatches">
+          {ACCENTS.map((hex) => (
+            <button
+              key={hex}
+              type="button"
+              className={['swatch', snap.prefs.accent?.toLowerCase() === hex ? 'selected' : ''].join(' ')}
+              style={{ background: hex }}
+              aria-label={hex}
+              aria-pressed={snap.prefs.accent?.toLowerCase() === hex}
+              onClick={() => void hub.setPreferences({ accent: hex })}
+            />
+          ))}
+          <label className="swatch custom" title={t('settings.accentCustom')}>
+            <input
+              type="color"
+              value={snap.prefs.accent ?? '#0f766e'}
+              aria-label={t('settings.accentCustom')}
+              onChange={(e) => void hub.setPreferences({ accent: e.target.value })}
+            />
+          </label>
+          <button
+            type="button"
+            className="btn small"
+            disabled={!snap.prefs.accent}
+            onClick={() => void hub.setPreferences({ accent: undefined })}
+          >
+            {t('settings.accentDefault')}
+          </button>
+        </div>
+      </fieldset>
       {snap.config.soundsEnabled ? (
         <label className="field" style={{ gridTemplateColumns: 'auto 1fr', alignItems: 'center' }}>
           <input
