@@ -93,6 +93,14 @@ button:disabled {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* text fields: a thin accent border instead of the thick ring (the ring stays for buttons and links) */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
 a {
   color: var(--accent);
 }
@@ -984,9 +992,6 @@ fieldset.quick {
   min-height: 40px;
   max-height: calc(1.45em * 6 + 20px);
   overflow-y: hidden;
-}
-.composer textarea:focus-visible {
-  outline-offset: 0;
 }
 .composer .recording {
   align-self: center;
