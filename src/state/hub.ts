@@ -1029,6 +1029,8 @@ export class Hub {
           conversationId: status.conversationId ?? session.conversationId,
         })
         if (status.state === 'closed') return
+        // the leader runs the runs: a run shown on the transcript that it does not hold is a leftover
+        if (!this.runs.has(sessionId)) await this.clearStaleRun(sessionId)
         if (status.state === 'bound' && !(await this.store.getTranscript(sessionId))?.messages.length)
           await this.loadHistory(sessionId)
         if (status.state === 'bound') void this.syncConversations(session.agentDid).catch(() => undefined)
@@ -1237,6 +1239,22 @@ export class Hub {
     await this.dispatch(sessionId, { type: 'cancel' })
   }
 
+  /** Drops a run indicator no tab is driving (a tab closed mid-run): streaming messages end interrupted. */
+  private async clearStaleRun(sessionId: string): Promise<void> {
+    const t = await this.store.getTranscript(sessionId)
+    if (!t?.run) return
+    const closed = {
+      ...t,
+      run: null,
+      messages: t.messages.map((m) =>
+        m.role !== 'activity' && m.streaming ? { ...m, streaming: false, interrupted: true } : m
+      ),
+    }
+    await this.store.putTranscript(closed)
+    this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: closed } })
+    this.bus?.post({ kind: 'transcript', sessionId })
+  }
+
   public isRunning(sessionId: string): boolean {
     return !!this.snapshot.transcripts[sessionId]?.run
   }
@@ -1269,7 +1287,8 @@ export class Hub {
     if (!session) throw new Error('session not found')
     if (action.type === 'cancel') {
       const run = this.runs.get(sessionId)
-      if (!run) return
+      // no run of ours behind the indicator: a run left over from a closed tab, cleared here (UI-CONV-003)
+      if (!run) return this.clearStaleRun(sessionId)
       const { client, token } = this.clientOf(session)
       await client.cancel(sessionId, token, run.runId).catch(() => undefined)
       run.controller.abort()
