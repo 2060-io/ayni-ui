@@ -1563,13 +1563,30 @@ mark.hit.current {
   background: var(--border);
   color: var(--text);
 }
-.icon-btn.trust.trusted {
+.agent-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.trust-mark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+.trust-mark:hover {
+  background: var(--border);
+}
+.trust-mark.trusted {
   color: var(--ok);
 }
-.icon-btn.trust.untrusted {
+.trust-mark.untrusted {
   color: var(--danger);
 }
-.icon-btn.trust.unverified {
+.trust-mark.unverified {
   color: var(--warning);
 }
 .agent-body {

@@ -166,10 +166,21 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
           <Avatar name={agent.name} src={agent.logoRef} size={40} />
         </button>
         <div className="agent-text">
-          <button type="button" className="agent-toggle" aria-expanded={expanded} onClick={toggle}>
-            <span className="ellipsis agent-name">{agent.name}</span>
-            {!expanded && unread ? <span className="count">{unread}</span> : null}
-          </button>
+          <div className="agent-title-row">
+            <button type="button" className="agent-toggle" aria-expanded={expanded} onClick={toggle}>
+              <span className="ellipsis agent-name">{agent.name}</span>
+              {!expanded && unread ? <span className="count">{unread}</span> : null}
+            </button>
+            <button
+              type="button"
+              className={`trust-mark ${agent.trust.result}`}
+              aria-label={t('trust.title')}
+              title={t(`trust.${agent.trust.result}`)}
+              onClick={() => setTrustOpen(true)}
+            >
+              <TrustIcon size={16} />
+            </button>
+          </div>
           {agent.trust.links?.terms || agent.trust.links?.privacy ? (
             <div className="agent-links">
               {agent.trust.links.terms ? (
@@ -185,15 +196,6 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          className={`icon-btn small trust ${agent.trust.result}`}
-          aria-label={t('trust.title')}
-          title={t(`trust.${agent.trust.result}`)}
-          onClick={() => setTrustOpen(true)}
-        >
-          <TrustIcon size={18} />
-        </button>
         <button
           type="button"
           className="icon-btn small"
