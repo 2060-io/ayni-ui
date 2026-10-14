@@ -147,6 +147,10 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
     setMenuOpen(false)
     fn().catch((e) => hub.notify('error', String(e.message ?? e)))
   }
+  const toggle = () => {
+    if (!selected) hub.selectAgent(agent.did)
+    else hub.toggleAgentExpanded(agent.did)
+  }
   const TrustIcon =
     agent.trust.result === 'trusted' ? ShieldCheck : agent.trust.result === 'untrusted' ? ShieldAlert : ShieldQuestion
   return (
@@ -154,17 +158,33 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
       <div className="agent-row relative">
         <button
           type="button"
-          className="agent-toggle"
+          className="agent-avatar"
+          aria-label={agent.name}
           aria-expanded={expanded}
-          onClick={() => {
-            if (!selected) hub.selectAgent(agent.did)
-            else hub.toggleAgentExpanded(agent.did)
-          }}
+          onClick={toggle}
         >
-          <Avatar name={agent.name} src={agent.logoRef} size={28} />
-          <span className="ellipsis agent-name">{agent.name}</span>
-          {!expanded && unread ? <span className="count">{unread}</span> : null}
+          <Avatar name={agent.name} src={agent.logoRef} size={40} />
         </button>
+        <div className="agent-text">
+          <button type="button" className="agent-toggle" aria-expanded={expanded} onClick={toggle}>
+            <span className="ellipsis agent-name">{agent.name}</span>
+            {!expanded && unread ? <span className="count">{unread}</span> : null}
+          </button>
+          {agent.trust.links?.terms || agent.trust.links?.privacy ? (
+            <div className="agent-links">
+              {agent.trust.links.terms ? (
+                <a href={agent.trust.links.terms} target="_blank" rel="noopener noreferrer nofollow">
+                  {t('column.terms')}
+                </a>
+              ) : null}
+              {agent.trust.links.privacy ? (
+                <a href={agent.trust.links.privacy} target="_blank" rel="noopener noreferrer nofollow">
+                  {t('column.privacy')}
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
         <button
           type="button"
           className={`icon-btn small trust ${agent.trust.result}`}
@@ -230,20 +250,6 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
       </div>
       {expanded ? (
         <div className="agent-body">
-          {agent.trust.links?.terms || agent.trust.links?.privacy ? (
-            <div className="agent-links">
-              {agent.trust.links.terms ? (
-                <a href={agent.trust.links.terms} target="_blank" rel="noopener noreferrer nofollow">
-                  {t('column.terms')}
-                </a>
-              ) : null}
-              {agent.trust.links.privacy ? (
-                <a href={agent.trust.links.privacy} target="_blank" rel="noopener noreferrer nofollow">
-                  {t('column.privacy')}
-                </a>
-              ) : null}
-            </div>
-          ) : null}
           <div className="agent-meta">
             <span className="state">
               {bound?.principal ? (
