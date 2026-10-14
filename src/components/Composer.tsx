@@ -248,6 +248,26 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
         {recording ? (
           <span className="muted recording" aria-live="polite">{`${t('composer.recording')} ${elapsed}s`}</span>
         ) : null}
+        {running ? (
+          <button
+            type="button"
+            className="send danger"
+            aria-label={t('composer.stop')}
+            onClick={() => void hub.stop(sessionId)}
+          >
+            <Square size={14} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="send"
+            aria-label={t('composer.send')}
+            disabled={!canSend}
+            onClick={() => void send()}
+          >
+            <ArrowUp size={18} />
+          </button>
+        )}
         {agent?.descriptor.features.voiceNotes !== false && uploads ? (
           recording ? (
             <button
@@ -271,26 +291,6 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
             </button>
           )
         ) : null}
-        {running ? (
-          <button
-            type="button"
-            className="send danger"
-            aria-label={t('composer.stop')}
-            onClick={() => void hub.stop(sessionId)}
-          >
-            <Square size={14} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="send"
-            aria-label={t('composer.send')}
-            disabled={!canSend}
-            onClick={() => void send()}
-          >
-            <ArrowUp size={18} />
-          </button>
-        )}
       </div>
     </div>
   )
