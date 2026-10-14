@@ -70,8 +70,8 @@ export interface Snapshot {
   loadingOlder: Record<string, boolean>
   /** in-conversation search, per session (UI-CONV-020): the query and the current hit */
   search: Record<string, { query: string; current: number } | undefined>
-  /** the Proof of Trust shown in the conversation area (D33): which agent, and whether a Connect follows */
-  trustFor: { did: string; connect: boolean } | null
+  /** the Proof of Trust shown in the conversation area (D33): which agent, whether a Connect follows, where to return */
+  trustFor: { did: string; connect: boolean; returnTo: View } | null
 }
 
 type Listener = () => void
@@ -299,11 +299,14 @@ export class Hub {
 
   /** The Proof of Trust takes the conversation area (D33, UI-TRUST-002). */
   public showTrust(did: string, connect = false): void {
-    this.set({ view: 'trust', trustFor: { did, connect } })
+    const returnTo = this.snapshot.view === 'trust' ? (this.snapshot.trustFor?.returnTo ?? 'list') : this.snapshot.view
+    this.set({ view: 'trust', trustFor: { did, connect, returnTo } })
   }
 
+  /** Back to where the person was: the list on a phone, the conversation on a desktop. */
   public closeTrust(): void {
-    this.set({ view: this.snapshot.selectedSessionId ? 'conversation' : 'list', trustFor: null })
+    const back = this.snapshot.trustFor?.returnTo ?? 'list'
+    this.set({ view: back === 'conversation' && !this.snapshot.selectedSessionId ? 'list' : back, trustFor: null })
   }
 
   /**
