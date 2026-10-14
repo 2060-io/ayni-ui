@@ -1,7 +1,7 @@
 /** Language, theme, sounds, install, about (UI-I18N-001, UI-THEME-003, UI-PLAT-005). */
 
 import { PROFILE_VERSION } from '@2060.io/hologram-agui-profile'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18next, { LOCALES } from '../i18n/index.js'
@@ -35,7 +35,12 @@ export function Settings() {
       <button type="button" className="btn small back" onClick={() => hub.setView('list')}>
         <ArrowLeft size={16} /> {t('app.back')}
       </button>
-      <h1>{t('settings.title')}</h1>
+      <div className="row-between">
+        <h1>{t('settings.title')}</h1>
+        <button type="button" className="icon-btn" aria-label={t('app.close')} onClick={() => hub.setView('list')}>
+          <X size={20} />
+        </button>
+      </div>
       <label className="field">
         {t('settings.language')}
         <select

@@ -113,7 +113,7 @@ export function Rail() {
           )}
           title={t('app.addAgent')}
           aria-label={t('app.addAgent')}
-          onClick={() => hub.setView('add')}
+          onClick={() => hub.setView(snap.view === 'add' || snap.view === 'directory' ? 'list' : 'add')}
         >
           <Plus size={22} />
         </button>
@@ -121,10 +121,11 @@ export function Rail() {
       <div className="spacer" />
       <button
         type="button"
-        className="rail-item ghost"
+        className={['rail-item', 'ghost', snap.view === 'settings' ? 'selected' : ''].join(' ')}
         title={t('app.settings')}
         aria-label={t('app.settings')}
-        onClick={() => hub.setView('settings')}
+        aria-pressed={snap.view === 'settings'}
+        onClick={() => hub.setView(snap.view === 'settings' ? 'list' : 'settings')}
       >
         <SettingsIcon size={22} />
       </button>
