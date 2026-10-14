@@ -15,7 +15,8 @@
     "installHint": "Utilisez le menu de votre navigateur pour ajouter cette application à votre écran d'accueil ou à votre dock.",
     "hidePanel": "Masquer le panneau latéral",
     "showPanel": "Afficher le panneau latéral",
-    "controllers": "Organisations"
+    "controllers": "Organisations",
+    "resizeColumn": "Redimensionner la liste"
   },
   "rail": {
     "pinned": "Épinglés",

@@ -157,6 +157,8 @@ export interface Preferences {
   detailsOpen?: boolean
   /** emojis picked recently, newest first (UI-CONV-017) */
   recentEmojis?: string[]
+  /** width of the conversation column in px, set by dragging the splitter (D32) */
+  columnWidth?: number
 }
 
 export interface RuntimeConfig {

@@ -15,7 +15,8 @@
     "installHint": "Use your browser's menu to add this app to your home screen or dock.",
     "hidePanel": "Hide the side panel",
     "showPanel": "Show the side panel",
-    "controllers": "Organizations"
+    "controllers": "Organizations",
+    "resizeColumn": "Resize the conversation list"
   },
   "rail": {
     "pinned": "Pinned",

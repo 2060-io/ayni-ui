@@ -7,6 +7,7 @@ import { MessageInfo } from './components/Details.js'
 import { Directory } from './components/Directory.js'
 import { Rail } from './components/Rail.js'
 import { Settings } from './components/Settings.js'
+import { Splitter } from './components/Splitter.js'
 import type { Hub } from './state/hub.js'
 import { HubContext, useSnapshot } from './state/useHub.js'
 
@@ -42,6 +43,7 @@ function Shell() {
       <Rail />
       <Column />
       <section className="conversation" aria-live="off">
+        <Splitter />
         {main}
       </section>
       {sheet ? (

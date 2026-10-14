@@ -15,7 +15,8 @@
     "installHint": "Usa el menú de tu navegador para añadir esta app a tu pantalla de inicio o dock.",
     "hidePanel": "Ocultar el panel lateral",
     "showPanel": "Mostrar el panel lateral",
-    "controllers": "Organizaciones"
+    "controllers": "Organizaciones",
+    "resizeColumn": "Cambiar el ancho de la lista"
   },
   "rail": {
     "pinned": "Fijados",
