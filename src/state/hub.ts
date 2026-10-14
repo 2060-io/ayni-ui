@@ -1236,6 +1236,8 @@ export class Hub {
   }
 
   public async stop(sessionId: string): Promise<void> {
+    // nothing of ours running here: clear the indicator at once rather than waiting for a leader to answer
+    if (!this.runs.has(sessionId) && !this.snapshot.leaders[sessionId]) await this.clearStaleRun(sessionId)
     await this.dispatch(sessionId, { type: 'cancel' })
   }
 
