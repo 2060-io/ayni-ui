@@ -47,3 +47,28 @@ single-agent mode is `?agent=<descriptor>&single=1` or `SINGLE_AGENT=true` with 
 Authentication, credential exchange, auth challenges (device, face match, document) and calls are
 served on the wallet app; the UI only shows "continue on your phone" cards from
 `ayni.capability.routed`. There is no DIDComm, no key and no credential in the browser.
+
+## Docker
+
+```bash
+docker build -t io2060/ayni-ui:local .
+docker run --rm -p 8080:8080 -e DEFAULT_AGENT=http://localhost:3020 io2060/ayni-ui:local
+```
+
+## Continuous integration and releases
+
+- **CI** (`.github/workflows/ci.yml`) runs on every pull request to `main` and on pushes: the shared
+  2060 pipeline (install, build, format, types, unit tests, Helm chart lint, conventional PR title)
+  plus a Docker image build without push.
+- **CD** (`.github/workflows/cd.yml`) runs on pushes to `main`, `release/**` and `v[0-9]*` branches
+  once the repository variable `CD_ENABLED` is `true`:
+  - every push with releasable commits publishes a **dev prerelease** `vX.Y.Z-dev` (semantic-release),
+    the image `io2060/ayni-ui:vX.Y.Z-dev` with the floating `dev`, `vX-dev`, `vX.Y-dev` tags from
+    `main`, and the Helm chart `oci://docker.io/io2060/ayni-ui` at the same version;
+  - **release-please** keeps a Release PR open on `main`; merging it creates the stable tag `vX.Y.Z`,
+    the GitHub release with `CHANGELOG.md`, the image tags `vX.Y.Z`, `vX.Y`, `vX` and `latest`, the
+    chart at `vX.Y.Z`, and a Discord announcement.
+- Versions follow conventional commits: `fix:` bumps the patch, `feat:` the minor, `feat!:` the
+  major (minor while below 1.0).
+- Secrets and variables expected by CD: `DOCKER_HUB_LOGIN`, `DOCKER_HUB_PWD`,
+  `DISCORD_UPDATES_WEBHOOK_URL` (secrets) and `CD_ENABLED` (variable).

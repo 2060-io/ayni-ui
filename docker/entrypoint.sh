@@ -1,6 +1,6 @@
 #!/bin/sh
-# Renders config.json next to the bundle from the container environment (UI-PLAT-004).
-set -e
+# Renders config.json next to the bundle from the container environment (UI-PLAT-004). Sourced by the
+# nginx entrypoint before its envsubst step, so the exports below reach the server template.
 HTML=/usr/share/nginx/html
 list_json() { printf '%s' "$1" | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep -v '^$' | sed 's/.*/"&"/' | paste -sd, - ; }
 LOCALES_JSON=$(list_json "${LOCALES:-en,es,fr,pt}")
