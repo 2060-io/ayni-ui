@@ -17,7 +17,7 @@ the wire contract is the [Ayni AG-UI Profile v3](https://github.com/2060-io/ayni
 | `src/i18n/` | en, es, fr, pt | UI-I18N-003 |
 | `public/` | `config.json` (runtime), `brand/` (name, logo, colours, links), the web app manifest | UI-PLAT-001/004, UI-THEME-001/002 |
 | `docker/`, `Dockerfile` | static files behind nginx; `config.json` and the CSP rendered from the environment at start | UI-PLAT-004, UI-SEC-001 |
-| `charts/ayni-ui/` | Helm chart (`namespace` value, default `ayni`) | |
+| `charts/ayni-ui/` | Helm chart (`namespace` value, ingress) | |
 
 [DECISIONS.md](DECISIONS.md) records the implementation decisions.
 

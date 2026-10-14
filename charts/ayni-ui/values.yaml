@@ -34,6 +34,15 @@ service:
   type: ClusterIP
   port: 8080
 
+# Public entry
+ingress:
+  enabled: false
+  className: nginx
+  clusterIssuer: letsencrypt-prod
+  host: ""
+  tlsSecret: "public.{{ .Values.ingress.host }}-cert"
+  annotations: {}
+
 nodeSelector: {}
 tolerations: []
 affinity: {}
