@@ -331,10 +331,15 @@ export function useLongPress(onLongPress: () => void, ms = 450) {
 /** Markdown markers stripped for the clipboard. */
 export function plainText(markdown: string): string {
   return markdown
+    .replace(/<\/?(u|b|i|em|strong|s)>/g, '')
+    .replace(/\*\*\*([^*]+)\*\*\*/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1 ($2)')
     .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^[-*]\s+/gm, '• ')
+    .replace(/^>\s?/gm, '')
+    .replace(/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/gm, '')
+    .replace(/^[-*+]\s+/gm, '• ')
 }
