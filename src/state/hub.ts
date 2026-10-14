@@ -1132,11 +1132,23 @@ export class Hub {
       return
     }
     if (session.state !== 'bound') throw new Error('session is not bound')
-    if (this.runs.has(sessionId)) throw new Error('a run is in progress')
     if (!this.snapshot.online) throw new Error('offline')
     const { client, token } = this.clientOf(session)
     const runId = crypto.randomUUID()
     const controller = new AbortController()
+    // reactions and receipts are bookkeeping: they never wait for the conversation's run and never block it (UI-CONV-003)
+    const bookkeeping = action.action?.kind === 'reaction' || action.action?.kind === 'receipt'
+    if (bookkeeping) {
+      await client.run(sessionId, token, { runId, action: action.action }, () => undefined, controller.signal)
+      return
+    }
+    // a lock left by a run stream that never closed must not block the person once its finish event landed
+    const stale = this.runs.get(sessionId)
+    if (stale && !this.snapshot.transcripts[sessionId]?.run) {
+      stale.controller.abort()
+      this.runs.delete(sessionId)
+    }
+    if (this.runs.has(sessionId)) throw new Error('a run is in progress')
     this.runs.set(sessionId, { runId, controller })
     if (action.text) {
       const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
