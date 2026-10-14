@@ -24,9 +24,8 @@ export function Splitter() {
   }
   const current = () => snap.prefs.columnWidth ?? 300
   return (
-    <div
+    <hr
       className="splitter"
-      role="separator"
       aria-orientation="vertical"
       aria-label={t('app.resizeColumn')}
       aria-valuemin={MIN}

@@ -53,11 +53,11 @@ export function Column() {
         <div className="row-between">
           <h2 className="controller-title">
             {controller.kind === 'organization' ? (
-              <Building2 size={18} aria-label={t('column.kind.organization')} />
+              <Building2 size={18} role="img" aria-label={t('column.kind.organization')} />
             ) : controller.kind === 'persona' ? (
-              <User size={18} aria-label={t('column.kind.persona')} />
+              <User size={18} role="img" aria-label={t('column.kind.persona')} />
             ) : (
-              <ShieldQuestion size={18} aria-label={t('column.kind.unverified')} />
+              <ShieldQuestion size={18} role="img" aria-label={t('column.kind.unverified')} />
             )}
             {flagOf(controller.countryCode) ? (
               <span className="flag" aria-label={controller.countryCode}>
