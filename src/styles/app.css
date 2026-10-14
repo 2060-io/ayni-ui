@@ -1600,3 +1600,19 @@ mark.hit.current {
 .embedded {
   margin-top: 4px;
 }
+
+.agent-links {
+  display: flex;
+  gap: 10px;
+  padding: 0 4px;
+  margin-top: -4px;
+  font-size: 11px;
+}
+.agent-links a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.agent-links a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}

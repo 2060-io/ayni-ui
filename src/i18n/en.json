@@ -61,7 +61,9 @@
       "unverified": "Not verified"
     },
     "showArchived": "Show archived conversations",
-    "showActive": "Show active conversations"
+    "showActive": "Show active conversations",
+    "terms": "Terms",
+    "privacy": "Privacy"
   },
   "trust": {
     "title": "Trust card",

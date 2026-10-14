@@ -75,6 +75,10 @@ export function summarize(result: ResolveResponse, unverified = false): TrustSum
     serviceType: service?.type as string | undefined,
     description: service?.description as string | undefined,
     logoUri: service?.logoUri as string | undefined,
+    links: {
+      terms: httpsOnly(service?.termsAndConditions),
+      privacy: httpsOnly(service?.privacyPolicy),
+    },
     operator,
     ecosystems: result.ecosystems?.map((e) => ({ id: e.id, name: e.name })),
     reasons,
@@ -151,4 +155,8 @@ export async function discoverAgent(
       'version'
     )
   return { descriptorUrl, descriptor }
+}
+
+function httpsOnly(value: unknown): string | undefined {
+  return typeof value === 'string' && /^https:\/\//i.test(value) ? value : undefined
 }

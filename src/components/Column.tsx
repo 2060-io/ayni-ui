@@ -230,6 +230,20 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
       </div>
       {expanded ? (
         <div className="agent-body">
+          {agent.trust.links?.terms || agent.trust.links?.privacy ? (
+            <div className="agent-links">
+              {agent.trust.links.terms ? (
+                <a href={agent.trust.links.terms} target="_blank" rel="noopener noreferrer nofollow">
+                  {t('column.terms')}
+                </a>
+              ) : null}
+              {agent.trust.links.privacy ? (
+                <a href={agent.trust.links.privacy} target="_blank" rel="noopener noreferrer nofollow">
+                  {t('column.privacy')}
+                </a>
+              ) : null}
+            </div>
+          ) : null}
           <div className="agent-meta">
             <span className="state">
               {bound?.principal ? (

@@ -17,6 +17,8 @@ export interface TrustSummary {
   serviceType?: string
   description?: string
   logoUri?: string
+  /** from the ECS Service credential: terms and privacy policy URLs (present, possibly empty, on summaries made after D32) */
+  links?: { terms?: string; privacy?: string }
   operator?: {
     kind: string
     name: string

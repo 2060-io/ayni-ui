@@ -61,7 +61,9 @@
       "unverified": "Non vérifié"
     },
     "showArchived": "Afficher les conversations archivées",
-    "showActive": "Afficher les conversations actives"
+    "showActive": "Afficher les conversations actives",
+    "terms": "Conditions",
+    "privacy": "Confidentialité"
   },
   "trust": {
     "title": "Carte de confiance",
