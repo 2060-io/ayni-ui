@@ -168,7 +168,11 @@ export class Hub {
     // records written before D32 have no controller yet, or were filed under themselves while trusted: file them now
     const unfiled = agents.filter((a) => {
       const c = controllers.find((x) => x.did === a.controllerDid)
-      return !c || (c.kind === 'unverified' && a.trust.result === 'trusted' && !!a.trust.operator)
+      return (
+        !c ||
+        (c.kind === 'unverified' && a.trust.result === 'trusted' && !!a.trust.operator) ||
+        (!c.countryCode && !!a.trust.operator?.countryCode)
+      )
     })
     if (unfiled.length) {
       for (const a of unfiled) await fileUnderController(this.store, a)

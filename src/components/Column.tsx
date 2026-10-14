@@ -3,8 +3,19 @@
  * controller's agents as collapsible cards, each with its trust icon, menu, link state, new
  * conversation, search, and its active or archived conversations.
  */
-import type { AgentRecord, SessionRecord } from '@2060.io/hologram-ui-core'
-import { Archive, Link2, MoreVertical, Plus, Search, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
+import { type AgentRecord, flagOf, type SessionRecord } from '@2060.io/hologram-ui-core'
+import {
+  Archive,
+  Building2,
+  Link2,
+  MoreVertical,
+  Plus,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldQuestion,
+  User,
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
@@ -40,7 +51,21 @@ export function Column() {
     <aside className="column">
       <div className="column-header relative" ref={headerRef}>
         <div className="row-between">
-          <h2 className="controller-title ellipsis">{controller.name}</h2>
+          <h2 className="controller-title">
+            {controller.kind === 'organization' ? (
+              <Building2 size={18} aria-label={t('column.kind.organization')} />
+            ) : controller.kind === 'persona' ? (
+              <User size={18} aria-label={t('column.kind.persona')} />
+            ) : (
+              <ShieldQuestion size={18} aria-label={t('column.kind.unverified')} />
+            )}
+            {flagOf(controller.countryCode) ? (
+              <span className="flag" aria-label={controller.countryCode}>
+                {flagOf(controller.countryCode)}
+              </span>
+            ) : null}
+            <span className="ellipsis">{controller.name}</span>
+          </h2>
           <button
             type="button"
             className="icon-btn"
@@ -51,7 +76,6 @@ export function Column() {
             <MoreVertical size={20} />
           </button>
         </div>
-        <div className="state">{t(`column.kind.${controller.kind}`)}</div>
         {menuOpen ? (
           <div className="menu-popover" role="menu">
             <button
