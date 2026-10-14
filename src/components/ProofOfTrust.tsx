@@ -36,6 +36,15 @@ import { Avatar } from './Avatar.js'
 
 const shortDid = (did: string) => (did.length > 48 ? `${did.slice(0, 22)}…${did.slice(-20)}` : did)
 
+/** ECS schema titles as people read them on the wallet cards. */
+const ECS_LABEL: Record<string, string> = {
+  ServiceCredential: 'ECS-Service',
+  OrganizationCredential: 'ECS-Organization',
+  PersonaCredential: 'ECS-Persona',
+  UserAgentCredential: 'ECS-UserAgent',
+}
+const schemaLabel = (title: string) => ECS_LABEL[title] ?? title
+
 export function ProofOfTrust({
   agent,
   onClose,
@@ -152,7 +161,7 @@ export function ProofOfTrust({
                 >
                   {details.otherCredentials.map((c) => (
                     <div key={c.id} className="pot-row">
-                      <span className="pot-row-title">{c.schemaTitle}</span>
+                      <span className="pot-row-title">{schemaLabel(c.schemaTitle)}</span>
                       <span className="muted">
                         {c.issuer.name ? t('pot.issuedBy', { name: c.issuer.name }) : null}
                         {c.ecosystem.name ? ` · ${c.ecosystem.name}` : ''}
@@ -297,7 +306,7 @@ function IdentityStep({ kind, card, did }: { kind: 'service' | 'operator'; card:
       </span>
       <div className="pot-step-body">
         <div className="pot-kicker">
-          {t(kind === 'service' ? 'pot.service' : 'pot.operatedBy')} · {card.schemaTitle}
+          {t(kind === 'service' ? 'pot.service' : 'pot.operatedBy')} · {schemaLabel(card.schemaTitle)}
         </div>
         <div className="pot-identity">
           <Avatar name={name || did} src={String(c.logoUri ?? c.avatarUri ?? '') || undefined} size={56} />
@@ -376,15 +385,16 @@ function IdentityStep({ kind, card, did }: { kind: 'service' | 'operator'; card:
 
 function AccreditationRow({ a }: { a: Accreditation }) {
   const { t } = useTranslation()
-  const chain = a.chain.filter((c) => c.participantId !== a.participantId)
+  // the grantors between the ecosystem root and this participant; none means the ecosystem accredited it directly
+  const grantors = a.chain.filter((c) => c.participantId !== a.participantId && c.role !== 'ECOSYSTEM')
   return (
     <div className="pot-row">
       <span className={`role role-${a.role.toLowerCase()}`}>{t(`pot.role.${a.role}`)}</span>
-      <span className="pot-row-title">{a.schemaTitle}</span>
+      <span className="pot-row-title">{schemaLabel(a.schemaTitle)}</span>
       <span className="muted">
         {a.ecosystem.name ?? `${t('pot.ecosystem')} ${a.ecosystem.id}`}
-        {chain.length
-          ? ` · ${chain.map((c) => c.who.name ?? t(`pot.role.${c.role}`)).join(' → ')}`
+        {grantors.length
+          ? ` · ${t('pot.via', { chain: grantors.map((c) => c.who.name ?? t(`pot.role.${c.role}`)).join(' → ') })}`
           : ` · ${t('pot.root')}`}
         {a.state !== 'ACTIVE' ? ` · ${a.state.toLowerCase()}` : ''}
       </span>

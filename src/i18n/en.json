@@ -330,7 +330,7 @@
     "endpoints": "Endpoints in the DID Document",
     "governance": "Governance",
     "ecosystem": "Ecosystem",
-    "root": "ecosystem root",
+    "root": "accredited by the ecosystem",
     "egf": "Governance framework",
     "cgf": "Corporate governance framework",
     "corporation": "Corporation {{id}}",
@@ -341,6 +341,7 @@
       "ISSUER": "Issuer",
       "VERIFIER": "Verifier",
       "HOLDER": "Holder"
-    }
+    },
+    "via": "via {{chain}}"
   }
 }

@@ -2018,6 +2018,10 @@ mark.hit.current {
   flex-direction: column;
   gap: 2px;
 }
+.pot-facts span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .pot-facts a {
   display: inline-flex;
   align-items: center;

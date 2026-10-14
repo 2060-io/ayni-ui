@@ -330,7 +330,7 @@
     "endpoints": "Points de terminaison du document DID",
     "governance": "Gouvernance",
     "ecosystem": "Écosystème",
-    "root": "racine de l’écosystème",
+    "root": "accrédité par l’écosystème",
     "egf": "Cadre de gouvernance",
     "cgf": "Cadre de gouvernance d’entreprise",
     "corporation": "Corporation {{id}}",
@@ -341,6 +341,7 @@
       "ISSUER": "Émetteur",
       "VERIFIER": "Vérificateur",
       "HOLDER": "Détenteur"
-    }
+    },
+    "via": "via {{chain}}"
   }
 }
