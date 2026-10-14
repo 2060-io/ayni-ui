@@ -1606,8 +1606,9 @@ mark.hit.current {
   gap: 10px;
   /* under the name: row padding 10 + toggle padding 4 + avatar 28 + gap 10, minus the body padding 8 */
   padding: 0 4px 0 44px;
-  margin-top: -6px;
+  margin-top: -12px;
   font-size: 11px;
+  line-height: 1.2;
 }
 .agent-links a {
   color: var(--muted);
