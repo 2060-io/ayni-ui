@@ -362,9 +362,15 @@ fieldset.quick {
   gap: 2px 8px;
   min-height: 44px;
 }
-.conv-row:hover,
+.conv-row:hover {
+  background: var(--border);
+}
 .conv-row.selected {
-  background: var(--surface);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.conv-row.selected .title {
+  color: var(--accent);
 }
 .conv-row .title {
   font-weight: 600;
