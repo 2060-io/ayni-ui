@@ -1807,3 +1807,326 @@ mark.hit.current {
 .img-thumb {
   border-radius: 12px;
 }
+
+/* Proof of Trust, over the conversation area (D33) */
+.pot-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--text) 32%, transparent);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow: auto;
+}
+.pot {
+  width: min(760px, 100%);
+  background: var(--bg);
+  border-radius: 18px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+}
+.pot-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.pot-head .spacer {
+  flex: 1;
+}
+.pot-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--muted);
+  flex: none;
+}
+.pot-dot.trusted {
+  background: var(--ok);
+}
+.pot-dot.untrusted {
+  background: var(--danger);
+}
+.pot-dot.unverified {
+  background: var(--warning);
+}
+.pot-did {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.pot-body {
+  padding: 18px 22px 22px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.pot-verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+}
+.pot-verdict.trusted {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 8%, var(--bg));
+}
+.pot-verdict.untrusted {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg));
+}
+.pot-verdict.unverified {
+  border-color: var(--warning);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, var(--bg));
+}
+.pot-verdict-label {
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pot-verdict-sub {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.pot-reasons {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--danger);
+  font-size: 14px;
+}
+.pot-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.pot-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pot-step {
+  display: flex;
+  gap: 16px;
+  position: relative;
+  padding-bottom: 22px;
+}
+.pot-step:last-child {
+  padding-bottom: 0;
+}
+.pot-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: 0;
+  width: 2px;
+  background: color-mix(in srgb, var(--ok) 40%, var(--border));
+}
+.pot-node {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ok);
+  color: var(--ok);
+  background: var(--bg);
+}
+.pot-node.bad {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.pot-step-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pot-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 7px;
+}
+.pot-identity {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.pot-identity .avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  font-size: 18px;
+  flex: none;
+}
+.pot-identity-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pot-name {
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.2;
+}
+.pot-name svg {
+  color: var(--muted);
+}
+.pot-desc {
+  margin: 0;
+  color: var(--text);
+}
+.pot-facts {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+}
+.pot-facts.column {
+  flex-direction: column;
+  gap: 2px;
+}
+.pot-facts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.pot-provenance {
+  font-size: 13px;
+  color: var(--muted);
+}
+.pot-section {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.pot-section h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pot-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+  color: var(--accent);
+  display: inline-grid;
+  place-items: center;
+  font-size: 11px;
+}
+.pot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 7px 0;
+  font-size: 14px;
+}
+.pot-row-title {
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pot-valid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ok);
+}
+.pot-valid.bad {
+  color: var(--danger);
+}
+.pot-endpoint code {
+  font-size: 12px;
+  word-break: break-all;
+}
+.role {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  color: var(--accent);
+}
+.role-ecosystem {
+  background: color-mix(in srgb, var(--warning) 14%, var(--bg));
+  color: var(--warning);
+}
+.pot-claims {
+  width: 100%;
+  margin: 2px 0 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  font-size: 13px;
+}
+.pot-claims div {
+  display: contents;
+}
+.pot-claims dt {
+  color: var(--muted);
+}
+.pot-claims dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.pot-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+@media (max-width: 760px) {
+  .pot-backdrop {
+    padding: 0;
+  }
+  .pot {
+    border-radius: 0;
+    min-height: 100%;
+  }
+}

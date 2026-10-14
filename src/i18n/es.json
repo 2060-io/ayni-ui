@@ -305,5 +305,42 @@
     "linked": "Vinculado {{time}}",
     "lastUsed": "último uso {{time}}",
     "unlink": "Desvincular"
+  },
+  "pot": {
+    "title": "Prueba de confianza",
+    "loading": "Consultando el registro",
+    "copyDid": "Copiar el DID",
+    "openInGraph": "Abrir en la búsqueda de Verana",
+    "evaluated": "Evaluado {{time}}",
+    "block": "bloque {{block}}",
+    "service": "Servicio",
+    "operatedBy": "Operado por",
+    "selfIssued": "Autoemitida",
+    "issuedBy": "Emitida por {{name}}",
+    "issuedByUnknown": "Emisor acreditado",
+    "since": "desde {{time}}",
+    "validUntil": "válida hasta {{time}}",
+    "minimumAge": "Edad mínima {{age}}",
+    "registryId": "Id de registro",
+    "jurisdiction": "Jurisdicción",
+    "alsoPresents": "También presenta",
+    "verified": "verificada",
+    "invalid": "inválida",
+    "accreditations": "Acreditaciones",
+    "endpoints": "Endpoints del documento DID",
+    "governance": "Gobernanza",
+    "ecosystem": "Ecosistema",
+    "root": "raíz del ecosistema",
+    "egf": "Marco de gobernanza",
+    "cgf": "Marco de gobernanza corporativa",
+    "corporation": "Corporación {{id}}",
+    "role": {
+      "ECOSYSTEM": "Ecosistema",
+      "ISSUER_GRANTOR": "Otorgante de emisores",
+      "VERIFIER_GRANTOR": "Otorgante de verificadores",
+      "ISSUER": "Emisor",
+      "VERIFIER": "Verificador",
+      "HOLDER": "Titular"
+    }
   }
 }

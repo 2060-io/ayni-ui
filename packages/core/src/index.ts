@@ -94,3 +94,4 @@ export function orderControllers<T extends { did: string; kind: string; pinned: 
     .sort((a, b) => lastMessageAt(b).localeCompare(lastMessageAt(a)))
   return [...pinned, ...verified, ...unverified]
 }
+export * from './trustDetails.js'

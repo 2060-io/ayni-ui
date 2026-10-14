@@ -305,5 +305,42 @@
     "linked": "Lié {{time}}",
     "lastUsed": "dernière utilisation {{time}}",
     "unlink": "Délier"
+  },
+  "pot": {
+    "title": "Preuve de confiance",
+    "loading": "Interrogation du registre",
+    "copyDid": "Copier le DID",
+    "openInGraph": "Ouvrir dans la recherche Verana",
+    "evaluated": "Évalué {{time}}",
+    "block": "bloc {{block}}",
+    "service": "Service",
+    "operatedBy": "Opéré par",
+    "selfIssued": "Auto-émis",
+    "issuedBy": "Émis par {{name}}",
+    "issuedByUnknown": "Émetteur accrédité",
+    "since": "depuis {{time}}",
+    "validUntil": "valide jusqu’au {{time}}",
+    "minimumAge": "Âge minimum {{age}}",
+    "registryId": "Numéro de registre",
+    "jurisdiction": "Juridiction",
+    "alsoPresents": "Présente aussi",
+    "verified": "vérifié",
+    "invalid": "invalide",
+    "accreditations": "Accréditations",
+    "endpoints": "Points de terminaison du document DID",
+    "governance": "Gouvernance",
+    "ecosystem": "Écosystème",
+    "root": "racine de l’écosystème",
+    "egf": "Cadre de gouvernance",
+    "cgf": "Cadre de gouvernance d’entreprise",
+    "corporation": "Corporation {{id}}",
+    "role": {
+      "ECOSYSTEM": "Écosystème",
+      "ISSUER_GRANTOR": "Habilitateur d’émetteurs",
+      "VERIFIER_GRANTOR": "Habilitateur de vérificateurs",
+      "ISSUER": "Émetteur",
+      "VERIFIER": "Vérificateur",
+      "HOLDER": "Détenteur"
+    }
   }
 }

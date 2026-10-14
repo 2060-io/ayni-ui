@@ -305,5 +305,42 @@
     "linked": "Linked {{time}}",
     "lastUsed": "last used {{time}}",
     "unlink": "Unlink"
+  },
+  "pot": {
+    "title": "Proof of Trust",
+    "loading": "Checking the registry",
+    "copyDid": "Copy the DID",
+    "openInGraph": "Open in the Verana search",
+    "evaluated": "Evaluated {{time}}",
+    "block": "block {{block}}",
+    "service": "Service",
+    "operatedBy": "Operated by",
+    "selfIssued": "Self-issued",
+    "issuedBy": "Issued by {{name}}",
+    "issuedByUnknown": "Issuer accredited",
+    "since": "since {{time}}",
+    "validUntil": "valid until {{time}}",
+    "minimumAge": "Minimum age {{age}}",
+    "registryId": "Registry id",
+    "jurisdiction": "Jurisdiction",
+    "alsoPresents": "Also presents",
+    "verified": "verified",
+    "invalid": "invalid",
+    "accreditations": "Accreditations",
+    "endpoints": "Endpoints in the DID Document",
+    "governance": "Governance",
+    "ecosystem": "Ecosystem",
+    "root": "ecosystem root",
+    "egf": "Governance framework",
+    "cgf": "Corporate governance framework",
+    "corporation": "Corporation {{id}}",
+    "role": {
+      "ECOSYSTEM": "Ecosystem",
+      "ISSUER_GRANTOR": "Issuer grantor",
+      "VERIFIER_GRANTOR": "Verifier grantor",
+      "ISSUER": "Issuer",
+      "VERIFIER": "Verifier",
+      "HOLDER": "Holder"
+    }
   }
 }

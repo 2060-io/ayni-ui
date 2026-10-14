@@ -1,10 +1,10 @@
 /** Trust card (D4, UI-TRUST-002/003/004/005/006): service, operator, accreditations, result with reasons. */
 import type { AgentRecord, TrustSummary } from '@2060.io/hologram-ui-core'
-import { ShieldAlert, ShieldCheck, ShieldQuestion, X } from 'lucide-react'
+import { ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
-import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
+import { ProofOfTrust } from './ProofOfTrust.js'
 
 export function TrustSummaryView({ trust, compact = false }: { trust: TrustSummary; compact?: boolean }) {
   const { t, i18n } = useTranslation()
@@ -65,65 +65,6 @@ export function TrustSummaryView({ trust, compact = false }: { trust: TrustSumma
   )
 }
 
-export function TrustCardDialog({
-  agent,
-  onClose,
-  connect = false,
-}: {
-  agent: AgentRecord
-  onClose: () => void
-  connect?: boolean
-}) {
-  const { t } = useTranslation()
-  const hub = useHub()
-  const snap = useSnapshot()
-  const trusted = agent.trust.result === 'trusted'
-  const warnAllowed = snap.config.trustPolicy === 'warn'
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('trust.title')}
-      className="panel"
-      style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 40, maxWidth: 'none' }}
-    >
-      <div className="row-between">
-        <h1>{t('trust.title')}</h1>
-        <button type="button" className="icon-btn" aria-label={t('app.close')} onClick={onClose}>
-          <X size={20} />
-        </button>
-      </div>
-      <TrustSummaryView trust={agent.trust} />
-      {connect ? (
-        <div className="column-actions" style={{ marginTop: 14 }}>
-          {trusted ? (
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() =>
-                void hub.connect(agent.did).then(onClose, (e) => hub.notify('error', String(e.message ?? e)))
-              }
-            >
-              {t('trust.connect')}
-            </button>
-          ) : warnAllowed ? (
-            <button
-              type="button"
-              className="btn danger"
-              onClick={() =>
-                void hub
-                  .acknowledgeTrust(agent.did)
-                  .then(() => hub.connect(agent.did))
-                  .then(onClose)
-              }
-            >
-              {t('trust.continueWithWarning')}
-            </button>
-          ) : (
-            <span className="muted">{t('trust.refused')}</span>
-          )}
-        </div>
-      ) : null}
-    </div>
-  )
+export function TrustCardDialog(props: { agent: AgentRecord; onClose: () => void; connect?: boolean }) {
+  return <ProofOfTrust {...props} />
 }
