@@ -1,0 +1,26 @@
+{
+  "appName": "Ayni",
+  "logo": "/brand/logo.svg",
+  "colors": {
+    "light": {
+      "accent": "#0F766E",
+      "accentContrast": "#FFFFFF",
+      "bg": "#FFFFFF",
+      "surface": "#F9FAFB",
+      "text": "#111827",
+      "muted": "#6B7280",
+      "border": "#E5E7EB"
+    },
+    "dark": {
+      "accent": "#2DD4BF",
+      "accentContrast": "#042F2E",
+      "bg": "#0B1220",
+      "surface": "#111827",
+      "text": "#F3F4F6",
+      "muted": "#9CA3AF",
+      "border": "#1F2937"
+    }
+  },
+  "links": { "support": "https://hologram.zone" },
+  "defaultLocale": "en"
+}

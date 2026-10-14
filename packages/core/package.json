@@ -1,0 +1,24 @@
+{
+  "name": "@2060.io/ayni-ui-core",
+  "version": "0.1.0",
+  "description": "Framework-independent core of the Ayni UI: agents, trust, sessions, binding, conversation, store, sync (UI-SHELL-004)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@2060.io/ayni-agui-profile": "workspace:*",
+    "idb": "^8.0.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

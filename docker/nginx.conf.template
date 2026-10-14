@@ -1,0 +1,17 @@
+server {
+  listen ${PORT};
+  server_name _;
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # strict policy (UI-SEC-001): no third-party scripts; agent, registry and graph origins over HTTPS
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; media-src 'self' blob:; connect-src 'self' https: ${ALLOWED_AGENT_ORIGINS_CSP}; font-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+  add_header Referrer-Policy "no-referrer" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Permissions-Policy "camera=(self), microphone=(self), geolocation=()" always;
+
+  location = /config.json { add_header Cache-Control "no-cache"; }
+  location /brand/ { add_header Cache-Control "no-cache"; }
+  location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; }
+  location / { try_files $uri $uri/ /index.html; }
+}
