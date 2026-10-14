@@ -40,10 +40,7 @@ export function Column() {
     <aside className="column">
       <div className="column-header relative" ref={headerRef}>
         <div className="row-between">
-          <h2 className="row-between controller-title" style={{ gap: 8 }}>
-            <Avatar name={controller.name} src={controller.logoRef} size={28} />
-            <span className="ellipsis">{controller.name}</span>
-          </h2>
+          <h2 className="controller-title ellipsis">{controller.name}</h2>
           <button
             type="button"
             className="icon-btn"

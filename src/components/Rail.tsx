@@ -76,7 +76,7 @@ export function Rail() {
         onDrop={c.pinned ? dropOn('pinned', c.did) : dropOn('rest', null)}
         onClick={() => hub.selectController(c.did)}
       >
-        <Avatar name={c.name} src={c.logoRef} />
+        <Avatar name={c.name} src={c.logoRef} size={48} />
         {unread ? <span className="badge">{unread}</span> : null}
         {waiting ? <span className="dot" aria-hidden="true" /> : null}
       </button>
