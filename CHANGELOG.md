@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/2060-io/ayni-ui/compare/v0.3.0...v0.3.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **chart:** name the chart ayni-ui-chart so it no longer overwrites the image tag ([309557c](https://github.com/2060-io/ayni-ui/commit/309557cbdadac036dd33fa95fbb33995499e92ca))
+* **chart:** name the chart ayni-ui-chart so it no longer overwrites the image tag on Docker Hub ([3db6b50](https://github.com/2060-io/ayni-ui/commit/3db6b501c91022d5102e9d40c18c632827dc8514))
+* **store:** the pre-rename browser database is migrated once into the new one (D14) ([97871d9](https://github.com/2060-io/ayni-ui/commit/97871d9106a8d040255a639adc50cfd6f144fdd9))
+
 ## [0.3.0](https://github.com/2060-io/ayni-ui/compare/v0.2.0...v0.3.0) (2026-10-14)
 
 
