@@ -26,6 +26,7 @@ import {
   type RuntimeConfig,
   recheckTrust,
   reduce,
+  refreshDescriptor,
   type SessionRecord,
   type SyncBus,
   type SyncMessage,
@@ -154,6 +155,12 @@ export class Hub {
     if (params.get('agent') && !this.snapshot.config.singleAgent)
       void this.addAgent(params.get('agent') ?? '').catch((e) => this.notify('error', String(e.message ?? e)))
     for (const s of this.snapshot.sessions) if (s.state !== 'closed' && s.sessionToken) void this.lead(s.sessionId)
+    // descriptors can change on the agent side (features such as voice notes): refresh them at start
+    void Promise.all(
+      this.snapshot.agents.map((a) =>
+        refreshDescriptor(this.store, a, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
+      )
+    ).then(() => this.reload())
     setInterval(() => this.retryLeadership(), 5000)
     setInterval(() => void this.pollProvisional(), 4000)
     setInterval(() => this.recheckTrustAll(), this.snapshot.config.trustRecheckIntervalSeconds * 1000)
@@ -467,6 +474,7 @@ export class Hub {
     if (!agent) throw new Error('agent not found')
     if (!this.canConnect(agent)) throw new Error('agent is not trusted')
     await recheckTrust(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
+    await refreshDescriptor(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
     // a paired device binds silently with its proof (UI-BIND-011); a rejected proof is dropped
     const created = await this.client(agent).create(
       { ...CLIENT, platform: platformDescription() },

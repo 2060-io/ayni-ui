@@ -69,6 +69,20 @@ export async function recheckTrust(
   return trust
 }
 
+/** The descriptor can change on the agent (features, limits): refresh the stored copy (UI-TRUST-001). */
+export async function refreshDescriptor(
+  store: DeviceStore,
+  agent: AgentRecord,
+  indexerUrl: string,
+  fetchFn: typeof fetch = fetch
+): Promise<AgentRecord> {
+  const { descriptorUrl, descriptor } = await discoverAgent(agent.descriptorUrl || agent.did, indexerUrl, fetchFn)
+  if (descriptor.did !== agent.did) return agent
+  const next = { ...agent, descriptorUrl, descriptor }
+  if (JSON.stringify(next.descriptor) !== JSON.stringify(agent.descriptor)) await store.putAgent(next)
+  return next
+}
+
 export function descriptorOf(agent: AgentRecord): AgentDescriptor {
   return agent.descriptor
 }
