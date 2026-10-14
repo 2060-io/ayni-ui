@@ -992,6 +992,11 @@ fieldset.quick {
   max-height: calc(1.45em * 6 + 20px);
   overflow-y: hidden;
 }
+.composer textarea:focus-visible,
+.search-bar .input:focus-visible,
+.picker-head .input:focus-visible {
+  border-color: var(--accent);
+}
 .composer .recording {
   align-self: center;
   font-size: 13px;
