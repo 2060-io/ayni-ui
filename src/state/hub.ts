@@ -157,7 +157,9 @@ export class Hub {
     const params = new URLSearchParams(location.search)
     if (params.get('agent') && !this.snapshot.config.singleAgent)
       void this.addAgent(params.get('agent') ?? '').catch((e) => this.notify('error', String(e.message ?? e)))
-    for (const s of this.snapshot.sessions) if (s.state !== 'closed' && s.sessionToken) void this.lead(s.sessionId)
+    // the most recent conversations stream first; the budget parks the rest (UI-SHELL-016)
+    for (const s of [...this.snapshot.sessions].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt)))
+      if (s.state !== 'closed' && s.sessionToken) void this.lead(s.sessionId)
     // descriptors can change on the agent side (features such as voice notes): refresh them at start
     void Promise.all(
       this.snapshot.agents.map((a) =>
@@ -278,18 +280,23 @@ export class Hub {
   }
 
   public selectSession(sessionId: string | null): void {
-    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    const clicked = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    // a conversation with a live session on this device opens on that session, never on a stale record (UI-SESS-014)
+    const session = (clicked && this.liveRecordOf(clicked)) ?? clicked
+    const id = session?.sessionId ?? sessionId
     this.set({
-      selectedSessionId: sessionId,
+      selectedSessionId: id,
       selectedAgentDid: session?.agentDid ?? this.snapshot.selectedAgentDid,
-      view: sessionId ? 'conversation' : 'list',
+      view: id ? 'conversation' : 'list',
     })
-    if (sessionId) {
-      void this.loadTranscript(sessionId)
-      void this.markRead(sessionId)
+    if (id) {
+      void this.loadTranscript(id)
+      void this.markRead(id)
+      // the conversation on screen always streams, even when the budget parked it (UI-SHELL-016)
+      if (session?.state === 'bound' && session.sessionToken) void this.lead(id, true)
       // a conversation listed by the agent but never opened here: open it now (UI-SESS-013)
       if (session && !session.sessionToken && session.conversationId && session.sessionId === session.conversationId)
-        void this.resume(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
+        void this.resume(id).catch((e) => this.notify('error', String((e as Error).message)))
     }
   }
 
@@ -544,6 +551,7 @@ export class Hub {
     }
     await this.store.putSession(session)
     await this.store.putTranscript(await this.inheritTranscript(session, old))
+    if (session.conversationId) await this.collapseConversations(agentDid, session.sessionId)
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
     this.selectSession(session.sessionId)
@@ -564,18 +572,28 @@ export class Hub {
     )
   }
 
+  private syncing = Promise.resolve()
+
   /**
    * The agent's list of the person's conversations (UI-SESS-011): titles and archived state come
    * from the agent; conversations opened elsewhere appear as records with no session yet; ones the
-   * agent no longer lists (closed for good elsewhere) leave.
+   * agent no longer lists (closed for good elsewhere) leave. Calls are serialized: several bound
+   * sessions ask for it at once, and a record one call drops must not be written back by another.
    */
-  public async syncConversations(agentDid: string): Promise<void> {
+  public syncConversations(agentDid: string): Promise<void> {
+    const next = this.syncing.then(() => this.syncConversationsNow(agentDid))
+    this.syncing = next.catch(() => undefined)
+    return next
+  }
+
+  private async syncConversationsNow(agentDid: string): Promise<void> {
     const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
     if (!bound) return
     const { client, token } = this.clientOf(bound)
     const { conversations } = await client.conversations(token)
     const listed = new Map(conversations.map((c) => [c.id, c]))
-    const local = this.snapshot.sessions.filter((s) => s.agentDid === agentDid)
+    await this.collapseConversations(agentDid)
+    const local = await this.store.listSessions(agentDid)
     for (const s of local) {
       if (!s.conversationId) continue
       const c = listed.get(s.conversationId)
@@ -615,6 +633,69 @@ export class Hub {
     }
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
+  }
+
+  /** The bound session of the record's conversation on this device, if any (UI-SESS-014). */
+  private liveRecordOf(record: SessionRecord): SessionRecord | undefined {
+    if (!record.conversationId) return undefined
+    return this.snapshot.sessions.find(
+      (x) =>
+        x.agentDid === record.agentDid &&
+        x.conversationId === record.conversationId &&
+        x.state === 'bound' &&
+        !!x.sessionToken
+    )
+  }
+
+  /**
+   * One record per conversation on this device (UI-SESS-014). When several of our sessions serve the
+   * same conversation, `keep` stays when given, else the one streaming, else the latest bound one,
+   * else the latest; the others are closed on the agent (best effort) and dropped here, and their
+   * transcript moves over when the kept record has none. Every stream they held is freed.
+   */
+  private async collapseConversations(agentDid: string, keep?: string): Promise<void> {
+    const groups = new Map<string, SessionRecord[]>()
+    for (const s of await this.store.listSessions(agentDid)) {
+      if (!s.conversationId) continue
+      groups.set(s.conversationId, [...(groups.get(s.conversationId) ?? []), s])
+    }
+    const rank = (s: SessionRecord) =>
+      (s.sessionId === keep ? 8 : 0) +
+      (this.streams.has(s.sessionId) ? 4 : 0) +
+      (s.state === 'bound' && s.sessionToken ? 2 : 0) +
+      (s.state !== 'closed' && s.sessionToken ? 1 : 0)
+    for (const records of groups.values()) {
+      if (records.length < 2) continue
+      const [kept, ...dropped] = [...records].sort(
+        (a, b) => rank(b) - rank(a) || b.lastMessageAt.localeCompare(a.lastMessageAt)
+      )
+      for (const s of dropped) {
+        this.park(s.sessionId)
+        if (s.sessionToken && s.state !== 'closed') {
+          const { client, token } = this.clientOf(s)
+          void client.close(s.sessionId, token).catch(() => undefined)
+        }
+        const have = await this.store.getTranscript(kept.sessionId)
+        const theirs = await this.store.getTranscript(s.sessionId)
+        if (!have?.messages.length && theirs?.messages.length)
+          await this.store.putTranscript({
+            ...theirs,
+            sessionId: kept.sessionId,
+            run: null,
+            complete: false,
+            oldestLoadedId: null,
+          })
+        await this.store.deleteSession(s.sessionId)
+        await this.store.deleteTranscript(s.sessionId)
+        const { [s.sessionId]: _gone, ...transcripts } = this.snapshot.transcripts
+        this.snapshot = {
+          ...this.snapshot,
+          transcripts,
+          selectedSessionId:
+            this.snapshot.selectedSessionId === s.sessionId ? kept.sessionId : this.snapshot.selectedSessionId,
+        }
+      }
+    }
   }
 
   /** A bound token for the agent, opening the conversation silently on a paired device when none is bound. */
@@ -698,6 +779,21 @@ export class Hub {
   /** New conversation: a sibling when a bound one exists on this device, else the binding flow (UI-SESS-008). */
   public async newConversation(agentDid: string, resume?: ResumeTarget): Promise<SessionRecord> {
     const fresh = !resume?.sessionId && !resume?.conversationId
+    // the conversation is already open on this device: no second session for it (UI-SESS-014)
+    const live = resume?.conversationId
+      ? this.snapshot.sessions.find(
+          (s) =>
+            s.agentDid === agentDid &&
+            s.conversationId === resume.conversationId &&
+            s.state === 'bound' &&
+            s.sessionToken
+        )
+      : undefined
+    if (live) {
+      this.selectSession(live.sessionId)
+      if (resume?.text) await this.send(live.sessionId, resume.text)
+      return live
+    }
     const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
     if (!bound) return this.connect(agentDid, resume, fresh)
     const { client, token } = this.clientOf(bound)
@@ -737,6 +833,7 @@ export class Hub {
     }
     await this.store.putSession(session)
     await this.store.putTranscript(await this.inheritTranscript(session, old))
+    if (session.conversationId) await this.collapseConversations(agentDid, session.sessionId)
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
     this.selectSession(session.sessionId)
@@ -837,8 +934,12 @@ export class Hub {
 
   // ---- leadership, stream and runs (UI-SHELL-007/008, UI-SESS-002) ----------------------------------------
 
-  private async lead(sessionId: string): Promise<void> {
+  /** Streams held open per agent at once (UI-SHELL-016): browsers allow about six connections per host. */
+  private static readonly MAX_STREAMS = 3
+
+  private async lead(sessionId: string, prioritize = false): Promise<void> {
     if (!this.bus || this.snapshot.leaders[sessionId] !== undefined) return
+    if (!this.reserveStream(sessionId, prioritize)) return
     this.set({ leaders: { ...this.snapshot.leaders, [sessionId]: false } })
     const acquired = await this.bus.tryLead(sessionId, async (release) => {
       this.set({ leaders: { ...this.snapshot.leaders, [sessionId]: true } })
@@ -846,6 +947,32 @@ export class Hub {
       release()
     })
     if (!acquired) return
+    const { [sessionId]: _removed, ...rest } = this.snapshot.leaders
+    this.set({ leaders: rest })
+  }
+
+  /** Whether a stream may open for the session under the per-agent budget; a prioritized one parks the stalest. */
+  private reserveStream(sessionId: string, prioritize: boolean): boolean {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!session) return false
+    const held = this.snapshot.sessions.filter(
+      (s) =>
+        s.agentDid === session.agentDid && s.sessionId !== sessionId && this.snapshot.leaders[s.sessionId] !== undefined
+    )
+    if (held.length < Hub.MAX_STREAMS) return true
+    if (!prioritize) return false
+    const victim = held
+      .filter((s) => s.sessionId !== this.snapshot.selectedSessionId)
+      .sort((a, b) => a.lastMessageAt.localeCompare(b.lastMessageAt))[0]
+    if (!victim) return false
+    this.park(victim.sessionId)
+    return true
+  }
+
+  /** Stops streaming a session without closing it: it streams again when selected or when a slot frees. */
+  private park(sessionId: string): void {
+    this.stopLeading(sessionId)
+    if (this.snapshot.leaders[sessionId] === undefined) return
     const { [sessionId]: _removed, ...rest } = this.snapshot.leaders
     this.set({ leaders: rest })
   }
@@ -875,6 +1002,7 @@ export class Hub {
       const session = await this.store.getSession(sessionId)
       if (!session || session.state === 'closed' || !session.sessionToken) return
       const { client, token } = this.clientOf(session)
+      let controller: AbortController | undefined
       try {
         const status = await client.status(sessionId, token)
         await this.saveSession({
@@ -889,7 +1017,7 @@ export class Hub {
         if (status.state === 'bound' && !(await this.store.getTranscript(sessionId))?.messages.length)
           await this.loadHistory(sessionId)
         if (status.state === 'bound') void this.syncConversations(session.agentDid).catch(() => undefined)
-        const controller = new AbortController()
+        controller = new AbortController()
         this.streams.set(sessionId, controller)
         attempt = 0
         await client.stream(
@@ -901,6 +1029,7 @@ export class Hub {
         )
         if (controller.signal.aborted) return
       } catch (e) {
+        if (controller?.signal.aborted) return // parked or stopped on purpose
         if (e instanceof ProfileError && e.status === 410) {
           const current = await this.store.getSession(sessionId)
           if (current)

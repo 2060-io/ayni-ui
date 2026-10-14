@@ -82,5 +82,15 @@
     page with two entries, Trust Graph search and add by DID or URL. There is no permanent right
     panel: a side sheet appears for message info and closes from its own control. The conversation
     header keeps back, title, search and the contextual menu.
-18. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+18. **One session per conversation per device; three streams** (D34, UI-SESS-014, UI-SHELL-016). A
+    conversation row is a conversation, never a session: opening a listed or closed conversation that is
+    already live on this device selects the live session; duplicates that slip through (double click,
+    reload mid-flight) collapse to one, the extra sessions closed on the agent, their transcript kept
+    when the survivor has none. List reconciliation is serialized so one call cannot write back a
+    record another just dropped. At most three session streams stay open per agent: the one on screen
+    always, then the most recently active; the rest are parked (bound, not streaming) and stream again
+    when selected or when a slot frees. Found live: five duplicated sessions on one conversation each
+    held a stream, and the browser's six connections per host were gone, so archive and every other
+    request queued forever.
+19. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
