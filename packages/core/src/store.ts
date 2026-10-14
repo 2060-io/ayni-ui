@@ -2,7 +2,7 @@
  * The device store (D14, UI-SHELL-006, UI-SESS-005): IndexedDB shared by every tab of the browser
  * profile. Tokens live here only; clearing site data is a complete reset (UI-SEC-003).
  */
-import { type DBSchema, type IDBPDatabase, openDB } from 'idb'
+import { type DBSchema, deleteDB, type IDBPDatabase, openDB } from 'idb'
 import type { AgentRecord, ControllerRecord, Preferences, SessionRecord, Transcript } from './types.js'
 
 interface Schema extends DBSchema {
@@ -36,25 +36,63 @@ export interface DeviceStore {
 
 const DEFAULT_PREFS: Preferences = { theme: 'system', sounds: true }
 
+const DB_NAME = 'ayni-ui'
+/** The database name before the product was renamed (October 2026); its content moves over once. */
+const LEGACY_DB_NAME = 'hologram-ui'
+const STORES = ['agents', 'controllers', 'sessions', 'transcripts', 'meta'] as const
+
+/**
+ * A store left by the previous name is copied into this one, record by record, when this one is
+ * still empty, then deleted. Browsers without `indexedDB.databases()` learn of its absence by
+ * opening it, which creates an empty database that is deleted again.
+ */
+async function migrateFromLegacy(db: IDBPDatabase<Schema>): Promise<void> {
+  if (typeof indexedDB === 'undefined') return
+  if (indexedDB.databases) {
+    const names = (await indexedDB.databases()).map((d) => d.name)
+    if (!names.includes(LEGACY_DB_NAME)) return
+  }
+  const legacy = await openDB(LEGACY_DB_NAME)
+  try {
+    const empty = (await db.count('agents')) === 0 && (await db.count('sessions')) === 0
+    if (empty && legacy.objectStoreNames.contains('agents')) {
+      for (const name of STORES) {
+        if (!legacy.objectStoreNames.contains(name)) continue
+        const records = await legacy.getAll(name)
+        const tx = db.transaction(name, 'readwrite')
+        for (const record of records) await tx.store.put(record as never)
+        await tx.done
+      }
+    }
+  } finally {
+    legacy.close()
+  }
+  await deleteDB(LEGACY_DB_NAME)
+}
+
 export class IndexedDbStore implements DeviceStore {
   private db?: Promise<IDBPDatabase<Schema>>
 
   private open(): Promise<IDBPDatabase<Schema>> {
-    if (!this.db) {
-      this.db = openDB<Schema>('ayni-ui', 2, {
-        upgrade(db, oldVersion) {
-          if (oldVersion < 1) {
-            db.createObjectStore('agents', { keyPath: 'did' })
-            const sessions = db.createObjectStore('sessions', { keyPath: 'sessionId' })
-            sessions.createIndex('byAgent', 'agentDid')
-            db.createObjectStore('transcripts', { keyPath: 'sessionId' })
-            db.createObjectStore('meta', { keyPath: 'key' })
-          }
-          if (oldVersion < 2) db.createObjectStore('controllers', { keyPath: 'did' })
-        },
-      })
-    }
+    if (!this.db) this.db = this.openMigrated()
     return this.db
+  }
+
+  private async openMigrated(): Promise<IDBPDatabase<Schema>> {
+    const db = await openDB<Schema>(DB_NAME, 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          db.createObjectStore('agents', { keyPath: 'did' })
+          const sessions = db.createObjectStore('sessions', { keyPath: 'sessionId' })
+          sessions.createIndex('byAgent', 'agentDid')
+          db.createObjectStore('transcripts', { keyPath: 'sessionId' })
+          db.createObjectStore('meta', { keyPath: 'key' })
+        }
+        if (oldVersion < 2) db.createObjectStore('controllers', { keyPath: 'did' })
+      },
+    })
+    await migrateFromLegacy(db).catch(() => undefined)
+    return db
   }
 
   public async deviceId(): Promise<string> {
