@@ -60,7 +60,7 @@ export function Column() {
               <ShieldQuestion size={18} role="img" aria-label={t('column.kind.unverified')} />
             )}
             {flagOf(controller.countryCode) ? (
-              <span className="flag" aria-label={controller.countryCode}>
+              <span className="flag" role="img" aria-label={controller.countryCode}>
                 {flagOf(controller.countryCode)}
               </span>
             ) : null}
