@@ -14,14 +14,16 @@
     "install": "Instalar",
     "installHint": "Use o menu do navegador para adicionar esta app ao ecrã inicial ou à dock.",
     "hidePanel": "Ocultar o painel lateral",
-    "showPanel": "Mostrar o painel lateral"
+    "showPanel": "Mostrar o painel lateral",
+    "controllers": "Organizações"
   },
   "rail": {
     "pinned": "Fixados",
     "notLinked": "Não ligado",
     "unread": "{{count}} por ler",
     "pinnedHint": "Agentes fixados acima da linha. Arraste um agente através dela para fixar ou soltar.",
-    "recent": "Recentes"
+    "recent": "Recentes",
+    "unverified": "não verificado"
   },
   "column": {
     "newConversation": "Nova conversa",
@@ -51,7 +53,15 @@
     "archived": "Arquivadas",
     "archiveAll": "Arquivar todas as conversas",
     "closeForGood": "Fechar definitivamente",
-    "closeForGoodConfirm": "Fechar esta conversa definitivamente? Ela desaparece dos seus dispositivos. O agente mantém seu registro conforme sua política."
+    "closeForGoodConfirm": "Fechar esta conversa definitivamente? Ela desaparece dos seus dispositivos. O agente mantém seu registro conforme sua política.",
+    "controllerOptions": "Opções",
+    "kind": {
+      "organization": "Organização",
+      "persona": "Pessoa",
+      "unverified": "Não verificado"
+    },
+    "showArchived": "Mostrar conversas arquivadas",
+    "showActive": "Mostrar conversas ativas"
   },
   "trust": {
     "title": "Cartão de confiança",
@@ -225,7 +235,12 @@
     "scan": "Ler um código QR",
     "scanning": "Aponte a câmara ao código QR",
     "cameraDenied": "O acesso à câmara foi negado.",
-    "error": "Este agente não foi encontrado: {{message}}"
+    "error": "Este agente não foi encontrado: {{message}}",
+    "pageTitle": "Adicionar um agente",
+    "tileSearch": "Buscar no Trust Graph",
+    "tileSearchHint": "Encontre serviços verificados e seus agentes na Verana.",
+    "tileDid": "Adicionar por DID ou URL",
+    "tileDidHint": "Cole o DID do agente ou a URL do seu descritor, ou escaneie um código QR."
   },
   "directory": {
     "title": "Encontrar agentes",

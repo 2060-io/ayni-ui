@@ -71,5 +71,16 @@
     "Close for good" asks for confirmation, calls the conversation delete and clears the local data.
     Renames go through the agent too. Records from before this change (no conversation id) stay
     listed and attach to a conversation the next time they bind.
-17. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+17. **Controller-first shell** (D32, UI-SHELL-001/002/011/014, UI-AGENTS-001). The rail shows
+    controllers: `ControllerRecord`s in a new IndexedDB store (database version 2), keyed by the ECS
+    Organization or Persona credential subject that the trust resolution now exposes as
+    `operator.did`; an untrusted or unverified agent files under its own DID as a greyed tile. Agents
+    carry `controllerDid`; records from before are filed on the first load, and a trust re-check that
+    moves an agent to another controller moves it and shows a toast. Pinning and drag and drop apply
+    to controllers. The column lists the selected controller's agents as cards (trust icon, menu,
+    link state, new conversation, search, active or archived conversations). The plus tile opens a
+    page with two entries, Trust Graph search and add by DID or URL. There is no permanent right
+    panel: a side sheet appears for message info and closes from its own control. The conversation
+    header keeps back, title, search and the contextual menu.
+18. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

@@ -115,34 +115,38 @@ a {
 /* Layout: rail + column on the left, conversation, details (UI-SHELL-001, UI-SHELL-013) */
 .app {
   display: grid;
-  grid-template-columns: var(--rail) var(--column) minmax(0, 1fr) var(--details);
+  grid-template-columns: var(--rail) var(--column) minmax(0, 1fr);
   height: 100%;
   overflow: hidden;
 }
 .app.single {
-  grid-template-columns: var(--column) minmax(0, 1fr) var(--details);
+  grid-template-columns: var(--column) minmax(0, 1fr);
 }
 .app.single .rail {
   display: none;
 }
-.app.no-details {
-  grid-template-columns: var(--rail) var(--column) minmax(0, 1fr);
+.app.with-sheet {
+  grid-template-columns: var(--rail) var(--column) minmax(0, 1fr) var(--details);
 }
-.app.single.no-details {
-  grid-template-columns: var(--column) minmax(0, 1fr);
+.app.single.with-sheet {
+  grid-template-columns: var(--column) minmax(0, 1fr) var(--details);
 }
 @media (max-width: 1200px) {
-  .app {
+  .app.with-sheet,
+  .app.single.with-sheet {
     grid-template-columns: var(--rail) var(--column) minmax(0, 1fr);
   }
-  .app.single {
+  .app.single.with-sheet {
     grid-template-columns: var(--column) minmax(0, 1fr);
   }
-  .details {
-    display: none;
-  }
-  .details-toggle {
-    display: none;
+  .sheet-panel {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: min(360px, 100vw);
+    z-index: 35;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
   }
 }
 .icon-btn.back,
@@ -1424,4 +1428,135 @@ mark.hit.current {
 }
 .section-toggle:hover {
   background: var(--surface);
+}
+
+/* controller header and agent cards (D32) */
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.controller-title {
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-start;
+}
+.agent-card {
+  border-bottom: 1px solid var(--border);
+}
+.agent-card.selected {
+  background: var(--surface);
+}
+.agent-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 6px 6px 10px;
+}
+.agent-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-radius: 10px;
+  text-align: left;
+  font-weight: 600;
+}
+.agent-toggle:hover {
+  background: var(--border);
+}
+.agent-name {
+  flex: 1;
+}
+.icon-btn.small {
+  width: 36px;
+  height: 36px;
+}
+.icon-btn.small.on {
+  background: var(--border);
+  color: var(--text);
+}
+.icon-btn.trust.trusted {
+  color: var(--ok);
+}
+.icon-btn.trust.untrusted {
+  color: var(--danger);
+}
+.icon-btn.trust.unverified {
+  color: var(--warning);
+}
+.agent-body {
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.agent-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+}
+.agent-meta .state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.agent-tools {
+  display: inline-flex;
+  gap: 2px;
+}
+.agent-body .conv-row {
+  border-bottom: 0;
+  border-radius: 10px;
+}
+.agent-body .section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 0;
+}
+.agent-body .empty {
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+/* the plus page (UI-AGENTS-001) */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  text-align: left;
+  color: var(--text);
+}
+.tile:hover,
+.tile.selected {
+  border-color: var(--accent);
+}
+.tile svg {
+  color: var(--accent);
+}
+.tile-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+.embedded {
+  margin-top: 4px;
 }

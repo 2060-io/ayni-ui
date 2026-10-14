@@ -14,14 +14,16 @@
     "install": "Install",
     "installHint": "Use your browser's menu to add this app to your home screen or dock.",
     "hidePanel": "Hide the side panel",
-    "showPanel": "Show the side panel"
+    "showPanel": "Show the side panel",
+    "controllers": "Organizations"
   },
   "rail": {
     "pinned": "Pinned",
     "notLinked": "Not linked",
     "unread": "{{count}} unread",
     "pinnedHint": "Pinned agents above the line. Drag an agent across it to pin or unpin it.",
-    "recent": "Recent"
+    "recent": "Recent",
+    "unverified": "not verified"
   },
   "column": {
     "newConversation": "New conversation",
@@ -51,7 +53,15 @@
     "archived": "Archived",
     "archiveAll": "Archive all conversations",
     "closeForGood": "Close for good",
-    "closeForGoodConfirm": "Close this conversation for good? It disappears from your devices. The agent keeps its record as its policy says."
+    "closeForGoodConfirm": "Close this conversation for good? It disappears from your devices. The agent keeps its record as its policy says.",
+    "controllerOptions": "Options",
+    "kind": {
+      "organization": "Organization",
+      "persona": "Person",
+      "unverified": "Not verified"
+    },
+    "showArchived": "Show archived conversations",
+    "showActive": "Show active conversations"
   },
   "trust": {
     "title": "Trust card",
@@ -225,7 +235,12 @@
     "scan": "Scan a QR code",
     "scanning": "Point the camera at the QR code",
     "cameraDenied": "Camera access was denied.",
-    "error": "This agent could not be found: {{message}}"
+    "error": "This agent could not be found: {{message}}",
+    "pageTitle": "Add an agent",
+    "tileSearch": "Search the Trust Graph",
+    "tileSearchHint": "Find verified services and their agents on Verana.",
+    "tileDid": "Add by DID or URL",
+    "tileDidHint": "Paste the agent’s DID or its descriptor URL, or scan a QR code."
   },
   "directory": {
     "title": "Find agents",

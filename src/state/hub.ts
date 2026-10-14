@@ -10,11 +10,13 @@ import {
   type BrandConfig,
   BroadcastSyncBus,
   CLIENT,
+  type ControllerRecord,
   addAgent as coreAddAgent,
   countOccurrences,
   type DeviceStore,
   emptyTranscript,
   excerpt,
+  fileUnderController,
   IndexedDbStore,
   mergeHistory,
   type Preferences,
@@ -39,9 +41,18 @@ export interface Snapshot {
   brand: BrandConfig
   prefs: Preferences
   agents: AgentRecord[]
+  /** the organizations and personas behind the agents (D32) */
+  controllers: ControllerRecord[]
   sessions: SessionRecord[]
   transcripts: Record<string, Transcript>
+  selectedControllerDid: string | null
   selectedAgentDid: string | null
+  /** agent cards open in the column (D32) */
+  expandedAgents: Record<string, boolean>
+  /** agent cards showing their archived conversations instead of the active ones */
+  archivedView: Record<string, boolean>
+  /** agent cards showing their search field */
+  searchOpen: Record<string, boolean>
   selectedSessionId: string | null
   view: View
   online: boolean
@@ -80,9 +91,14 @@ export class Hub {
       brand,
       prefs: { theme: 'system', sounds: true },
       agents: [],
+      controllers: [],
       sessions: [],
       transcripts: {},
+      selectedControllerDid: null,
       selectedAgentDid: null,
+      expandedAgents: {},
+      archivedView: {},
+      searchOpen: {},
       selectedSessionId: null,
       view: 'list',
       online: typeof navigator !== 'undefined' ? navigator.onLine : true,
@@ -133,7 +149,7 @@ export class Hub {
     const first = this.snapshot.agents[0]
     if (this.snapshot.config.defaultAgent && this.snapshot.agents.length === 0) {
       void this.addAgent(this.snapshot.config.defaultAgent).catch((e) => this.notify('error', String(e.message ?? e)))
-    } else if (first) this.selectAgent(first.did)
+    } else if (first) this.selectController(first.controllerDid ?? null)
     const params = new URLSearchParams(location.search)
     if (params.get('agent') && !this.snapshot.config.singleAgent)
       void this.addAgent(params.get('agent') ?? '').catch((e) => this.notify('error', String(e.message ?? e)))
@@ -144,8 +160,22 @@ export class Hub {
   }
 
   public async reload(): Promise<void> {
-    const [agents, sessions] = await Promise.all([this.store.listAgents(), this.store.listSessions()])
-    this.set({ agents, sessions })
+    let [agents, sessions, controllers] = await Promise.all([
+      this.store.listAgents(),
+      this.store.listSessions(),
+      this.store.listControllers(),
+    ])
+    // records written before D32 have no controller yet: file them now
+    const unfiled = agents.filter((a) => !a.controllerDid || !controllers.some((c) => c.did === a.controllerDid))
+    if (unfiled.length) {
+      for (const a of unfiled) await fileUnderController(this.store, a)
+      ;[agents, controllers] = await Promise.all([this.store.listAgents(), this.store.listControllers()])
+    }
+    // a controller with no agent left is gone
+    for (const c of controllers.filter((c) => !agents.some((a) => a.controllerDid === c.did)))
+      await this.store.deleteController(c.did)
+    controllers = controllers.filter((c) => agents.some((a) => a.controllerDid === c.did))
+    this.set({ agents, sessions, controllers })
     this.updateTitle()
   }
 
@@ -192,10 +222,38 @@ export class Hub {
   // ---- selection ----------------------------------------------------------------------------------
 
   public selectAgent(did: string | null): void {
+    const agent = this.snapshot.agents.find((a) => a.did === did)
     const sessions = this.snapshot.sessions
-      .filter((s) => s.agentDid === did)
+      .filter((s) => s.agentDid === did && !s.archived)
       .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
-    this.set({ selectedAgentDid: did, selectedSessionId: sessions[0]?.sessionId ?? null, view: 'list' })
+    this.set({
+      selectedAgentDid: did,
+      selectedControllerDid: agent?.controllerDid ?? this.snapshot.selectedControllerDid,
+      selectedSessionId: sessions[0]?.sessionId ?? null,
+      expandedAgents: did ? { ...this.snapshot.expandedAgents, [did]: true } : this.snapshot.expandedAgents,
+      view: 'list',
+    })
+  }
+
+  /** A controller tile: its agents in the column, the first one open (D32). */
+  public selectController(did: string | null): void {
+    const agents = this.snapshot.agents.filter((a) => a.controllerDid === did)
+    const current = agents.find((a) => a.did === this.snapshot.selectedAgentDid)
+    this.set({ selectedControllerDid: did, view: 'list' })
+    this.selectAgent((current ?? agents[0])?.did ?? null)
+    this.set({ selectedControllerDid: did })
+  }
+
+  public toggleAgentExpanded(did: string): void {
+    this.set({ expandedAgents: { ...this.snapshot.expandedAgents, [did]: !this.snapshot.expandedAgents[did] } })
+  }
+
+  public toggleArchivedView(did: string): void {
+    this.set({ archivedView: { ...this.snapshot.archivedView, [did]: !this.snapshot.archivedView[did] } })
+  }
+
+  public toggleAgentSearch(did: string): void {
+    this.set({ searchOpen: { ...this.snapshot.searchOpen, [did]: !this.snapshot.searchOpen[did] } })
   }
 
   public selectSession(sessionId: string | null): void {
@@ -286,12 +344,6 @@ export class Hub {
   /** Message info in the right panel (UI-CONV-019); null closes it. */
   public inspect(sessionId: string, messageId: string | null): void {
     this.set({ inspect: messageId ? { sessionId, messageId } : null })
-    if (messageId && this.snapshot.prefs.detailsOpen === false) void this.setPreferences({ detailsOpen: true })
-  }
-
-  /** The right panel can be hidden to widen the conversation (UI-SHELL-014). */
-  public async toggleDetails(): Promise<void> {
-    await this.setPreferences({ detailsOpen: this.snapshot.prefs.detailsOpen === false })
   }
 
   /** Recently used emojis, newest first, at most 24 (UI-CONV-017). */
@@ -311,39 +363,45 @@ export class Hub {
   }
 
   public async removeAgent(did: string): Promise<void> {
+    const agent = this.snapshot.agents.find((a) => a.did === did)
     for (const s of this.snapshot.sessions.filter((x) => x.agentDid === did))
       await this.closeConversation(s.sessionId, true)
     await this.store.deleteAgent(did)
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'agents' })
-    if (this.snapshot.selectedAgentDid === did) this.selectAgent(this.snapshot.agents[0]?.did ?? null)
+    if (this.snapshot.selectedAgentDid === did) {
+      const sibling = this.snapshot.agents.find((a) => a.controllerDid === agent?.controllerDid)
+      if (sibling) this.selectAgent(sibling.did)
+      else this.selectController(this.snapshot.controllers[0]?.did ?? null)
+    }
   }
 
-  public async togglePin(did: string): Promise<void> {
-    const agent = this.snapshot.agents.find((a) => a.did === did)
-    if (!agent) return
-    const maxOrder = Math.max(0, ...this.snapshot.agents.filter((a) => a.pinned).map((a) => a.pinOrder))
-    await this.store.putAgent({ ...agent, pinned: !agent.pinned, pinOrder: agent.pinned ? 0 : maxOrder + 1 })
+  /** Pinning applies to controllers (UI-SHELL-011, D32). */
+  public async togglePin(controllerDid: string): Promise<void> {
+    const c = this.snapshot.controllers.find((x) => x.did === controllerDid)
+    if (!c) return
+    const maxOrder = Math.max(0, ...this.snapshot.controllers.filter((x) => x.pinned).map((x) => x.pinOrder))
+    await this.store.putController({ ...c, pinned: !c.pinned, pinOrder: c.pinned ? 0 : maxOrder + 1 })
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'agents' })
   }
 
   /**
-   * Drag and drop on the rail (UI-SHELL-011): drops `did` into the pinned area before `beforeDid`
-   * (at the end when null), or into the unpinned area when `pinned` is false.
+   * Drag and drop on the rail (UI-SHELL-011): drops the controller into the pinned area before
+   * `beforeDid` (at the end when null), or into the unpinned area when `pinned` is false.
    */
-  public async movePin(did: string, pinned: boolean, beforeDid: string | null = null): Promise<void> {
-    const agent = this.snapshot.agents.find((a) => a.did === did)
-    if (!agent) return
+  public async movePin(controllerDid: string, pinned: boolean, beforeDid: string | null = null): Promise<void> {
+    const c = this.snapshot.controllers.find((x) => x.did === controllerDid)
+    if (!c) return
     if (!pinned) {
-      if (agent.pinned) await this.store.putAgent({ ...agent, pinned: false, pinOrder: 0 })
+      if (c.pinned) await this.store.putController({ ...c, pinned: false, pinOrder: 0 })
     } else {
-      const ordered = this.snapshot.agents
-        .filter((a) => a.pinned && a.did !== did)
+      const ordered = this.snapshot.controllers
+        .filter((x) => x.pinned && x.did !== controllerDid)
         .sort((a, b) => a.pinOrder - b.pinOrder)
-      const index = beforeDid ? ordered.findIndex((a) => a.did === beforeDid) : -1
-      const next = index < 0 ? [...ordered, agent] : [...ordered.slice(0, index), agent, ...ordered.slice(index)]
-      await Promise.all(next.map((a, i) => this.store.putAgent({ ...a, pinned: true, pinOrder: i + 1 })))
+      const index = beforeDid ? ordered.findIndex((x) => x.did === beforeDid) : -1
+      const next = index < 0 ? [...ordered, c] : [...ordered.slice(0, index), c, ...ordered.slice(index)]
+      await Promise.all(next.map((x, i) => this.store.putController({ ...x, pinned: true, pinOrder: i + 1 })))
     }
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'agents' })
@@ -360,6 +418,9 @@ export class Hub {
     for (const agent of this.snapshot.agents) {
       if (!this.snapshot.sessions.some((s) => s.agentDid === agent.did && s.state === 'bound')) continue
       await recheckTrust(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
+      const moved = (await this.store.getAgent(agent.did))?.controllerDid
+      if (moved && agent.controllerDid && moved !== agent.controllerDid)
+        this.notify('info', `${agent.name}: ${(await this.store.getController(moved))?.name ?? moved}`)
     }
     await this.reload()
   }

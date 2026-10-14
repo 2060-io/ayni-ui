@@ -14,14 +14,16 @@
     "install": "Instalar",
     "installHint": "Usa el menú de tu navegador para añadir esta app a tu pantalla de inicio o dock.",
     "hidePanel": "Ocultar el panel lateral",
-    "showPanel": "Mostrar el panel lateral"
+    "showPanel": "Mostrar el panel lateral",
+    "controllers": "Organizaciones"
   },
   "rail": {
     "pinned": "Fijados",
     "notLinked": "Sin vincular",
     "unread": "{{count}} sin leer",
     "pinnedHint": "Agentes fijados encima de la línea. Arrastra un agente a través de ella para fijarlo o soltarlo.",
-    "recent": "Recientes"
+    "recent": "Recientes",
+    "unverified": "sin verificar"
   },
   "column": {
     "newConversation": "Nueva conversación",
@@ -51,7 +53,15 @@
     "archived": "Archivadas",
     "archiveAll": "Archivar todas las conversaciones",
     "closeForGood": "Cerrar definitivamente",
-    "closeForGoodConfirm": "¿Cerrar esta conversación definitivamente? Desaparece de tus dispositivos. El agente conserva su registro según su política."
+    "closeForGoodConfirm": "¿Cerrar esta conversación definitivamente? Desaparece de tus dispositivos. El agente conserva su registro según su política.",
+    "controllerOptions": "Opciones",
+    "kind": {
+      "organization": "Organización",
+      "persona": "Persona",
+      "unverified": "Sin verificar"
+    },
+    "showArchived": "Mostrar conversaciones archivadas",
+    "showActive": "Mostrar conversaciones activas"
   },
   "trust": {
     "title": "Tarjeta de confianza",
@@ -225,7 +235,12 @@
     "scan": "Escanear un código QR",
     "scanning": "Apunta la cámara al código QR",
     "cameraDenied": "Se denegó el acceso a la cámara.",
-    "error": "No se encontró este agente: {{message}}"
+    "error": "No se encontró este agente: {{message}}",
+    "pageTitle": "Añadir un agente",
+    "tileSearch": "Buscar en el Trust Graph",
+    "tileSearchHint": "Encuentra servicios verificados y sus agentes en Verana.",
+    "tileDid": "Añadir por DID o URL",
+    "tileDidHint": "Pega el DID del agente o la URL de su descriptor, o escanea un código QR."
   },
   "directory": {
     "title": "Buscar agentes",

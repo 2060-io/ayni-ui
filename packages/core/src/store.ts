@@ -3,10 +3,11 @@
  * profile. Tokens live here only; clearing site data is a complete reset (UI-SEC-003).
  */
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb'
-import type { AgentRecord, Preferences, SessionRecord, Transcript } from './types.js'
+import type { AgentRecord, ControllerRecord, Preferences, SessionRecord, Transcript } from './types.js'
 
 interface Schema extends DBSchema {
   agents: { key: string; value: AgentRecord }
+  controllers: { key: string; value: ControllerRecord }
   sessions: { key: string; value: SessionRecord; indexes: { byAgent: string } }
   transcripts: { key: string; value: Transcript }
   meta: { key: string; value: { key: string; value: unknown } }
@@ -14,6 +15,10 @@ interface Schema extends DBSchema {
 
 export interface DeviceStore {
   deviceId(): Promise<string>
+  listControllers(): Promise<ControllerRecord[]>
+  getController(did: string): Promise<ControllerRecord | undefined>
+  putController(controller: ControllerRecord): Promise<void>
+  deleteController(did: string): Promise<void>
   listAgents(): Promise<AgentRecord[]>
   getAgent(did: string): Promise<AgentRecord | undefined>
   putAgent(agent: AgentRecord): Promise<void>
@@ -36,13 +41,16 @@ export class IndexedDbStore implements DeviceStore {
 
   private open(): Promise<IDBPDatabase<Schema>> {
     if (!this.db) {
-      this.db = openDB<Schema>('hologram-ui', 1, {
-        upgrade(db) {
-          db.createObjectStore('agents', { keyPath: 'did' })
-          const sessions = db.createObjectStore('sessions', { keyPath: 'sessionId' })
-          sessions.createIndex('byAgent', 'agentDid')
-          db.createObjectStore('transcripts', { keyPath: 'sessionId' })
-          db.createObjectStore('meta', { keyPath: 'key' })
+      this.db = openDB<Schema>('hologram-ui', 2, {
+        upgrade(db, oldVersion) {
+          if (oldVersion < 1) {
+            db.createObjectStore('agents', { keyPath: 'did' })
+            const sessions = db.createObjectStore('sessions', { keyPath: 'sessionId' })
+            sessions.createIndex('byAgent', 'agentDid')
+            db.createObjectStore('transcripts', { keyPath: 'sessionId' })
+            db.createObjectStore('meta', { keyPath: 'key' })
+          }
+          if (oldVersion < 2) db.createObjectStore('controllers', { keyPath: 'did' })
         },
       })
     }
@@ -56,6 +64,18 @@ export class IndexedDbStore implements DeviceStore {
     const id = crypto.randomUUID()
     await db.put('meta', { key: 'deviceId', value: id })
     return id
+  }
+  public async listControllers() {
+    return (await this.open()).getAll('controllers')
+  }
+  public async getController(did: string) {
+    return (await this.open()).get('controllers', did)
+  }
+  public async putController(controller: ControllerRecord) {
+    await (await this.open()).put('controllers', controller)
+  }
+  public async deleteController(did: string) {
+    await (await this.open()).delete('controllers', did)
   }
   public async listAgents() {
     return (await this.open()).getAll('agents')
@@ -103,12 +123,25 @@ export class IndexedDbStore implements DeviceStore {
 /** In-memory store for tests and non-browser hosts. */
 export class MemoryDeviceStore implements DeviceStore {
   private agents = new Map<string, AgentRecord>()
+  private controllers = new Map<string, ControllerRecord>()
   private sessions = new Map<string, SessionRecord>()
   private transcripts = new Map<string, Transcript>()
   private prefs: Preferences = DEFAULT_PREFS
   private id = crypto.randomUUID()
   public async deviceId() {
     return this.id
+  }
+  public async listControllers() {
+    return [...this.controllers.values()].map((c) => structuredClone(c))
+  }
+  public async getController(did: string) {
+    return structuredClone(this.controllers.get(did))
+  }
+  public async putController(controller: ControllerRecord) {
+    this.controllers.set(controller.did, structuredClone(controller))
+  }
+  public async deleteController(did: string) {
+    this.controllers.delete(did)
   }
   public async listAgents() {
     return [...this.agents.values()].map((a) => structuredClone(a))

@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AddAgent } from './components/AddAgent.js'
+import { AddPage } from './components/AddPage.js'
 import { Column } from './components/Column.js'
 import { Conversation } from './components/Conversation.js'
-import { Details } from './components/Details.js'
+import { MessageInfo } from './components/Details.js'
 import { Directory } from './components/Directory.js'
 import { Rail } from './components/Rail.js'
 import { Settings } from './components/Settings.js'
@@ -18,12 +18,12 @@ function Shell() {
   }, [snap.prefs.theme])
   if (!snap.ready) return <div className="center">{t('app.loading')}</div>
   const showConversation = snap.view === 'conversation' && snap.selectedSessionId
-  const detailsOpen = snap.prefs.detailsOpen !== false
+  const sheet = !!snap.inspect && snap.inspect.sessionId === snap.selectedSessionId
   const classes = [
     'app',
     snap.config.singleAgent ? 'single' : '',
     showConversation ? 'show-conversation' : '',
-    detailsOpen ? '' : 'no-details',
+    sheet ? 'with-sheet' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -31,7 +31,7 @@ function Shell() {
     snap.view === 'directory' ? (
       <Directory />
     ) : snap.view === 'add' ? (
-      <AddAgent />
+      <AddPage />
     ) : snap.view === 'settings' ? (
       <Settings />
     ) : (
@@ -44,9 +44,9 @@ function Shell() {
       <section className="conversation" aria-live="off">
         {main}
       </section>
-      {detailsOpen ? (
-        <aside className="details">
-          <Details />
+      {sheet ? (
+        <aside className="details sheet-panel" aria-label={t('details.message')}>
+          <MessageInfo />
         </aside>
       ) : null}
       {snap.notice ? (

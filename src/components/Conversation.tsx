@@ -1,17 +1,7 @@
 /** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
 import { ACTIVITY, CLOSURE_REASONS } from '@2060.io/hologram-agui-profile'
 import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@2060.io/hologram-ui-core'
-import {
-  ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Menu as MenuIcon,
-  PanelRight,
-  Search,
-  ShieldCheck,
-  X,
-} from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp, Loader2, Menu as MenuIcon, Search, ShieldCheck, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
@@ -147,7 +137,6 @@ export function Conversation() {
   const attention = closed && ['supersede', 'channelClosed', 'credentialInvalid'].includes(session.closedReason ?? '')
   const reasonKey = CLOSURE_REASON_KEYS[session.closedReason ?? 'agent'] ?? 'closure.agent'
   const contextual = session.hologram?.contextualMenu.items ?? []
-  const detailsOpen = snap.prefs.detailsOpen !== false
   const me = session.principal?.displayName
   const thinking = transcript?.run && !messages.some((m) => m.role !== 'activity' && m.streaming)
   const step = (delta: number) => {
@@ -175,23 +164,6 @@ export function Conversation() {
             )}
           </span>
         </div>
-        {session.state === 'bound' && contextual.length ? (
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={t('conversation.approvals')}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <MenuIcon size={20} />
-            {session.hologram?.pendingApprovals ? (
-              <span className="badge">{session.hologram.pendingApprovals}</span>
-            ) : null}
-          </button>
-        ) : null}
-        <button type="button" className="icon-btn" aria-label={t('trust.title')} onClick={() => setTrustOpen(true)}>
-          <ShieldCheck size={20} />
-        </button>
         {session.state !== 'provisional' ? (
           <button
             type="button"
@@ -209,15 +181,20 @@ export function Conversation() {
             <Search size={20} />
           </button>
         ) : null}
-        <button
-          type="button"
-          className={['icon-btn', 'details-toggle', detailsOpen ? 'on' : ''].join(' ')}
-          aria-label={detailsOpen ? t('app.hidePanel') : t('app.showPanel')}
-          aria-pressed={detailsOpen}
-          onClick={() => void hub.toggleDetails()}
-        >
-          <PanelRight size={20} />
-        </button>
+        {session.state === 'bound' && contextual.length ? (
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={t('conversation.approvals')}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <MenuIcon size={20} />
+            {session.hologram?.pendingApprovals ? (
+              <span className="badge">{session.hologram.pendingApprovals}</span>
+            ) : null}
+          </button>
+        ) : null}
         {menuOpen ? (
           <div className="menu-popover" role="menu">
             {contextual.map((item) => (

@@ -1,16 +1,16 @@
 /**
- * The agent rail (UI-SHELL-001/002/011): pinned agents above a separator, in the order the person
- * arranged them; the others below by recency, not-linked last. Dragging an agent across the
- * separator pins or unpins it; dragging within the pinned area reorders.
+ * The controller rail (UI-SHELL-001/002/011, D32): one tile per organization or persona behind the
+ * person's agents, pinned ones above a separator; an unverified agent stands alone, greyed. Dragging a
+ * tile across the separator pins or unpins it; dragging within the pinned area reorders.
  */
-import { orderAgents } from '@2060.io/hologram-ui-core'
-import { Pin, Plus, Search, Settings as SettingsIcon } from 'lucide-react'
+import { orderControllers } from '@2060.io/hologram-ui-core'
+import { Pin, Plus, Settings as SettingsIcon } from 'lucide-react'
 import { type DragEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 
-const MIME = 'application/x-hologram-agent'
+const MIME = 'application/x-hologram-controller'
 
 export function Rail() {
   const snap = useSnapshot()
@@ -18,10 +18,11 @@ export function Rail() {
   const { t } = useTranslation()
   const [dragging, setDragging] = useState<string | null>(null)
   const [over, setOver] = useState<string | null>(null)
-  const linked = (did: string) => snap.sessions.some((s) => s.agentDid === did && s.state === 'bound')
-  const agents = orderAgents(snap.agents, (a) => linked(a.did))
-  const pinned = agents.filter((a) => a.pinned)
-  const rest = agents.filter((a) => !a.pinned)
+  const agentsOf = (did: string) => snap.agents.filter((a) => a.controllerDid === did)
+  const lastMessageAt = (did: string) => agentsOf(did).reduce((m, a) => (a.lastMessageAt > m ? a.lastMessageAt : m), '')
+  const controllers = orderControllers(snap.controllers, (c) => lastMessageAt(c.did))
+  const pinned = controllers.filter((c) => c.pinned)
+  const rest = controllers.filter((c) => !c.pinned)
 
   const accept = (e: DragEvent) => {
     if (!dragging) return
@@ -41,40 +42,41 @@ export function Rail() {
     void hub.movePin(did, zone === 'pinned', beforeDid).catch((err) => hub.notify('error', String(err.message ?? err)))
   }
 
-  const item = (a: (typeof agents)[number]) => {
-    const unread = snap.sessions.filter((s) => s.agentDid === a.did).reduce((n, s) => n + s.unreadCount, 0)
-    const waiting = snap.sessions.some((s) => s.agentDid === a.did && (s.hologram?.pendingApprovals ?? 0) > 0)
-    const selected = snap.selectedAgentDid === a.did
+  const tile = (c: (typeof controllers)[number]) => {
+    const dids = new Set(agentsOf(c.did).map((a) => a.did))
+    const unread = snap.sessions.filter((s) => dids.has(s.agentDid)).reduce((n, s) => n + s.unreadCount, 0)
+    const waiting = snap.sessions.some((s) => dids.has(s.agentDid) && (s.hologram?.pendingApprovals ?? 0) > 0)
+    const selected = snap.selectedControllerDid === c.did
     return (
       <button
-        key={a.did}
+        key={c.did}
         type="button"
         className={[
           'rail-item',
           selected ? 'selected' : '',
-          linked(a.did) ? '' : 'inactive',
-          dragging === a.did ? 'dragging' : '',
-          over === a.did && dragging && dragging !== a.did ? 'drop-before' : '',
+          c.kind === 'unverified' ? 'inactive' : '',
+          dragging === c.did ? 'dragging' : '',
+          over === c.did && dragging && dragging !== c.did ? 'drop-before' : '',
         ].join(' ')}
-        title={a.name}
-        aria-label={unread ? `${a.name}, ${t('rail.unread', { count: unread })}` : a.name}
+        title={c.kind === 'unverified' ? `${c.name} · ${t('rail.unverified')}` : c.name}
+        aria-label={unread ? `${c.name}, ${t('rail.unread', { count: unread })}` : c.name}
         aria-current={selected ? 'true' : undefined}
         draggable
         onDragStart={(e) => {
-          e.dataTransfer.setData(MIME, a.did)
+          e.dataTransfer.setData(MIME, c.did)
           e.dataTransfer.effectAllowed = 'move'
-          setDragging(a.did)
+          setDragging(c.did)
         }}
         onDragEnd={finish}
         onDragOver={(e) => {
           accept(e)
-          if (a.pinned) setOver(a.did)
+          if (c.pinned) setOver(c.did)
         }}
-        onDragLeave={() => setOver((o) => (o === a.did ? null : o))}
-        onDrop={a.pinned ? dropOn('pinned', a.did) : dropOn('rest', null)}
-        onClick={() => hub.selectAgent(a.did)}
+        onDragLeave={() => setOver((o) => (o === c.did ? null : o))}
+        onDrop={c.pinned ? dropOn('pinned', c.did) : dropOn('rest', null)}
+        onClick={() => hub.selectController(c.did)}
       >
-        <Avatar name={a.name} src={a.logoRef} />
+        <Avatar name={c.name} src={c.logoRef} />
         {unread ? <span className="badge">{unread}</span> : null}
         {waiting ? <span className="dot" aria-hidden="true" /> : null}
       </button>
@@ -82,14 +84,14 @@ export function Rail() {
   }
 
   return (
-    <nav className="rail" aria-label={t('app.agents')}>
+    <nav className="rail" aria-label={t('app.controllers')}>
       <fieldset
         className={['rail-zone', dragging ? 'droppable' : ''].join(' ')}
         aria-label={t('rail.pinned')}
         onDragOver={accept}
         onDrop={dropOn('pinned', null)}
       >
-        {pinned.map(item)}
+        {pinned.map(tile)}
       </fieldset>
       {pinned.length || dragging ? (
         <div className="rail-separator-wrap" onDragOver={accept} onDrop={dropOn('pinned', null)} aria-hidden="true">
@@ -103,10 +105,12 @@ export function Rail() {
         onDragOver={accept}
         onDrop={dropOn('rest', null)}
       >
-        {rest.map(item)}
+        {rest.map(tile)}
         <button
           type="button"
-          className="rail-item ghost"
+          className={['rail-item', 'ghost', snap.view === 'add' || snap.view === 'directory' ? 'selected' : ''].join(
+            ' '
+          )}
           title={t('app.addAgent')}
           aria-label={t('app.addAgent')}
           onClick={() => hub.setView('add')}
@@ -115,15 +119,6 @@ export function Rail() {
         </button>
       </fieldset>
       <div className="spacer" />
-      <button
-        type="button"
-        className="rail-item ghost"
-        title={t('app.findAgents')}
-        aria-label={t('app.findAgents')}
-        onClick={() => hub.setView('directory')}
-      >
-        <Search size={22} />
-      </button>
       <button
         type="button"
         className="rail-item ghost"

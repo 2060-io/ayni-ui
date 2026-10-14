@@ -14,14 +14,16 @@
     "install": "Installer",
     "installHint": "Utilisez le menu de votre navigateur pour ajouter cette application à votre écran d'accueil ou à votre dock.",
     "hidePanel": "Masquer le panneau latéral",
-    "showPanel": "Afficher le panneau latéral"
+    "showPanel": "Afficher le panneau latéral",
+    "controllers": "Organisations"
   },
   "rail": {
     "pinned": "Épinglés",
     "notLinked": "Non lié",
     "unread": "{{count}} non lu(s)",
     "pinnedHint": "Agents épinglés au-dessus de la ligne. Glissez un agent de l’autre côté pour l’épingler ou le détacher.",
-    "recent": "Récents"
+    "recent": "Récents",
+    "unverified": "non vérifié"
   },
   "column": {
     "newConversation": "Nouvelle conversation",
@@ -51,7 +53,15 @@
     "archived": "Archivées",
     "archiveAll": "Archiver toutes les conversations",
     "closeForGood": "Fermer définitivement",
-    "closeForGoodConfirm": "Fermer cette conversation définitivement ? Elle disparaît de vos appareils. L’agent conserve son enregistrement selon sa politique."
+    "closeForGoodConfirm": "Fermer cette conversation définitivement ? Elle disparaît de vos appareils. L’agent conserve son enregistrement selon sa politique.",
+    "controllerOptions": "Options",
+    "kind": {
+      "organization": "Organisation",
+      "persona": "Personne",
+      "unverified": "Non vérifié"
+    },
+    "showArchived": "Afficher les conversations archivées",
+    "showActive": "Afficher les conversations actives"
   },
   "trust": {
     "title": "Carte de confiance",
@@ -225,7 +235,12 @@
     "scan": "Scanner un code QR",
     "scanning": "Pointez la caméra vers le code QR",
     "cameraDenied": "L'accès à la caméra a été refusé.",
-    "error": "Cet agent est introuvable : {{message}}"
+    "error": "Cet agent est introuvable : {{message}}",
+    "pageTitle": "Ajouter un agent",
+    "tileSearch": "Rechercher dans le Trust Graph",
+    "tileSearchHint": "Trouvez des services vérifiés et leurs agents sur Verana.",
+    "tileDid": "Ajouter par DID ou URL",
+    "tileDidHint": "Collez le DID de l’agent ou l’URL de son descripteur, ou scannez un code QR."
   },
   "directory": {
     "title": "Trouver des agents",

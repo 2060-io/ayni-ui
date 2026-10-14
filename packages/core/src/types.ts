@@ -17,9 +17,27 @@ export interface TrustSummary {
   serviceType?: string
   description?: string
   logoUri?: string
-  operator?: { kind: string; name: string; countryCode?: string; registryId?: string; logoUri?: string }
+  operator?: {
+    kind: string
+    name: string
+    /** the ECS credential subject: the controller's DID (D32) */
+    did?: string
+    countryCode?: string
+    registryId?: string
+    logoUri?: string
+  }
   ecosystems?: { id: number; name?: string }[]
   reasons: string[]
+}
+
+/** The organization or persona behind one or more agents (D32); an unverified agent stands alone. */
+export interface ControllerRecord {
+  did: string
+  kind: 'organization' | 'persona' | 'unverified'
+  name: string
+  logoRef?: string
+  pinned: boolean
+  pinOrder: number
 }
 
 export interface AgentRecord {
@@ -29,7 +47,11 @@ export interface AgentRecord {
   name: string
   logoRef?: string
   trust: TrustSummary
+  /** the controller tile this agent files under (D32); derived from the trust result */
+  controllerDid?: string
+  /** @deprecated pinning applies to controllers since D32; kept for records written before */
   pinned: boolean
+  /** @deprecated see pinned */
   pinOrder: number
   addedAt: string
   /** most recent message in any conversation (rail order, UI-SHELL-011) */

@@ -38,7 +38,7 @@ export function Directory() {
   const sorted = [...hits].sort((a, b) => Number(b.trusted) - Number(a.trusted))
   return (
     <div className="panel">
-      <button type="button" className="btn small back" onClick={() => hub.setView('list')}>
+      <button type="button" className="btn small" onClick={() => hub.setView('add')}>
         <ArrowLeft size={16} /> {t('app.back')}
       </button>
       <h1>{t('directory.title')}</h1>

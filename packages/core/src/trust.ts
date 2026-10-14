@@ -53,6 +53,7 @@ export function summarize(result: ResolveResponse, unverified = false): TrustSum
     ? {
         kind: 'organization',
         name: String(org.name ?? ''),
+        did: typeof org.id === 'string' ? org.id : undefined,
         countryCode: org.countryCode as string | undefined,
         registryId: org.registryId as string | undefined,
         logoUri: org.logoUri as string | undefined,
@@ -61,6 +62,7 @@ export function summarize(result: ResolveResponse, unverified = false): TrustSum
       ? {
           kind: 'persona',
           name: String(persona.name ?? ''),
+          did: typeof persona.id === 'string' ? persona.id : undefined,
           countryCode: persona.countryCode as string | undefined,
           logoUri: persona.avatarUri as string | undefined,
         }

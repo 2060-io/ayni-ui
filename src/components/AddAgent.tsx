@@ -31,7 +31,7 @@ async function createDetector(): Promise<Detector | undefined> {
   }
 }
 
-export function AddAgent() {
+export function AddAgent({ embedded = false }: { embedded?: boolean }) {
   const hub = useHub()
   const { t } = useTranslation()
   const [input, setInput] = useState('')
@@ -89,11 +89,15 @@ export function AddAgent() {
     }
   }, [scanning])
   return (
-    <div className="panel">
-      <button type="button" className="btn small back" onClick={() => hub.setView('list')}>
-        <ArrowLeft size={16} /> {t('app.back')}
-      </button>
-      <h1>{t('add.title')}</h1>
+    <div className={embedded ? 'embedded' : 'panel'}>
+      {embedded ? null : (
+        <>
+          <button type="button" className="btn small back" onClick={() => hub.setView('list')}>
+            <ArrowLeft size={16} /> {t('app.back')}
+          </button>
+          <h1>{t('add.title')}</h1>
+        </>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault()

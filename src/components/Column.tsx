@@ -1,5 +1,10 @@
-/** The conversation column (UI-SHELL-002/012, UI-SESS-004/008, UI-AGENTS-005): every connection action lives here. */
-import { Archive, ChevronDown, ChevronRight, Link2, MoreVertical, Plus, ShieldCheck } from 'lucide-react'
+/**
+ * The column (UI-SHELL-001/002/012, UI-SESS-004/008/012, UI-AGENTS-005/006, D32): the selected
+ * controller's agents as collapsible cards, each with its trust icon, menu, link state, new
+ * conversation, search, and its active or archived conversations.
+ */
+import type { AgentRecord, SessionRecord } from '@2060.io/hologram-ui-core'
+import { Archive, Link2, MoreVertical, Plus, Search, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
@@ -12,7 +17,7 @@ import { useDismiss } from './useDismiss.js'
 export function Column() {
   const snap = useSnapshot()
   const hub = useHub()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
   useDismiss(
@@ -20,16 +25,82 @@ export function Column() {
     headerRef,
     useCallback(() => setMenuOpen(false), [])
   )
+  const controller = snap.controllers.find((c) => c.did === snap.selectedControllerDid)
+  if (!controller) {
+    return (
+      <aside className="column">
+        <div className="center">{snap.controllers.length ? '' : t('app.addAgent')}</div>
+      </aside>
+    )
+  }
+  const agents = snap.agents
+    .filter((a) => a.controllerDid === controller.did)
+    .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+  return (
+    <aside className="column">
+      <div className="column-header relative" ref={headerRef}>
+        <div className="row-between">
+          <h2 className="row-between controller-title" style={{ gap: 8 }}>
+            <Avatar name={controller.name} src={controller.logoRef} size={28} />
+            <span className="ellipsis">{controller.name}</span>
+          </h2>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={t('column.controllerOptions')}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <MoreVertical size={20} />
+          </button>
+        </div>
+        <div className="state">{t(`column.kind.${controller.kind}`)}</div>
+        {menuOpen ? (
+          <div className="menu-popover" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false)
+                void hub.togglePin(controller.did)
+              }}
+            >
+              {controller.pinned ? t('column.unpin') : t('column.pin')}
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <div className="list">
+        {agents.map((a) => (
+          <AgentCard key={a.did} agent={a} />
+        ))}
+      </div>
+    </aside>
+  )
+}
+
+function AgentCard({ agent }: { agent: AgentRecord }) {
+  const snap = useSnapshot()
+  const hub = useHub()
+  const { t, i18n } = useTranslation()
+  const [menuOpen, setMenuOpen] = useState(false)
   const [trustOpen, setTrustOpen] = useState(false)
   const [devicesOpen, setDevicesOpen] = useState(false)
-  const [archivedOpen, setArchivedOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const [matches, setMatches] = useState<Record<string, { snippet: string; count: number }> | null>(null)
-  const agent = snap.agents.find((a) => a.did === snap.selectedAgentDid)
-  const agentDid = agent?.did
+  const cardRef = useRef<HTMLDivElement>(null)
+  useDismiss(
+    menuOpen,
+    cardRef,
+    useCallback(() => setMenuOpen(false), [])
+  )
+  const expanded = !!snap.expandedAgents[agent.did]
+  const archivedView = !!snap.archivedView[agent.did]
+  const searchOpen = !!snap.searchOpen[agent.did]
+  const agentDid = agent.did
   // search titles and cached transcripts, debounced (UI-SHELL-015)
   useEffect(() => {
-    if (!agentDid || !filter.trim()) {
+    if (!searchOpen || !filter.trim()) {
       setMatches(null)
       return
     }
@@ -43,66 +114,56 @@ export function Column() {
       live = false
       clearTimeout(timer)
     }
-  }, [filter, agentDid, hub])
-  if (!agent) {
-    return (
-      <aside className="column">
-        <div className="center">{snap.agents.length ? '' : t('app.addAgent')}</div>
-      </aside>
-    )
-  }
-  const sessions = snap.sessions.filter(
-    (s) => s.agentDid === agent.did && (!matches || matches[s.sessionId] !== undefined)
-  )
-  // closed conversations are listed like the others: writing wakes them (D26); archived ones sit apart (D31)
-  const sorted = sessions.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
-  const open = sorted.filter((s) => !s.archived)
-  const archived = sorted.filter((s) => s.archived)
-  const bound = open.find((s) => s.state === 'bound')
+  }, [filter, searchOpen, agentDid, hub])
+  const sessions = snap.sessions
+    .filter((s) => s.agentDid === agent.did && (!matches || matches[s.sessionId] !== undefined))
+    .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+  const shown = sessions.filter((s) => !!s.archived === archivedView)
+  const bound = snap.sessions.find((s) => s.agentDid === agent.did && s.state === 'bound')
+  const unread = snap.sessions.filter((s) => s.agentDid === agent.did).reduce((n, s) => n + s.unreadCount, 0)
+  const selected = snap.selectedAgentDid === agent.did
   const run = (fn: () => Promise<unknown>) => {
     setMenuOpen(false)
     fn().catch((e) => hub.notify('error', String(e.message ?? e)))
   }
+  const TrustIcon =
+    agent.trust.result === 'trusted' ? ShieldCheck : agent.trust.result === 'untrusted' ? ShieldAlert : ShieldQuestion
   return (
-    <aside className="column">
-      <div className="column-header relative" ref={headerRef}>
-        <div className="row-between">
-          <h2 className="row-between" style={{ gap: 8 }}>
-            <Avatar name={agent.name} src={agent.logoRef} size={28} /> {agent.name}
-          </h2>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={t('column.options')}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <MoreVertical size={20} />
-          </button>
-        </div>
-        <div className="state">
-          {bound?.principal ? (
-            <span>
-              <Link2 size={12} aria-hidden="true" />{' '}
-              {t('column.linkedSince', { time: formatTime(bound.createdAt, i18n.language) })}
-            </span>
-          ) : (
-            t('column.notLinked')
-          )}
-        </div>
-        <div className="column-actions">
-          <button type="button" className="btn primary small" onClick={() => run(() => hub.newConversation(agent.did))}>
-            <Plus size={16} /> {t('column.newConversation')}
-          </button>
-          <button type="button" className="btn small" onClick={() => setTrustOpen(true)}>
-            <ShieldCheck size={16} /> {t('column.trustCard')}
-          </button>
-        </div>
+    <section className={['agent-card', selected ? 'selected' : '', expanded ? 'open' : ''].join(' ')} ref={cardRef}>
+      <div className="agent-row relative">
+        <button
+          type="button"
+          className="agent-toggle"
+          aria-expanded={expanded}
+          onClick={() => {
+            if (!selected) hub.selectAgent(agent.did)
+            else hub.toggleAgentExpanded(agent.did)
+          }}
+        >
+          <Avatar name={agent.name} src={agent.logoRef} size={28} />
+          <span className="ellipsis agent-name">{agent.name}</span>
+          {!expanded && unread ? <span className="count">{unread}</span> : null}
+        </button>
+        <button
+          type="button"
+          className={`icon-btn small trust ${agent.trust.result}`}
+          aria-label={t('trust.title')}
+          title={t(`trust.${agent.trust.result}`)}
+          onClick={() => setTrustOpen(true)}
+        >
+          <TrustIcon size={18} />
+        </button>
+        <button
+          type="button"
+          className="icon-btn small"
+          aria-label={t('column.options')}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <MoreVertical size={18} />
+        </button>
         {menuOpen ? (
-          <div className="menu-popover" role="menu">
-            <button type="button" role="menuitem" onClick={() => run(() => hub.togglePin(agent.did))}>
-              {agent.pinned ? t('column.unpin') : t('column.pin')}
-            </button>
+          <div className="menu-popover" role="menu" style={{ top: 40 }}>
             {bound ? (
               <button
                 type="button"
@@ -119,14 +180,22 @@ export function Column() {
                 {t('column.linkAgain')}
               </button>
             )}
-            <button type="button" role="menuitem" onClick={() => run(() => hub.archiveAll(agent.did))}>
-              {t('column.archiveAll')}
-            </button>
             {agent.deviceSecret ? (
               <button type="button" role="menuitem" onClick={() => run(() => hub.disconnectAgent(agent.did))}>
                 {t('column.disconnect')}
               </button>
             ) : null}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false)
+                hub.toggleArchivedView(agent.did)
+                if (!expanded) hub.toggleAgentExpanded(agent.did)
+              }}
+            >
+              {archivedView ? t('column.showActive') : t('column.showArchived')}
+            </button>
             <button
               type="button"
               role="menuitem"
@@ -138,70 +207,90 @@ export function Column() {
           </div>
         ) : null}
       </div>
-      <div style={{ padding: '8px 12px' }}>
-        <input
-          className="input"
-          type="search"
-          placeholder={t('column.search')}
-          aria-label={t('column.search')}
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-      </div>
-      <div className="list">
-        {open.length === 0 && archived.length === 0 ? (
-          <div className="center">{matches ? t('column.noMatch') : t('column.noConversations')}</div>
-        ) : null}
-        {open.map((s) => (
-          <ConversationRow
-            key={s.sessionId}
-            id={s.sessionId}
-            selected={snap.selectedSessionId === s.sessionId}
-            match={matches?.[s.sessionId]}
-            query={matches ? filter : undefined}
-          />
-        ))}
-        {archived.length ? (
-          <button
-            type="button"
-            className="section-toggle"
-            aria-expanded={archivedOpen || !!matches}
-            onClick={() => setArchivedOpen((v) => !v)}
-          >
-            {archivedOpen || matches ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            <Archive size={14} aria-hidden="true" /> {t('column.archived')} ({archived.length})
-          </button>
-        ) : null}
-        {archivedOpen || matches
-          ? archived.map((s) => (
-              <ConversationRow
-                key={s.sessionId}
-                id={s.sessionId}
-                selected={snap.selectedSessionId === s.sessionId}
-                match={matches?.[s.sessionId]}
-                query={matches ? filter : undefined}
-              />
-            ))
-          : null}
-      </div>
+      {expanded ? (
+        <div className="agent-body">
+          <div className="agent-meta">
+            <span className="state">
+              {bound?.principal ? (
+                <>
+                  <Link2 size={12} aria-hidden="true" />{' '}
+                  {t('column.linkedSince', { time: formatTime(bound.createdAt, i18n.language) })}
+                </>
+              ) : (
+                t('column.notLinked')
+              )}
+            </span>
+            <span className="agent-tools">
+              <button
+                type="button"
+                className="icon-btn small"
+                aria-label={t('column.newConversation')}
+                title={t('column.newConversation')}
+                onClick={() => run(() => hub.newConversation(agent.did))}
+              >
+                <Plus size={18} />
+              </button>
+              <button
+                type="button"
+                className={['icon-btn', 'small', searchOpen ? 'on' : ''].join(' ')}
+                aria-label={t('column.search')}
+                aria-pressed={searchOpen}
+                title={t('column.search')}
+                onClick={() => {
+                  hub.toggleAgentSearch(agent.did)
+                  setFilter('')
+                }}
+              >
+                <Search size={18} />
+              </button>
+            </span>
+          </div>
+          {searchOpen ? (
+            <input
+              className="input"
+              type="search"
+              placeholder={t('column.search')}
+              aria-label={t('column.search')}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+          ) : null}
+          {archivedView ? (
+            <div className="section-label">
+              <Archive size={12} aria-hidden="true" /> {t('column.archived')}
+            </div>
+          ) : null}
+          {shown.length === 0 ? (
+            <div className="muted empty">{matches ? t('column.noMatch') : t('column.noConversations')}</div>
+          ) : null}
+          {shown.map((s) => (
+            <ConversationRow
+              key={s.sessionId}
+              session={s}
+              selected={snap.selectedSessionId === s.sessionId}
+              match={matches?.[s.sessionId]}
+              query={matches ? filter : undefined}
+            />
+          ))}
+        </div>
+      ) : null}
       {trustOpen ? <TrustCardDialog agent={agent} onClose={() => setTrustOpen(false)} /> : null}
       {devicesOpen ? <DevicesDialog agent={agent} onClose={() => setDevicesOpen(false)} /> : null}
-    </aside>
+    </section>
   )
 }
 
 function ConversationRow({
-  id,
+  session: s,
   selected,
   match,
   query,
 }: {
-  id: string
+  session: SessionRecord
   selected: boolean
   match?: { snippet: string; count: number }
   query?: string
 }) {
-  const snap = useSnapshot()
   const hub = useHub()
   const { t, i18n } = useTranslation()
   const [menu, setMenu] = useState(false)
@@ -211,9 +300,11 @@ function ConversationRow({
     rowRef,
     useCallback(() => setMenu(false), [])
   )
-  const s = snap.sessions.find((x) => x.sessionId === id)
-  if (!s) return null
   const title = s.title || t('column.untitled')
+  const act = (fn: () => Promise<unknown>) => {
+    setMenu(false)
+    fn().catch((e) => hub.notify('error', String(e.message ?? e)))
+  }
   return (
     <div className="relative" ref={rowRef}>
       <button
@@ -221,7 +312,6 @@ function ConversationRow({
         className={['conv-row', selected ? 'selected' : ''].join(' ')}
         onClick={() => {
           hub.selectSession(s.sessionId)
-          // an active search follows the person into the conversation (UI-CONV-020)
           if (query?.trim() && match?.count) hub.openSearch(s.sessionId, query)
         }}
         onContextMenu={(e) => {
@@ -264,35 +354,30 @@ function ConversationRow({
             onClick={() => {
               setMenu(false)
               const next = prompt(t('column.rename'), title)
-              if (next !== null) void hub.renameConversation(s.sessionId, next)
+              if (next !== null) act(() => hub.renameConversation(s.sessionId, next))
             }}
           >
             {t('column.rename')}
           </button>
           {s.conversationId ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenu(false)
-                void hub.setArchived(s.sessionId, !s.archived).catch((e) => hub.notify('error', String(e.message ?? e)))
-              }}
-            >
+            <button type="button" role="menuitem" onClick={() => act(() => hub.setArchived(s.sessionId, !s.archived))}>
               {s.archived ? t('column.unarchive') : t('column.archive')}
             </button>
           ) : null}
-          <button
-            type="button"
-            role="menuitem"
-            className="danger"
-            onClick={() => {
-              setMenu(false)
-              if (!confirm(t('column.closeForGoodConfirm'))) return
-              void hub.closeForGood(s.sessionId).catch((e) => hub.notify('error', String(e.message ?? e)))
-            }}
-          >
-            {t('column.closeForGood')}
-          </button>
+          {s.archived ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="danger"
+              onClick={() => {
+                setMenu(false)
+                if (!confirm(t('column.closeForGoodConfirm'))) return
+                act(() => hub.closeForGood(s.sessionId))
+              }}
+            >
+              {t('column.closeForGood')}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

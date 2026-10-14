@@ -1,8 +1,26 @@
 /** Agents list operations (UI-AGENTS-001..005) over the device store. */
 import type { AgentDescriptor } from '@2060.io/hologram-agui-profile'
+import { controllerOf } from './index.js'
 import type { DeviceStore } from './store.js'
 import { discoverAgent, resolveTrust } from './trust.js'
 import type { AgentRecord, TrustSummary } from './types.js'
+
+/** Files the agent under its controller, creating or refreshing the controller record (D32). */
+export async function fileUnderController(store: DeviceStore, agent: AgentRecord): Promise<AgentRecord> {
+  const c = controllerOf(agent)
+  const existing = await store.getController(c.did)
+  await store.putController({
+    did: c.did,
+    kind: c.kind,
+    name: c.name,
+    logoRef: c.logoRef,
+    pinned: existing?.pinned ?? false,
+    pinOrder: existing?.pinOrder ?? 0,
+  })
+  const filed = { ...agent, controllerDid: c.did }
+  await store.putAgent(filed)
+  return filed
+}
 
 export async function addAgent(
   store: DeviceStore,
@@ -26,9 +44,10 @@ export async function addAgent(
     addedAt: existing?.addedAt ?? new Date().toISOString(),
     lastMessageAt: existing?.lastMessageAt ?? '',
     trustAcknowledged: existing?.trustAcknowledged,
+    deviceHandle: existing?.deviceHandle,
+    deviceSecret: existing?.deviceSecret,
   }
-  await store.putAgent(record)
-  return record
+  return fileUnderController(store, record)
 }
 
 export async function recheckTrust(
@@ -39,7 +58,7 @@ export async function recheckTrust(
 ): Promise<TrustSummary> {
   const trust = await resolveTrust(indexerUrl, agent.did, fetchFn)
   const changed = trust.result !== agent.trust.result
-  await store.putAgent({
+  await fileUnderController(store, {
     ...agent,
     trust,
     trustAcknowledged: changed ? false : agent.trustAcknowledged,

@@ -32,3 +32,37 @@ export function orderAgents<T extends { pinned: boolean; pinOrder: number; lastM
   return [...pinned, ...active, ...inactive]
 }
 export * from './search.js'
+
+/** The controller an agent files under (D32): the ECS credential subject, or the agent itself when unverified. */
+export function controllerOf(agent: {
+  did: string
+  name: string
+  logoRef?: string
+  trust: { result: string; operator?: { kind: string; name: string; did?: string; logoUri?: string } }
+}): { did: string; kind: 'organization' | 'persona' | 'unverified'; name: string; logoRef?: string } {
+  const op = agent.trust.operator
+  if (agent.trust.result === 'trusted' && op?.did)
+    return {
+      did: op.did,
+      kind: op.kind === 'persona' ? 'persona' : 'organization',
+      name: op.name || agent.name,
+      logoRef: op.logoUri,
+    }
+  return { did: agent.did, kind: 'unverified', name: agent.name, logoRef: agent.logoRef }
+}
+
+/** Rail order for controllers (UI-SHELL-011): pinned in the person's order, then by activity, then unverified. */
+export function orderControllers<T extends { did: string; kind: string; pinned: boolean; pinOrder: number }>(
+  controllers: T[],
+  lastMessageAt: (c: T) => string
+): T[] {
+  const pinned = controllers.filter((c) => c.pinned).sort((a, b) => a.pinOrder - b.pinOrder)
+  const rest = controllers.filter((c) => !c.pinned)
+  const verified = rest
+    .filter((c) => c.kind !== 'unverified')
+    .sort((a, b) => lastMessageAt(b).localeCompare(lastMessageAt(a)))
+  const unverified = rest
+    .filter((c) => c.kind === 'unverified')
+    .sort((a, b) => lastMessageAt(b).localeCompare(lastMessageAt(a)))
+  return [...pinned, ...verified, ...unverified]
+}

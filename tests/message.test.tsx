@@ -141,7 +141,9 @@ describe('conversation surface', () => {
     expect(el.querySelector('.msg.user .quote-text')?.textContent).toBe('Order 4471 has two invoices.')
     expect(el.querySelector('.reply-strip .reply-text')?.textContent).toBe('Order 4471 has two invoices.')
     expect(el.querySelector('.conv-sub')?.textContent).toContain('Northwind Support')
-    expect(el.querySelector('.details-toggle')).not.toBeNull()
+    expect(el.querySelector('.details-toggle')).toBeNull()
+    expect(el.querySelector('[aria-label="Search in conversation"]')).not.toBeNull()
+    expect(el.querySelector('[aria-label="Trust card"]')).toBeNull()
     expect(el.querySelectorAll('.tools').length).toBe(2)
   })
 
