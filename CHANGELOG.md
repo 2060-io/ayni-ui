@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/2060-io/ayni-ui/compare/v0.2.0...v0.3.0) (2026-10-14)
+
+
+### Features
+
+* **chart:** ingress with cert-manager and nginx ([edca898](https://github.com/2060-io/ayni-ui/commit/edca8987cf9c450c34e8cd092c43cf52eb35dea4))
+* **chart:** ingress with cert-manager and nginx ([70df6a4](https://github.com/2060-io/ayni-ui/commit/70df6a4fdc6dfdada014eae0e40105fb51416699))
+
 ## [0.2.0](https://github.com/2060-io/ayni-ui/compare/v0.1.0...v0.2.0) (2026-10-14)
 
 
