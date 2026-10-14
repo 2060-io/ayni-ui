@@ -5,14 +5,16 @@ import { Column } from './components/Column.js'
 import { Conversation } from './components/Conversation.js'
 import { MessageInfo } from './components/Details.js'
 import { Directory } from './components/Directory.js'
+import { ProofOfTrust } from './components/ProofOfTrust.js'
 import { Rail } from './components/Rail.js'
 import { Settings } from './components/Settings.js'
 import { Splitter } from './components/Splitter.js'
 import type { Hub } from './state/hub.js'
-import { HubContext, useSnapshot } from './state/useHub.js'
+import { HubContext, useHub, useSnapshot } from './state/useHub.js'
 
 function Shell() {
   const snap = useSnapshot()
+  const hub = useHub()
   const { t } = useTranslation()
   useEffect(() => {
     document.documentElement.dataset.theme = snap.prefs.theme === 'system' ? '' : snap.prefs.theme
@@ -33,7 +35,9 @@ function Shell() {
     root.setProperty('--accent-contrast', luminance > 0.4 ? '#111827' : '#ffffff')
   }, [snap.prefs.accent])
   if (!snap.ready) return <div className="center">{t('app.loading')}</div>
-  const showConversation = snap.view === 'conversation' && snap.selectedSessionId
+  // at phone width the conversation area takes the screen for every view but the list
+  const showConversation = snap.view !== 'list' && (snap.view !== 'conversation' || snap.selectedSessionId)
+  const trustAgent = snap.view === 'trust' ? snap.agents.find((a) => a.did === snap.trustFor?.did) : undefined
   const sheet = !!snap.inspect && snap.inspect.sessionId === snap.selectedSessionId
   const classes = [
     'app',
@@ -44,7 +48,9 @@ function Shell() {
     .filter(Boolean)
     .join(' ')
   const main =
-    snap.view === 'directory' ? (
+    snap.view === 'trust' && trustAgent ? (
+      <ProofOfTrust agent={trustAgent} connect={!!snap.trustFor?.connect} onClose={() => hub.closeTrust()} />
+    ) : snap.view === 'directory' ? (
       <Directory />
     ) : snap.view === 'add' ? (
       <AddPage />

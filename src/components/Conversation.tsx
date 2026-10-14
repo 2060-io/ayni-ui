@@ -13,14 +13,12 @@ import { Composer } from './Composer.js'
 import { type HighlightSpec, highlight } from './Highlight.js'
 import { Markdown } from './Markdown.js'
 import { MessageTools, type Popover, plainText, ReactionPill, useLongPress } from './MessageActions.js'
-import { TrustCardDialog } from './TrustCard.js'
 import { useDismiss } from './useDismiss.js'
 
 export function Conversation() {
   const snap = useSnapshot()
   const hub = useHub()
   const { t } = useTranslation()
-  const [trustOpen, setTrustOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const headerRef = useRef<HTMLElement>(null)
   useDismiss(
@@ -120,10 +118,9 @@ export function Conversation() {
         {first && !snap.sessions.some((s) => s.agentDid === first.did) ? (
           <div>
             <p>{first.name}</p>
-            <button type="button" className="btn primary" onClick={() => setTrustOpen(true)}>
+            <button type="button" className="btn primary" onClick={() => hub.showTrust(first.did, true)}>
               <ShieldCheck size={16} /> {t('trust.connect')}
             </button>
-            {trustOpen ? <TrustCardDialog agent={first} connect onClose={() => setTrustOpen(false)} /> : null}
           </div>
         ) : null}
       </div>
@@ -375,7 +372,6 @@ export function Conversation() {
           ) : null}
         </>
       )}
-      {trustOpen ? <TrustCardDialog agent={agent} onClose={() => setTrustOpen(false)} /> : null}
       <span className="sr-only">{CLOSURE_REASONS.length}</span>
     </>
   )

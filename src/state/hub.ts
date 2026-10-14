@@ -34,7 +34,7 @@ import {
 } from '@2060.io/hologram-ui-core'
 import { loadConfig } from './config.js'
 
-export type View = 'list' | 'conversation' | 'directory' | 'add' | 'settings'
+export type View = 'list' | 'conversation' | 'directory' | 'add' | 'settings' | 'trust'
 
 export interface Snapshot {
   ready: boolean
@@ -70,6 +70,8 @@ export interface Snapshot {
   loadingOlder: Record<string, boolean>
   /** in-conversation search, per session (UI-CONV-020): the query and the current hit */
   search: Record<string, { query: string; current: number } | undefined>
+  /** the Proof of Trust shown in the conversation area (D33): which agent, and whether a Connect follows */
+  trustFor: { did: string; connect: boolean } | null
 }
 
 type Listener = () => void
@@ -111,6 +113,7 @@ export class Hub {
       inspect: null,
       loadingOlder: {},
       search: {},
+      trustFor: null,
     }
   }
 
@@ -292,6 +295,15 @@ export class Hub {
 
   public setView(view: View): void {
     this.set({ view })
+  }
+
+  /** The Proof of Trust takes the conversation area (D33, UI-TRUST-002). */
+  public showTrust(did: string, connect = false): void {
+    this.set({ view: 'trust', trustFor: { did, connect } })
+  }
+
+  public closeTrust(): void {
+    this.set({ view: this.snapshot.selectedSessionId ? 'conversation' : 'list', trustFor: null })
   }
 
   /**

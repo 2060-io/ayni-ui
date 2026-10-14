@@ -29,7 +29,6 @@ import {
   X,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
@@ -88,9 +87,9 @@ export function ProofOfTrust({
   const trusted = verdict === 'trusted'
   const warnAllowed = snap.config.trustPolicy === 'warn'
 
-  const body = (
-    <div className="pot-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <section className="pot" role="dialog" aria-modal="true" aria-label={t('pot.title')}>
+  return (
+    <div className="pot-view">
+      <section className="pot" aria-label={t('pot.title')}>
         <header className="pot-head">
           <span className={`pot-dot ${verdict}`} aria-hidden="true" />
           <code className="pot-did" title={agent.did}>
@@ -265,8 +264,6 @@ export function ProofOfTrust({
       </section>
     </div>
   )
-  const host = document.querySelector('.conversation')
-  return host ? createPortal(body, host) : body
 }
 
 function Section({

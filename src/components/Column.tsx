@@ -22,7 +22,6 @@ import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 import { DevicesDialog } from './Devices.js'
-import { TrustCardDialog } from './TrustCard.js'
 import { useDismiss } from './useDismiss.js'
 
 export function Column() {
@@ -105,7 +104,6 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
   const hub = useHub()
   const { t, i18n } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [trustOpen, setTrustOpen] = useState(false)
   const [devicesOpen, setDevicesOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const [matches, setMatches] = useState<Record<string, { snippet: string; count: number }> | null>(null)
@@ -176,7 +174,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
               className={`trust-mark ${agent.trust.result}`}
               aria-label={t('trust.title')}
               title={t(`trust.${agent.trust.result}`)}
-              onClick={() => setTrustOpen(true)}
+              onClick={() => hub.showTrust(agent.did)}
             >
               <TrustIcon size={16} />
             </button>
@@ -317,7 +315,6 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
           ))}
         </div>
       ) : null}
-      {trustOpen ? <TrustCardDialog agent={agent} onClose={() => setTrustOpen(false)} /> : null}
       {devicesOpen ? <DevicesDialog agent={agent} onClose={() => setDevicesOpen(false)} /> : null}
     </section>
   )
