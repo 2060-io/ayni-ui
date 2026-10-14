@@ -586,6 +586,16 @@ export class Hub {
     return next
   }
 
+  /** Runs after any list reconciliation in flight, so a stale list cannot overwrite what `fn` writes. */
+  private afterSync<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.syncing.then(fn)
+    this.syncing = next.then(
+      () => undefined,
+      () => undefined
+    )
+    return next
+  }
+
   private async syncConversationsNow(agentDid: string): Promise<void> {
     const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
     if (!bound) return
@@ -713,16 +723,20 @@ export class Hub {
     if (!session?.conversationId) throw new Error('conversation not known to the agent yet')
     const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
     await client.patchConversation(token, session.conversationId, { state: archived ? 'archived' : 'active' })
-    const current = this.snapshot.sessions.find((s) => s.sessionId === sessionId) ?? session
-    if (archived) this.stopLeading(sessionId)
-    await this.saveSession({
-      ...current,
-      archived,
-      state: archived ? 'closed' : current.state,
-      sessionToken: archived ? null : current.sessionToken,
-      binding: archived ? undefined : current.binding,
+    // behind any list refresh in flight: a reply fetched before the change must not flip the row back
+    await this.afterSync(async () => {
+      const current = this.snapshot.sessions.find((s) => s.sessionId === sessionId) ?? session
+      if (archived) this.stopLeading(sessionId)
+      await this.saveSession({
+        ...current,
+        archived,
+        state: archived ? 'closed' : current.state,
+        sessionToken: archived ? null : current.sessionToken,
+        binding: archived ? undefined : current.binding,
+      })
     })
     if (archived && this.snapshot.selectedSessionId === sessionId) this.selectAgent(session.agentDid)
+    void this.syncConversations(session.agentDid).catch(() => undefined)
   }
 
   public async archiveAll(agentDid: string): Promise<void> {
@@ -738,7 +752,8 @@ export class Hub {
       const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
       await client.deleteConversation(token, session.conversationId)
     }
-    await this.closeConversation(sessionId, true)
+    await this.afterSync(() => this.closeConversation(sessionId, true))
+    void this.syncConversations(session.agentDid).catch(() => undefined)
   }
 
   /**
