@@ -17,7 +17,7 @@ the wire contract is the [Ayni AG-UI Profile v3](https://github.com/2060-io/ayni
 | `src/i18n/` | en, es, fr, pt | UI-I18N-003 |
 | `public/` | `config.json` (runtime), `brand/` (name, logo, colours, links), the web app manifest | UI-PLAT-001/004, UI-THEME-001/002 |
 | `docker/`, `Dockerfile` | static files behind nginx; `config.json` and the CSP rendered from the environment at start | UI-PLAT-004, UI-SEC-001 |
-| `charts/ayni-ui/` | Helm chart (`namespace` value, ingress) | |
+| `charts/ayni-ui/` | Helm chart `ayni-ui-chart` (`namespace` value, ingress) | |
 
 [DECISIONS.md](DECISIONS.md) records the implementation decisions.
 
@@ -64,7 +64,7 @@ docker run --rm -p 8080:8080 -e DEFAULT_AGENT=http://localhost:3020 io2060/ayni-
   once the repository variable `CD_ENABLED` is `true`:
   - every push with releasable commits publishes a **dev prerelease** `vX.Y.Z-dev` (semantic-release),
     the image `io2060/ayni-ui:vX.Y.Z-dev` with the floating `dev`, `vX-dev`, `vX.Y-dev` tags from
-    `main`, and the Helm chart `oci://docker.io/io2060/ayni-ui` at the same version;
+    `main`, and the Helm chart `oci://docker.io/io2060/ayni-ui-chart` at the same version;
   - **release-please** keeps a Release PR open on `main`; merging it creates the stable tag `vX.Y.Z`,
     the GitHub release with `CHANGELOG.md`, the image tags `vX.Y.Z`, `vX.Y`, `vX` and `latest`, the
     chart at `vX.Y.Z`, and a Discord announcement.
