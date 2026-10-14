@@ -28,6 +28,7 @@
   --rail: 64px;
   --column: 300px;
   --details: 320px;
+  --header: 64px;
   --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
@@ -347,8 +348,12 @@ fieldset.quick {
   background: var(--bg);
 }
 .column-header {
-  padding: 12px;
+  height: var(--header);
+  padding: 0 8px 0 12px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .column-header h2 {
   margin: 0;
@@ -432,9 +437,9 @@ fieldset.quick {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--border);
-  min-height: 56px;
+  height: var(--header);
 }
 .conv-header h1 {
   font-size: 16px;
