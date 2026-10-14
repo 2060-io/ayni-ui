@@ -484,7 +484,7 @@ export class Hub {
   }
 
   /** Connect: a provisional session with binding material (UI-BIND-001). */
-  public async connect(agentDid: string, resume?: ResumeTarget): Promise<SessionRecord> {
+  public async connect(agentDid: string, resume?: ResumeTarget, fresh = false): Promise<SessionRecord> {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent) throw new Error('agent not found')
     if (!this.canConnect(agent)) throw new Error('agent is not trusted')
@@ -498,7 +498,8 @@ export class Hub {
       agent.deviceHandle,
       resume?.sessionId,
       agent.deviceSecret,
-      resume?.conversationId
+      resume?.conversationId,
+      fresh
     )
     if (created.pairing) {
       await this.store.putAgent({
@@ -513,7 +514,7 @@ export class Hub {
         deviceSecret: created.deviceSecret,
       })
     }
-    const old = resume ? this.snapshot.sessions.find((x) => x.sessionId === resume.sessionId) : undefined
+    const old = this.previousRecord(resume)
     const bound = created.state === 'bound'
     const session: SessionRecord = {
       sessionId: created.sessionId,
@@ -537,7 +538,10 @@ export class Hub {
       resumedFromSessionId: created.resumedFromSessionId ?? resume?.sessionId,
       pendingText: bound ? undefined : resume?.text,
     }
-    if (old) session.title = old.title
+    if (old) {
+      session.title = old.title
+      session.archived = old.archived
+    }
     await this.store.putSession(session)
     await this.store.putTranscript(await this.inheritTranscript(session, old))
     await this.reload()
@@ -550,6 +554,14 @@ export class Hub {
       if (resume?.text) await this.send(session.sessionId, resume.text)
     }
     return session
+  }
+
+  /** The local record a new session continues: a session of ours, or the placeholder of a listed conversation. */
+  private previousRecord(resume?: ResumeTarget): SessionRecord | undefined {
+    if (!resume) return undefined
+    return this.snapshot.sessions.find(
+      (x) => x.sessionId === resume.sessionId || (!!resume.conversationId && x.sessionId === resume.conversationId)
+    )
   }
 
   /**
@@ -685,8 +697,9 @@ export class Hub {
 
   /** New conversation: a sibling when a bound one exists on this device, else the binding flow (UI-SESS-008). */
   public async newConversation(agentDid: string, resume?: ResumeTarget): Promise<SessionRecord> {
+    const fresh = !resume?.sessionId && !resume?.conversationId
     const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
-    if (!bound) return this.connect(agentDid, resume)
+    if (!bound) return this.connect(agentDid, resume, fresh)
     const { client, token } = this.clientOf(bound)
     const created = await client.create(
       { ...CLIENT, platform: platformDescription() },
@@ -695,9 +708,10 @@ export class Hub {
       undefined,
       resume?.sessionId,
       undefined,
-      resume?.conversationId
+      resume?.conversationId,
+      fresh
     )
-    const old = resume ? this.snapshot.sessions.find((x) => x.sessionId === resume.sessionId) : undefined
+    const old = this.previousRecord(resume)
     const session: SessionRecord = {
       sessionId: created.sessionId,
       agentDid,
@@ -717,7 +731,10 @@ export class Hub {
       conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
       resumedFromSessionId: created.resumedFromSessionId,
     }
-    if (old) session.title = old.title
+    if (old) {
+      session.title = old.title
+      session.archived = old.archived
+    }
     await this.store.putSession(session)
     await this.store.putTranscript(await this.inheritTranscript(session, old))
     await this.reload()
@@ -725,6 +742,7 @@ export class Hub {
     this.selectSession(session.sessionId)
     void this.lead(session.sessionId)
     if (resume?.conversationId || resume?.sessionId) await this.loadHistory(session.sessionId).catch(() => undefined)
+    void this.syncConversations(agentDid).catch(() => undefined)
     if (resume?.text) await this.send(session.sessionId, resume.text)
     return session
   }

@@ -77,7 +77,8 @@ export class ProfileClient {
     deviceHandle?: string,
     resumeSessionId?: string,
     deviceProof?: string,
-    conversationId?: string
+    conversationId?: string,
+    newConversation = false
   ): Promise<CreateSessionResponse> {
     const response = await this.fetchFn(this.url(), {
       method: 'POST',
@@ -88,6 +89,7 @@ export class ProfileClient {
         ...(deviceHandle && !siblingOfToken ? { deviceHandle } : {}),
         ...(deviceHandle && deviceProof && !siblingOfToken ? { deviceProof } : {}),
         ...(conversationId ? { conversationId } : resumeSessionId ? { resumeSessionId } : {}),
+        ...(newConversation ? { newConversation: true } : {}),
       }),
     })
     if (!response.ok) throw await parseError(response)
