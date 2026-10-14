@@ -31,7 +31,7 @@ function useObjectUrl(sessionId: string, attachmentId: string | undefined, enabl
 export function AttachmentView({
   sessionId,
   attachment,
-  mine,
+  mine: _mine,
 }: {
   sessionId: string
   attachment: AttachmentActivity
@@ -49,7 +49,7 @@ export function AttachmentView({
   const hub = useHub()
   if (attachment.type === 'image') {
     return (
-      <figure className={`msg ${mine ? 'user' : 'assistant'}`} style={{ padding: 6 }}>
+      <figure className="attachment image">
         {full && fullUrl ? (
           <img
             className="img-full"
@@ -76,13 +76,15 @@ export function AttachmentView({
         ) : (
           <span className="muted">{attachment.textRepr}</span>
         )}
-        <figcaption className="meta">{attachment.textRepr}</figcaption>
+        {attachment.textRepr && !/^\[image/.test(attachment.textRepr) ? (
+          <figcaption className="meta">{attachment.textRepr}</figcaption>
+        ) : null}
       </figure>
     )
   }
   if (attachment.type === 'voice') {
     return (
-      <div className={`msg voice-note ${mine ? 'user' : 'assistant'}`}>
+      <div className="attachment voice-note">
         {fullUrl ? (
           <audio controls src={fullUrl} aria-label={attachment.textRepr}>
             <track kind="captions" />
@@ -99,7 +101,7 @@ export function AttachmentView({
   }
   if (attachment.type === 'video') {
     return (
-      <div className={`msg ${mine ? 'user' : 'assistant'}`} style={{ padding: 6 }}>
+      <div className="attachment video">
         {fullUrl ? (
           <video controls src={fullUrl} style={{ maxWidth: '100%' }} aria-label={attachment.textRepr}>
             <track kind="captions" />
@@ -111,7 +113,7 @@ export function AttachmentView({
     )
   }
   return (
-    <div className={`msg ${mine ? 'user' : 'assistant'}`}>
+    <div className="attachment file">
       <div className="row-between" style={{ gap: 10 }}>
         <FileText size={18} aria-hidden="true" />
         <span>

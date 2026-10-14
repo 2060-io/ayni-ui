@@ -428,14 +428,14 @@ function Message({
     switch (m.activityType) {
       case ACTIVITY.menu:
         return <MenuCard sessionId={sessionId} menu={m.content as never} />
-      case ACTIVITY.attachment:
+      case ACTIVITY.attachment: {
+        const mine = (m.content as { role?: string }).role === 'user'
         return (
-          <AttachmentView
-            sessionId={sessionId}
-            attachment={m.content as never}
-            mine={(m.content as { role?: string }).role === 'user'}
-          />
+          <div className={['row', mine ? 'mine' : 'theirs'].join(' ')}>
+            <AttachmentView sessionId={sessionId} attachment={m.content as never} mine={mine} />
+          </div>
         )
+      }
       case ACTIVITY.approval:
         return <ApprovalCard sessionId={sessionId} approval={m.content as never} />
       case ACTIVITY.capability:
