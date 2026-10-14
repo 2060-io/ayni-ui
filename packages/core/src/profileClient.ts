@@ -1,5 +1,6 @@
-/** Client of the Hologram AG-UI Profile v3 endpoints (profile sections 3, 6, 8, 9). */
+/** Client of the Ayni AG-UI Profile v3 endpoints (profile sections 3, 6, 8, 9). */
 import type {
+  AyniAction,
   BindingMaterial,
   ClientDescription,
   ConversationPatch,
@@ -7,10 +8,9 @@ import type {
   CreateSessionResponse,
   DevicesResponse,
   HistoryPage,
-  HologramAction,
   SessionStatus,
   UploadResponse,
-} from '@2060.io/hologram-agui-profile'
+} from '@2060.io/ayni-agui-profile'
 import { readSse } from './sse.js'
 
 export class ProfileError extends Error {
@@ -31,7 +31,7 @@ export type AgUiEvent = Record<string, unknown> & { type: string }
 export interface RunInput {
   runId: string
   text?: string
-  action?: HologramAction
+  action?: AyniAction
   resume?: { interruptId: string; status: 'resolved' | 'cancelled'; payload?: unknown }[]
 }
 
@@ -202,7 +202,7 @@ export class ProfileClient {
       messages: input.text ? [{ id: `u_${input.runId}`, role: 'user', content: input.text }] : [],
       tools: [],
       context: [],
-      forwardedProps: input.action ? { hologram: input.action } : undefined,
+      forwardedProps: input.action ? { ayni: input.action } : undefined,
       resume: input.resume,
     }
     const response = await this.fetchFn(this.url(`/${sessionId}/runs`), {

@@ -2,7 +2,7 @@
  * Trust before binding (D4, UI-TRUST-001/002/005): descriptor discovery from a URL, a DID or a link,
  * and the Verifiable Trust resolution of the descriptor's `did` through the resolution service.
  */
-import { type AgentDescriptor, DESCRIPTOR_PATH, DID_SERVICE_TYPE, PROFILE_MAJOR } from '@2060.io/hologram-agui-profile'
+import { type AgentDescriptor, DESCRIPTOR_PATH, DID_SERVICE_TYPE, PROFILE_MAJOR } from '@2060.io/ayni-agui-profile'
 import type { TrustSummary } from './types.js'
 
 export interface ResolveResponse {
@@ -102,7 +102,7 @@ export function isDid(input: string): boolean {
   return /^did:[a-z0-9]+:.+/.test(input.trim())
 }
 
-/** The descriptor URL of a DID: its DID Document service of type HologramAgUI, through resolution. */
+/** The descriptor URL of a DID: its DID Document service of type AyniAgUI, through resolution. */
 export async function descriptorUrlOfDid(
   indexerUrl: string,
   did: string,
@@ -112,7 +112,7 @@ export async function descriptorUrlOfDid(
   const service = result.services?.find((s) => s.type === DID_SERVICE_TYPE)
   const endpoint = service?.serviceEndpoint
   const url = typeof endpoint === 'string' ? endpoint : (endpoint as { uri?: string } | undefined)?.uri
-  if (!url) throw new TrustError('this DID declares no HologramAgUI service', 'did')
+  if (!url) throw new TrustError('this DID declares no AyniAgUI service', 'did')
   return url
 }
 
@@ -148,7 +148,7 @@ export async function discoverAgent(
   if (!response.ok) throw new TrustError(`descriptor not found (${response.status})`, 'descriptor')
   const descriptor = (await response.json()) as AgentDescriptor
   if (!descriptor || typeof descriptor.profileVersion !== 'string' || !descriptor.did || !descriptor.sessions)
-    throw new TrustError('not a Hologram agent descriptor', 'descriptor')
+    throw new TrustError('not a Ayni agent descriptor', 'descriptor')
   const major = Number(descriptor.profileVersion.split('.')[0])
   if (major !== PROFILE_MAJOR)
     throw new TrustError(

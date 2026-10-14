@@ -1,5 +1,5 @@
-/** Directory through the Verana Graph search (D20, UI-AGENTS-004): every service declaring a HologramAgUI endpoint. */
-import { DID_SERVICE_TYPE } from '@2060.io/hologram-agui-profile'
+/** Directory through the Verana Graph search (D20, UI-AGENTS-004): every service declaring a AyniAgUI endpoint. */
+import { DID_SERVICE_TYPE } from '@2060.io/ayni-agui-profile'
 
 export interface DirectoryHit {
   did: string

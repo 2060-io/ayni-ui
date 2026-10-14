@@ -1,7 +1,7 @@
 {
-  "name": "Hologram",
-  "short_name": "Hologram",
-  "description": "Talk to Hologram Agents from your browser with your verified identity.",
+  "name": "Ayni",
+  "short_name": "Ayni",
+  "description": "Talk to Ayni Agents from your browser with your verified identity.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

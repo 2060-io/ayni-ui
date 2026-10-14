@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "hologram-ui.fullname" . }}
+  name: {{ include "ayni-ui.fullname" . }}
   labels:
-    {{- include "hologram-ui.labels" . | nindent 4 }}
+    {{- include "ayni-ui.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "hologram-ui.selectorLabels" . | nindent 4 }}
+    {{- include "ayni-ui.selectorLabels" . | nindent 4 }}
 {{- end }}

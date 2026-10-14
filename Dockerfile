@@ -15,8 +15,8 @@ RUN pnpm build
 FROM nginx:1.27-alpine AS runner
 RUN apk add --no-cache gettext
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
-COPY docker/entrypoint.sh /docker-entrypoint.d/40-hologram-config.sh
-RUN chmod +x /docker-entrypoint.d/40-hologram-config.sh
+COPY docker/entrypoint.sh /docker-entrypoint.d/40-ayni-config.sh
+RUN chmod +x /docker-entrypoint.d/40-ayni-config.sh
 COPY --from=builder /app/dist /usr/share/nginx/html
 ENV PORT=8080 NGINX_PORT=8080
 EXPOSE 8080

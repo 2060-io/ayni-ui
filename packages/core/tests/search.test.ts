@@ -5,7 +5,7 @@ describe('occurrence search (UI-CONV-020, UI-SHELL-015)', () => {
   it('counts every hit, case-insensitively, in transcript order, skipping activities', () => {
     const messages = [
       { id: 'a', role: 'assistant' as const, content: 'Invoice INV-2093 and invoice INV-2094.', at: '1' },
-      { id: 'x', role: 'activity' as const, activityType: 'hologram.menu', content: { prompt: 'invoice' }, at: '2' },
+      { id: 'x', role: 'activity' as const, activityType: 'ayni.menu', content: { prompt: 'invoice' }, at: '2' },
       { id: 'u', role: 'user' as const, content: 'Refund the second invoice.', at: '3' },
     ]
     expect(countOccurrences(messages[0].content, 'invoice')).toBe(2)

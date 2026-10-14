@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: io2060/hologram-ui
+  repository: io2060/ayni-ui
   pullPolicy: IfNotPresent
   tag: ""
 

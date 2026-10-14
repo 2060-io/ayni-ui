@@ -1,5 +1,5 @@
 /** Agents list operations (UI-AGENTS-001..005) over the device store. */
-import type { AgentDescriptor } from '@2060.io/hologram-agui-profile'
+import type { AgentDescriptor } from '@2060.io/ayni-agui-profile'
 import { controllerOf } from './index.js'
 import type { DeviceStore } from './store.js'
 import { discoverAgent, resolveTrust } from './trust.js'

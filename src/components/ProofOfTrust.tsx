@@ -10,7 +10,7 @@ import {
   flagOf,
   loadTrustDetails,
   type TrustDetails,
-} from '@2060.io/hologram-ui-core'
+} from '@2060.io/ayni-ui-core'
 import {
   Award,
   BadgeCheck,

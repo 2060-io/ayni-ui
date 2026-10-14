@@ -8,7 +8,7 @@ export * from './sync.js'
 export * from './trust.js'
 export * from './types.js'
 
-export const CLIENT = { name: 'hologram-ui', version: '3.0.0' } as const
+export const CLIENT = { name: 'ayni-ui', version: '3.0.0' } as const
 
 export const CLOSURE_REASON_KEYS: Record<string, string> = {
   user: 'closure.user',

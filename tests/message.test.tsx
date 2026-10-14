@@ -21,7 +21,7 @@ const config = {
 }
 
 function hubWithConversation(): Hub {
-  const hub = new Hub(config, { appName: 'Hologram' })
+  const hub = new Hub(config, { appName: 'Ayni' })
   const snap = hub.getSnapshot()
   const agent = {
     did: 'did:x',
@@ -59,7 +59,7 @@ function hubWithConversation(): Hub {
     lastPreview: '',
     lastMessageAt: '',
     draft: '',
-    hologram: null,
+    ayni: null,
   }
   const transcript = {
     sessionId: 's1',

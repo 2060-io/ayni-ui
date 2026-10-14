@@ -41,7 +41,7 @@ export class IndexedDbStore implements DeviceStore {
 
   private open(): Promise<IDBPDatabase<Schema>> {
     if (!this.db) {
-      this.db = openDB<Schema>('hologram-ui', 2, {
+      this.db = openDB<Schema>('ayni-ui', 2, {
         upgrade(db, oldVersion) {
           if (oldVersion < 1) {
             db.createObjectStore('agents', { keyPath: 'did' })

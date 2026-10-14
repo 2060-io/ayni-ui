@@ -24,7 +24,7 @@ export class BroadcastSyncBus implements SyncBus {
   private readonly handlers = new Set<(m: SyncMessage) => void>()
 
   public constructor(deviceId: string) {
-    this.channel = new BroadcastChannel(`hologram-ui:${deviceId}`)
+    this.channel = new BroadcastChannel(`ayni-ui:${deviceId}`)
     this.channel.onmessage = (ev: MessageEvent<SyncMessage>) => {
       for (const h of this.handlers) h(ev.data)
     }
@@ -42,7 +42,7 @@ export class BroadcastSyncBus implements SyncBus {
       return true
     }
     let acquired = false
-    await navigator.locks.request(`hologram-ui:session:${sessionId}`, { ifAvailable: true }, async (lock) => {
+    await navigator.locks.request(`ayni-ui:session:${sessionId}`, { ifAvailable: true }, async (lock) => {
       if (!lock) return
       acquired = true
       this.post({ kind: 'leader', sessionId, tabId: this.tabId })

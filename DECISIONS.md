@@ -4,8 +4,8 @@
    that depends only on web platform primitives (fetch, streams, IndexedDB through `idb`,
    BroadcastChannel, Web Locks). Project conventions from `2060-io/ts-project-template` (Biome,
    pnpm, vitest, reusable CI/CD, Helm chart).
-2. **Profile package.** The wire types come from `@2060.io/hologram-agui-profile`, whose source of
-   truth is `hologram-agent/packages/agui-profile`. Until it is published to a registry the package
+2. **Profile package.** The wire types come from `@2060.io/ayni-agui-profile`, whose source of
+   truth is `ayni-agent/packages/agui-profile`. Until it is published to a registry the package
    is copied here (`packages/agui-profile`, `SOURCE` records the commit, `scripts/sync-profile.sh`
    refreshes it) so that CI builds without access to the agent repository.
 3. **AG-UI transport.** The profile's session stream carries `Last-Event-ID` and a bearer token, which
@@ -19,13 +19,13 @@
    no leader answers within four seconds the tab takes the lock and acts.
 5. **Trust resolution** runs against the Verifiable Trust resolution service (the indexer's
    `/v4/verifiable-trust/resolve`), the same service the wallet app queries; a DID's descriptor is
-   its `HologramAgUI` service in the resolved services. No DID resolver is embedded.
+   its `AyniAgUI` service in the resolved services. No DID resolver is embedded.
 6. **CSP.** The policy is static: `connect-src 'self' https:` plus the configured agent origins;
    origins added at runtime are not appended to the header (a header cannot change at runtime).
    The agent list in the store is the runtime allow-list for calls the UI makes.
 7. **Inline menus** are answered with `menu.select` (the agent delivers them as activities and does
    not suspend runs with interrupts).
-8. **Closure.** A `410` or a `hologram.session.state{closed}` deletes the token, keeps the transcript
+8. **Closure.** A `410` or a `ayni.session.state{closed}` deletes the token, keeps the transcript
    read-only, shows the reason in plain words and offers one-click re-binding; channel-level reasons
    close every conversation of the agent (the agent closes them; the UI reflects each).
 9. **Voice notes** use `MediaRecorder` with the first supported container among webm/opus, ogg/opus
@@ -92,5 +92,10 @@
     when selected or when a slot frees. Found live: five duplicated sessions on one conversation each
     held a stream, and the browser's six connections per host were gone, so archive and every other
     request queued forever.
-19. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+19. **Renamed from Hologram to Ayni** (2026-10-14). App name, packages (`@2060.io/ayni-ui-core`,
+    `@2060.io/ayni-agui-profile`), Helm chart `ayni-ui` and every wire identifier follow the agent's
+    rename (`ayni.*` events, `forwardedProps.ayni`, `state.ayni`, `/.well-known/ayni-agent.json`).
+    The phone app is referred to as "the wallet app" in every language; its deep link domain is
+    unchanged until the app itself is renamed.
+20. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

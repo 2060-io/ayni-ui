@@ -1,6 +1,6 @@
 apiVersion: v2
-name: hologram-ui
-description: Helm chart for the Hologram UI
+name: ayni-ui
+description: Helm chart for the Ayni UI
 type: application
 # version / appVersion are overwritten at publish time by the CD pipeline
 # (helm package --version --app-version). These are just sane defaults.

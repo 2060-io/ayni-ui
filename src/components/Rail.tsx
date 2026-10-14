@@ -3,14 +3,14 @@
  * person's agents, pinned ones above a separator; an unverified agent stands alone, greyed. Dragging a
  * tile across the separator pins or unpins it; dragging within the pinned area reorders.
  */
-import { orderControllers } from '@2060.io/hologram-ui-core'
+import { orderControllers } from '@2060.io/ayni-ui-core'
 import { Pin, Plus, Settings as SettingsIcon } from 'lucide-react'
 import { type DragEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 
-const MIME = 'application/x-hologram-controller'
+const MIME = 'application/x-ayni-controller'
 
 export function Rail() {
   const snap = useSnapshot()
@@ -45,7 +45,7 @@ export function Rail() {
   const tile = (c: (typeof controllers)[number]) => {
     const dids = new Set(agentsOf(c.did).map((a) => a.did))
     const unread = snap.sessions.filter((s) => dids.has(s.agentDid)).reduce((n, s) => n + s.unreadCount, 0)
-    const waiting = snap.sessions.some((s) => dids.has(s.agentDid) && (s.hologram?.pendingApprovals ?? 0) > 0)
+    const waiting = snap.sessions.some((s) => dids.has(s.agentDid) && (s.ayni?.pendingApprovals ?? 0) > 0)
     const selected = snap.selectedControllerDid === c.did
     return (
       <button

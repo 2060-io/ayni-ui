@@ -1,6 +1,6 @@
 /** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
-import { ACTIVITY, CLOSURE_REASONS } from '@2060.io/hologram-agui-profile'
-import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@2060.io/hologram-ui-core'
+import { ACTIVITY, CLOSURE_REASONS } from '@2060.io/ayni-agui-profile'
+import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@2060.io/ayni-ui-core'
 import { ArrowLeft, ChevronDown, ChevronUp, Loader2, Menu as MenuIcon, Search, ShieldCheck, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -133,7 +133,7 @@ export function Conversation() {
   // channel-level closures need the person's attention once (UI-SESS-009)
   const attention = closed && ['supersede', 'channelClosed', 'credentialInvalid'].includes(session.closedReason ?? '')
   const reasonKey = CLOSURE_REASON_KEYS[session.closedReason ?? 'agent'] ?? 'closure.agent'
-  const contextual = session.hologram?.contextualMenu.items ?? []
+  const contextual = session.ayni?.contextualMenu.items ?? []
   const me = session.principal?.displayName
   const thinking = transcript?.run && !messages.some((m) => m.role !== 'activity' && m.streaming)
   const step = (delta: number) => {
@@ -187,9 +187,7 @@ export function Conversation() {
             onClick={() => setMenuOpen((v) => !v)}
           >
             <MenuIcon size={20} />
-            {session.hologram?.pendingApprovals ? (
-              <span className="badge">{session.hologram.pendingApprovals}</span>
-            ) : null}
+            {session.ayni?.pendingApprovals ? <span className="badge">{session.ayni.pendingApprovals}</span> : null}
           </button>
         ) : null}
         {menuOpen ? (
@@ -209,7 +207,7 @@ export function Conversation() {
                 {item.badge ? ` (${item.badge})` : ''}
               </button>
             ))}
-            {session.hologram?.purposes?.length ? (
+            {session.ayni?.purposes?.length ? (
               <button
                 type="button"
                 role="menuitem"

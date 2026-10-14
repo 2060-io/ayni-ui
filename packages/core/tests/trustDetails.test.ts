@@ -24,7 +24,7 @@ function fakeFetch(): typeof fetch {
       })
     const { query, input: qin } = body
     if (query === 'A6') {
-      const who = qin.did === ORG_ISSUER ? 'ECS Org Issuer' : qin.did === ECO ? 'ECS Ecosystem' : 'Hologram Agent'
+      const who = qin.did === ORG_ISSUER ? 'ECS Org Issuer' : qin.did === ECO ? 'ECS Ecosystem' : 'Ayni Agent'
       return json({
         output: {
           ecsCredentials: [{ credential: { ecsSchema: 'ServiceCredential', credentialSubject: { name: who } } }],
@@ -51,7 +51,7 @@ function fakeFetch(): typeof fetch {
               ecsSchema: 'ServiceCredential',
               credentialSchemaId: 3,
               issuedAtTime: '2026-10-13T04:58:44Z',
-              credentialSubject: { name: 'Hologram Agent', type: 'AIAgent' },
+              credentialSubject: { name: 'Ayni Agent', type: 'AIAgent' },
             },
             schema: { title: 'ServiceCredential' },
             ecosystem: { id: 1, did: ECO },
@@ -106,7 +106,7 @@ describe('Proof of Trust details (D33, UI-TRUST-002)', () => {
   it('assembles identity, other credentials, accreditation chains, endpoints and governance', async () => {
     const d = await loadTrustDetails('http://idx', 'http://graph', DID, fakeFetch())
     expect(d.trusted).toBe(true)
-    expect(d.service?.claims.name).toBe('Hologram Agent')
+    expect(d.service?.claims.name).toBe('Ayni Agent')
     expect(d.service?.selfIssued).toBe(true)
     expect(d.operator?.claims.registryId).toBe('16853041')
     expect(d.operator?.issuer.name).toBe('ECS Org Issuer')
@@ -115,7 +115,7 @@ describe('Proof of Trust details (D33, UI-TRUST-002)', () => {
     expect(d.otherCredentials[0]).toMatchObject({ schemaTitle: 'PartnerBadge', valid: false })
     expect(d.accreditations).toHaveLength(1)
     expect(d.accreditations[0].role).toBe('ISSUER')
-    expect(d.accreditations[0].chain.map((c) => c.who.name)).toEqual(['ECS Ecosystem', 'Hologram Agent'])
+    expect(d.accreditations[0].chain.map((c) => c.who.name)).toEqual(['ECS Ecosystem', 'Ayni Agent'])
     expect(d.endpoints[0]).toMatchObject({ type: 'DIDCommMessaging', endpoint: 'wss://agent.example' })
     expect(d.governance.ecosystems[0]).toMatchObject({
       name: 'ECS Ecosystem',

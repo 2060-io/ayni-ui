@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Copies the AG-UI profile package from a hologram-agent checkout (the source of truth) into this
-# repo. Usage: scripts/sync-profile.sh [path-to-hologram-agent]   (default ../hologram-agent)
+# Copies the AG-UI profile package from a ayni-agent checkout (the source of truth) into this
+# repo. Usage: scripts/sync-profile.sh [path-to-ayni-agent]   (default ../ayni-agent)
 set -euo pipefail
-SRC="${1:-$(dirname "$0")/../../hologram-agent}"
+SRC="${1:-$(dirname "$0")/../../ayni-agent}"
 DST="$(dirname "$0")/../packages/agui-profile"
 rm -rf "$DST/src" "$DST/schemas"
 cp -r "$SRC/packages/agui-profile/src" "$SRC/packages/agui-profile/schemas" "$SRC/packages/agui-profile/package.json" "$SRC/packages/agui-profile/tsconfig.json" "$DST/"

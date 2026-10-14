@@ -1,6 +1,6 @@
 /** Inline menus, approval cards, elevation form, routed capabilities, generating placeholders (UI-CONV-004/006, UI-APPR-*, UI-CAP-*). */
-import type { ApprovalActivity, CapabilityActivity, MenuActivity } from '@2060.io/hologram-agui-profile'
-import type { SessionRecord } from '@2060.io/hologram-ui-core'
+import type { ApprovalActivity, CapabilityActivity, MenuActivity } from '@2060.io/ayni-agui-profile'
+import type { SessionRecord } from '@2060.io/ayni-ui-core'
 import { Smartphone } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -146,7 +146,7 @@ export function ElevationForm({ session, onClose }: { session: SessionRecord; on
   const [tool, setTool] = useState('')
   const [purposeId, setPurposeId] = useState('')
   const [justification, setJustification] = useState('')
-  const purposes = session.hologram?.purposes ?? []
+  const purposes = session.ayni?.purposes ?? []
   const valid = tool.trim() && purposeId && justification.trim()
   return (
     <form

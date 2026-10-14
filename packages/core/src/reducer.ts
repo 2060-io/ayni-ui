@@ -2,7 +2,7 @@
  * AG-UI events (runs and the session stream) to the local transcript and session state
  * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015, UI-CAP-001, UI-APPR-002).
  */
-import { ACTIVITY, CUSTOM_EVENT, type HologramState } from '@2060.io/hologram-agui-profile'
+import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@2060.io/ayni-agui-profile'
 import type { AgUiEvent } from './profileClient.js'
 import type { SessionRecord, Transcript, TranscriptMessage } from './types.js'
 
@@ -162,17 +162,16 @@ export function reduce(
       break
     }
     case 'STATE_SNAPSHOT': {
-      const snapshot = event.snapshot as { hologram?: HologramState } | undefined
-      if (snapshot?.hologram)
-        s = { ...s, hologram: snapshot.hologram, principal: snapshot.hologram.principal ?? s.principal }
+      const snapshot = event.snapshot as { ayni?: AyniState } | undefined
+      if (snapshot?.ayni) s = { ...s, ayni: snapshot.ayni, principal: snapshot.ayni.principal ?? s.principal }
       break
     }
     case 'STATE_DELTA': {
       const patched = applyPatch(
-        { hologram: s.hologram ?? {} },
+        { ayni: s.ayni ?? {} },
         (event.delta as { op: string; path: string; value?: unknown }[]) ?? []
-      ) as { hologram?: HologramState }
-      if (patched.hologram) s = { ...s, hologram: patched.hologram }
+      ) as { ayni?: AyniState }
+      if (patched.ayni) s = { ...s, ayni: patched.ayni }
       break
     }
     case 'MESSAGES_SNAPSHOT': {

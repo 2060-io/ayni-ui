@@ -18,7 +18,7 @@ export default defineConfig({
           {
             urlPattern: /\/(config\.json|brand\/.*)$/,
             handler: 'NetworkFirst',
-            options: { cacheName: 'hologram-ui-config' },
+            options: { cacheName: 'ayni-ui-config' },
           },
         ],
       },

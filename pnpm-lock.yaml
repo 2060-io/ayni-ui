@@ -8,10 +8,10 @@ importers:
 
   .:
     dependencies:
-      '@2060.io/hologram-agui-profile':
+      '@2060.io/ayni-agui-profile':
         specifier: workspace:*
         version: link:packages/agui-profile
-      '@2060.io/hologram-ui-core':
+      '@2060.io/ayni-ui-core':
         specifier: workspace:*
         version: link:packages/core
       '@ag-ui/client':
@@ -90,7 +90,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@2060.io/hologram-agui-profile':
+      '@2060.io/ayni-agui-profile':
         specifier: workspace:*
         version: link:../agui-profile
       idb:

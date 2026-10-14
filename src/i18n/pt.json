@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Hologram",
+    "name": "Ayni",
     "agents": "Agentes",
     "addAgent": "Adicionar agente",
     "findAgents": "Encontrar agentes",
@@ -93,10 +93,10 @@
   },
   "bind": {
     "title": "Ligue o seu telemóvel",
-    "scan": "Leia este código com a app Hologram no telemóvel e confirme no telemóvel.",
+    "scan": "Leia este código com a sua app wallet no telemóvel e confirme no telemóvel.",
     "code": "O seu código",
     "codeHint": "O telemóvel mostra o mesmo código. Confirme apenas se coincidirem.",
-    "openApp": "Abrir na app Hologram",
+    "openApp": "Abrir na app wallet",
     "expired": "O código expirou.",
     "newCode": "Novo código",
     "refused": "A ligação foi recusada no telemóvel ou não foi concluída.",
@@ -235,7 +235,7 @@
     "input": "URL do descritor ou DID",
     "placeholder": "https://agente.exemplo ou did:webvh:…",
     "go": "Procurar",
-    "scan": "Ler um código QR",
+    "scan": "Leia este código com a sua app wallet no telemóvel e confirme no telemóvel.",
     "scanning": "Aponte a câmara ao código QR",
     "cameraDenied": "O acesso à câmara foi negado.",
     "error": "Este agente não foi encontrado: {{message}}",

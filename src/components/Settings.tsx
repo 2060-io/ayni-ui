@@ -1,6 +1,6 @@
 /** Language, theme, sounds, install, about (UI-I18N-001, UI-THEME-003, UI-PLAT-005). */
 
-import { PROFILE_VERSION } from '@2060.io/hologram-agui-profile'
+import { PROFILE_VERSION } from '@2060.io/ayni-agui-profile'
 import { ArrowLeft, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

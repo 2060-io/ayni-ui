@@ -1,5 +1,5 @@
 /** Runtime configuration next to the bundle (UI-PLAT-004) and the brand configuration (UI-THEME-001). */
-import type { BrandConfig, RuntimeConfig } from '@2060.io/hologram-ui-core'
+import type { BrandConfig, RuntimeConfig } from '@2060.io/ayni-ui-core'
 
 export const DEFAULT_CONFIG: RuntimeConfig = {
   publicUrl: typeof location !== 'undefined' ? location.origin : 'http://localhost:5173',
@@ -15,7 +15,7 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
 }
 
 export const DEFAULT_BRAND: BrandConfig = {
-  appName: 'Hologram',
+  appName: 'Ayni',
   logo: '/brand/logo.svg',
   colors: {
     light: {

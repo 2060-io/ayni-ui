@@ -1,11 +1,11 @@
-/** Local data model (hologram-ui architecture section 12). Nothing here is authoritative except the token. */
+/** Local data model (ayni-ui architecture section 12). Nothing here is authoritative except the token. */
 import type {
   AgentDescriptor,
+  AyniState,
   ClosureReason,
-  HologramState,
   PrincipalDisplay,
   SessionState,
-} from '@2060.io/hologram-agui-profile'
+} from '@2060.io/ayni-agui-profile'
 
 export type TrustStatus = 'trusted' | 'untrusted' | 'unverified'
 
@@ -83,7 +83,7 @@ export interface SessionRecord {
   lastPreview: string
   lastMessageAt: string
   draft: string
-  hologram: HologramState | null
+  ayni: AyniState | null
   idleTimeoutSeconds?: number
   /** the agent asked the phone to re-link this provisional session */
   rebindAsked?: boolean

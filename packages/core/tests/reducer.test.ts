@@ -14,7 +14,7 @@ const session = (): SessionRecord => ({
   lastPreview: '',
   lastMessageAt: '',
   draft: '',
-  hologram: null,
+  ayni: null,
 })
 
 describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () => {
@@ -77,14 +77,14 @@ describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () 
     expect(onScreen.session.unreadCount).toBe(0)
   })
 
-  it('replaces a generating placeholder with the late artifact and keeps state under hologram', () => {
+  it('replaces a generating placeholder with the late artifact and keeps state under ayni', () => {
     let { transcript: t, session: s } = reduce(
       emptyTranscript('s1'),
       session(),
       {
         type: 'ACTIVITY_SNAPSHOT',
         messageId: 'g1',
-        activityType: 'hologram.generating',
+        activityType: 'ayni.generating',
         content: { entryId: 'e1', kind: 'image' },
       },
       false,
@@ -96,7 +96,7 @@ describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () 
       {
         type: 'ACTIVITY_SNAPSHOT',
         messageId: 'a1',
-        activityType: 'hologram.attachment',
+        activityType: 'ayni.attachment',
         content: { attachmentId: 'a1', type: 'image', entryId: 'e1', textRepr: 'a cat' },
       },
       false,
@@ -109,7 +109,7 @@ describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () 
       {
         type: 'STATE_SNAPSHOT',
         snapshot: {
-          hologram: {
+          ayni: {
             contextualMenu: { items: [{ id: 'x', label: 'X', badge: 2 }] },
             pendingApprovals: 2,
             generating: [],
@@ -120,15 +120,15 @@ describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () 
       false,
       false
     ))
-    expect(s.hologram?.pendingApprovals).toBe(2)
+    expect(s.ayni?.pendingApprovals).toBe(2)
     ;({ transcript: t, session: s } = reduce(
       t,
       s,
-      { type: 'STATE_DELTA', delta: [{ op: 'replace', path: '/hologram/pendingApprovals', value: 0 }] },
+      { type: 'STATE_DELTA', delta: [{ op: 'replace', path: '/ayni/pendingApprovals', value: 0 }] },
       false,
       false
     ))
-    expect(s.hologram?.pendingApprovals).toBe(0)
+    expect(s.ayni?.pendingApprovals).toBe(0)
   })
 
   it('handles session lifecycle events: bound, token rotation, closure with reason', () => {
@@ -137,7 +137,7 @@ describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () 
       { ...session(), state: 'provisional' },
       {
         type: 'CUSTOM',
-        name: 'hologram.session.bound',
+        name: 'ayni.session.bound',
         value: { principal: { displayName: 'Ana', photo: null, backingIdentity: null }, boundAt: 'x' },
       },
       false,
@@ -148,7 +148,7 @@ describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () 
     ;({ transcript: t, session: s } = reduce(
       t,
       s,
-      { type: 'CUSTOM', name: 'hologram.session.token', value: { sessionToken: 'new' } },
+      { type: 'CUSTOM', name: 'ayni.session.token', value: { sessionToken: 'new' } },
       false,
       false
     ))
@@ -156,7 +156,7 @@ describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () 
     const closed = reduce(
       t,
       s,
-      { type: 'CUSTOM', name: 'hologram.session.state', value: { state: 'closed', reason: 'supersede' } },
+      { type: 'CUSTOM', name: 'ayni.session.state', value: { state: 'closed', reason: 'supersede' } },
       false,
       false
     )
@@ -169,7 +169,7 @@ describe('AG-UI reducer (UI-CONV-002/006/015, UI-SESS-003/006, UI-CAP-001)', () 
       s,
       {
         type: 'CUSTOM',
-        name: 'hologram.capability.routed',
+        name: 'ayni.capability.routed',
         value: { kind: 'auth-challenge', challengeType: 'face-match', status: 'pending', originSessionId: 's1' },
       },
       false,
@@ -215,7 +215,7 @@ describe('reactions and replies (UI-CONV-011/018/019, PROF-RUN-010, PROF-HIST-00
     reduce(
       t,
       session(),
-      { type: 'CUSTOM', name: 'hologram.reaction', value: { messageId: 'm1', emoji, action, by } },
+      { type: 'CUSTOM', name: 'ayni.reaction', value: { messageId: 'm1', emoji, action, by } },
       false,
       true
     ).transcript

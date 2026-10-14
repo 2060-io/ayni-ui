@@ -1,5 +1,5 @@
 /** Link your phone (D8, D9; UI-BIND-002..008): QR, binding code, wallet link on mobile, refresh after expiry. */
-import type { SessionRecord } from '@2060.io/hologram-ui-core'
+import type { SessionRecord } from '@2060.io/ayni-ui-core'
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

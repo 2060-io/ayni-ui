@@ -19,7 +19,7 @@ permissions:
   pull-requests: write
 
 env:
-  IMAGE_NAME: 'hologram-ui'
+  IMAGE_NAME: 'ayni-ui'
 
 jobs:
   # Resolve the next version using the shared 2060 flow:

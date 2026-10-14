@@ -3,7 +3,7 @@
  * (stream and runs), and the in-memory snapshot React renders from. Framework-independent core
  * underneath (UI-SHELL-004); this file is the shell's state.
  */
-import { CUSTOM_EVENT, type HologramAction } from '@2060.io/hologram-agui-profile'
+import { type AyniAction, CUSTOM_EVENT } from '@2060.io/ayni-agui-profile'
 import {
   type AgentRecord,
   type AgUiEvent,
@@ -31,7 +31,7 @@ import {
   type SyncBus,
   type SyncMessage,
   type Transcript,
-} from '@2060.io/hologram-ui-core'
+} from '@2060.io/ayni-ui-core'
 import { loadConfig } from './config.js'
 
 export type View = 'list' | 'conversation' | 'directory' | 'add' | 'settings' | 'trust'
@@ -537,7 +537,7 @@ export class Hub {
       lastPreview: '',
       lastMessageAt: new Date().toISOString(),
       draft: '',
-      hologram: null,
+      ayni: null,
       idleTimeoutSeconds: created.idleTimeoutSeconds,
       rebindAsked: created.rebind === 'asked',
       deviceHandle: created.deviceHandle,
@@ -636,7 +636,7 @@ export class Hub {
         lastPreview: c.lastPreview ?? '',
         lastMessageAt: c.lastActivityAt,
         draft: '',
-        hologram: null,
+        ayni: null,
         conversationId: c.id,
         archived: c.state === 'archived',
       })
@@ -837,7 +837,7 @@ export class Hub {
       lastPreview: '',
       lastMessageAt: new Date().toISOString(),
       draft: '',
-      hologram: null,
+      ayni: null,
       idleTimeoutSeconds: created.idleTimeoutSeconds,
       conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
       resumedFromSessionId: created.resumedFromSessionId,
@@ -1222,7 +1222,7 @@ export class Hub {
     attachmentIds: string[] = [],
     replyTo: ReplyQuote | null = this.snapshot.replyTo[sessionId] ?? null
   ): Promise<void> {
-    const action: HologramAction | undefined = attachmentIds.length
+    const action: AyniAction | undefined = attachmentIds.length
       ? { kind: 'attachments', attachmentIds, replyTo: replyTo?.id }
       : replyTo
         ? { kind: 'text', replyTo: replyTo.id }
@@ -1231,7 +1231,7 @@ export class Hub {
     await this.dispatch(sessionId, { type: 'run', text, action, replyTo: replyTo ?? undefined })
   }
 
-  public async act(sessionId: string, action: HologramAction, text?: string): Promise<void> {
+  public async act(sessionId: string, action: AyniAction, text?: string): Promise<void> {
     await this.dispatch(sessionId, { type: 'run', text, action })
   }
 
@@ -1420,7 +1420,7 @@ export interface ResumeTarget {
   text?: string
 }
 
-type LocalAction = { type: 'run'; text?: string; action?: HologramAction; replyTo?: ReplyQuote } | { type: 'cancel' }
+type LocalAction = { type: 'run'; text?: string; action?: AyniAction; replyTo?: ReplyQuote } | { type: 'cancel' }
 
 export function platformDescription(): string {
   const ua = navigator.userAgent

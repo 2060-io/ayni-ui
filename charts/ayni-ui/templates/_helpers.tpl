@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "hologram-ui.name" -}}
+{{- define "ayni-ui.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "hologram-ui.fullname" -}}
+{{- define "ayni-ui.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,9 +24,9 @@ Create a default fully qualified app name.
 {{/*
 Common labels
 */}}
-{{- define "hologram-ui.labels" -}}
+{{- define "ayni-ui.labels" -}}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{ include "hologram-ui.selectorLabels" . }}
+{{ include "ayni-ui.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -36,7 +36,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "hologram-ui.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "hologram-ui.name" . }}
+{{- define "ayni-ui.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "ayni-ui.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

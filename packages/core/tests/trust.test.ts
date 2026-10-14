@@ -15,7 +15,7 @@ const descriptor = {
 
 const fetchFn: typeof fetch = async (input) => {
   const url = String(input)
-  if (url === 'https://agent.test/.well-known/hologram-agent.json') return new Response(JSON.stringify(descriptor))
+  if (url === 'https://agent.test/.well-known/ayni-agent.json') return new Response(JSON.stringify(descriptor))
   if (url === 'https://agent.test/old.json')
     return new Response(JSON.stringify({ ...descriptor, profileVersion: '4.0' }))
   if (url.endsWith('/v4/verifiable-trust/resolve')) {
@@ -24,7 +24,7 @@ const fetchFn: typeof fetch = async (input) => {
         did: 'did:webvh:x:agent',
         trusted: true,
         services: [
-          { id: '#agui', type: 'HologramAgUI', serviceEndpoint: 'https://agent.test/.well-known/hologram-agent.json' },
+          { id: '#agui', type: 'AyniAgUI', serviceEndpoint: 'https://agent.test/.well-known/ayni-agent.json' },
         ],
         ecsCredentials: [
           { ecsSchema: 'ServiceCredential', credentialSubject: { name: 'Acme Support', type: 'AIAgent' } },
@@ -41,8 +41,8 @@ const fetchFn: typeof fetch = async (input) => {
             id: 'did:webvh:x:agent#agui',
             snippet: {
               didId: 'did:webvh:x:agent',
-              type: 'HologramAgUI',
-              serviceEndpoint: 'https://agent.test/.well-known/hologram-agent.json',
+              type: 'AyniAgUI',
+              serviceEndpoint: 'https://agent.test/.well-known/ayni-agent.json',
               didCard: {
                 did: 'did:webvh:x:agent',
                 trusted: true,
@@ -64,7 +64,7 @@ describe('trust before binding (UI-TRUST-001/002/005, UI-AGENTS-001/002)', () =>
   it('discovers the descriptor from an origin, a descriptor URL, a DID and an ?agent= link', async () => {
     for (const input of [
       'https://agent.test',
-      'https://agent.test/.well-known/hologram-agent.json',
+      'https://agent.test/.well-known/ayni-agent.json',
       'did:webvh:x:agent',
       'https://ui.test/?agent=https://agent.test',
     ]) {
@@ -96,7 +96,7 @@ describe('trust before binding (UI-TRUST-001/002/005, UI-AGENTS-001/002)', () =>
     expect(page.hits[0]).toMatchObject({
       did: 'did:webvh:x:agent',
       trusted: true,
-      descriptorUrl: 'https://agent.test/.well-known/hologram-agent.json',
+      descriptorUrl: 'https://agent.test/.well-known/ayni-agent.json',
     })
     expect((await searchDirectory('https://graph.test', { freeText: 'zzz' }, fetchFn)).hits).toHaveLength(0)
   })

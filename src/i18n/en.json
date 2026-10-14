@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Hologram",
+    "name": "Ayni",
     "agents": "Agents",
     "addAgent": "Add agent",
     "findAgents": "Find agents",
@@ -93,10 +93,10 @@
   },
   "bind": {
     "title": "Link your phone",
-    "scan": "Scan this code with the Hologram App on your phone, then confirm on the phone.",
+    "scan": "Scan this code with your wallet app on your phone, then confirm on the phone.",
     "code": "Your code",
     "codeHint": "The phone shows the same code. Confirm only if they match.",
-    "openApp": "Open in the Hologram App",
+    "openApp": "Open in the wallet app",
     "expired": "The code has expired.",
     "newCode": "New code",
     "refused": "The link was refused on the phone, or it did not complete.",
@@ -235,7 +235,7 @@
     "input": "Descriptor URL or DID",
     "placeholder": "https://agent.example or did:webvh:…",
     "go": "Look up",
-    "scan": "Scan a QR code",
+    "scan": "Scan this code with your wallet app on your phone, then confirm on the phone.",
     "scanning": "Point the camera at the QR code",
     "cameraDenied": "Camera access was denied.",
     "error": "This agent could not be found: {{message}}",
