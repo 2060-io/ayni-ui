@@ -1320,7 +1320,9 @@ label.field {
   position: relative;
 }
 .img-thumb {
-  max-width: 280px;
+  width: auto;
+  height: auto;
+  max-width: min(280px, 100%);
   max-height: 280px;
   border-radius: 8px;
   display: block;

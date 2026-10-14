@@ -429,7 +429,13 @@ function Message({
       case ACTIVITY.menu:
         return <MenuCard sessionId={sessionId} menu={m.content as never} />
       case ACTIVITY.attachment:
-        return <AttachmentView sessionId={sessionId} attachment={m.content as never} mine={false} />
+        return (
+          <AttachmentView
+            sessionId={sessionId}
+            attachment={m.content as never}
+            mine={(m.content as { role?: string }).role === 'user'}
+          />
+        )
       case ACTIVITY.approval:
         return <ApprovalCard sessionId={sessionId} approval={m.content as never} />
       case ACTIVITY.capability:
