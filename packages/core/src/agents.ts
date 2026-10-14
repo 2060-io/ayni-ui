@@ -14,6 +14,7 @@ export async function fileUnderController(store: DeviceStore, agent: AgentRecord
     kind: c.kind,
     name: c.name,
     logoRef: c.logoRef,
+    countryCode: c.countryCode,
     pinned: existing?.pinned ?? false,
     pinOrder: existing?.pinOrder ?? 0,
   })

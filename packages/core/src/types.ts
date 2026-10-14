@@ -36,6 +36,8 @@ export interface ControllerRecord {
   kind: 'organization' | 'persona' | 'unverified'
   name: string
   logoRef?: string
+  /** ISO 3166-1 alpha-2 from the ECS credential, for the flag */
+  countryCode?: string
   pinned: boolean
   pinOrder: number
 }

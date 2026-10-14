@@ -46,7 +46,13 @@ export function controllerOf(agent: {
     result: string
     operator?: { kind: string; name: string; did?: string; countryCode?: string; registryId?: string; logoUri?: string }
   }
-}): { did: string; kind: 'organization' | 'persona' | 'unverified'; name: string; logoRef?: string } {
+}): {
+  did: string
+  kind: 'organization' | 'persona' | 'unverified'
+  name: string
+  logoRef?: string
+  countryCode?: string
+} {
   const op = agent.trust.operator
   if (agent.trust.result === 'trusted' && op) {
     const key =
@@ -60,9 +66,17 @@ export function controllerOf(agent: {
       kind: op.kind === 'persona' ? 'persona' : 'organization',
       name: op.name || agent.name,
       logoRef: op.logoUri,
+      countryCode: op.countryCode?.toUpperCase(),
     }
   }
   return { did: agent.did, kind: 'unverified', name: agent.name, logoRef: agent.logoRef }
+}
+
+/** The flag emoji of an ISO 3166-1 alpha-2 code, or an empty string when the code is not one. */
+export function flagOf(countryCode?: string): string {
+  const code = (countryCode ?? '').trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(code)) return ''
+  return String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
 }
 
 /** Rail order for controllers (UI-SHELL-011): pinned in the person's order, then by activity, then unverified. */
