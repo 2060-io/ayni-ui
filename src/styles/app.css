@@ -1505,8 +1505,8 @@ mark.hit.current {
   text-align: left;
   font-weight: 600;
 }
-.agent-toggle:hover {
-  background: var(--border);
+.agent-toggle:hover .agent-name {
+  color: var(--accent);
 }
 .agent-name {
   flex: 1;
