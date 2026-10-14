@@ -165,8 +165,11 @@ export class Hub {
       this.store.listSessions(),
       this.store.listControllers(),
     ])
-    // records written before D32 have no controller yet: file them now
-    const unfiled = agents.filter((a) => !a.controllerDid || !controllers.some((c) => c.did === a.controllerDid))
+    // records written before D32 have no controller yet, or were filed under themselves while trusted: file them now
+    const unfiled = agents.filter((a) => {
+      const c = controllers.find((x) => x.did === a.controllerDid)
+      return !c || (c.kind === 'unverified' && a.trust.result === 'trusted' && !!a.trust.operator)
+    })
     if (unfiled.length) {
       for (const a of unfiled) await fileUnderController(this.store, a)
       ;[agents, controllers] = await Promise.all([this.store.listAgents(), this.store.listControllers()])

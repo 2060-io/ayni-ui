@@ -33,21 +33,35 @@ export function orderAgents<T extends { pinned: boolean; pinOrder: number; lastM
 }
 export * from './search.js'
 
-/** The controller an agent files under (D32): the ECS credential subject, or the agent itself when unverified. */
+/**
+ * The controller an agent files under (D32). An organization is keyed by its legal registry identity
+ * (country and registry id from the ECS Organization credential), because the credential's subject
+ * may be the service's own DID; a persona by its credential subject; an unverified agent by itself.
+ */
 export function controllerOf(agent: {
   did: string
   name: string
   logoRef?: string
-  trust: { result: string; operator?: { kind: string; name: string; did?: string; logoUri?: string } }
+  trust: {
+    result: string
+    operator?: { kind: string; name: string; did?: string; countryCode?: string; registryId?: string; logoUri?: string }
+  }
 }): { did: string; kind: 'organization' | 'persona' | 'unverified'; name: string; logoRef?: string } {
   const op = agent.trust.operator
-  if (agent.trust.result === 'trusted' && op?.did)
+  if (agent.trust.result === 'trusted' && op) {
+    const key =
+      op.kind !== 'persona' && op.registryId
+        ? `org:${(op.countryCode ?? '').toLowerCase()}:${op.registryId}`
+        : op.did
+          ? op.did
+          : `${op.kind}:${op.name.trim().toLowerCase()}`
     return {
-      did: op.did,
+      did: key,
       kind: op.kind === 'persona' ? 'persona' : 'organization',
       name: op.name || agent.name,
       logoRef: op.logoUri,
     }
+  }
   return { did: agent.did, kind: 'unverified', name: agent.name, logoRef: agent.logoRef }
 }
 
