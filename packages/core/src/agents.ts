@@ -76,7 +76,13 @@ export async function refreshDescriptor(
   indexerUrl: string,
   fetchFn: typeof fetch = fetch
 ): Promise<AgentRecord> {
-  const { descriptorUrl, descriptor } = await discoverAgent(agent.descriptorUrl || agent.did, indexerUrl, fetchFn)
+  // a record from before the rename points at the old descriptor path: ask for the new one, fall back to the DID
+  const stored = agent.descriptorUrl?.replace(/\/\.well-known\/hologram-agent\.json$/, '/.well-known/ayni-agent.json')
+  const { descriptorUrl, descriptor } = await discoverAgent(stored || agent.did, indexerUrl, fetchFn).catch(() =>
+    stored && stored !== agent.descriptorUrl
+      ? discoverAgent(agent.did, indexerUrl, fetchFn)
+      : Promise.reject(new Error('unreachable'))
+  )
   if (descriptor.did !== agent.did) return agent
   const next = { ...agent, descriptorUrl, descriptor }
   if (JSON.stringify(next.descriptor) !== JSON.stringify(agent.descriptor)) await store.putAgent(next)
