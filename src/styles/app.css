@@ -1767,6 +1767,15 @@ mark.hit.current {
 .swatch.selected {
   border-color: var(--text);
 }
+/* on the violet surface a dark swatch needs a light outline to be seen */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .swatch {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  }
+}
+:root[data-theme="dark"] .swatch {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
 .swatch.custom {
   position: relative;
   overflow: hidden;
