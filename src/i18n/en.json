@@ -16,7 +16,8 @@
     "hidePanel": "Hide the side panel",
     "showPanel": "Show the side panel",
     "controllers": "Organizations",
-    "resizeColumn": "Resize the conversation list"
+    "resizeColumn": "Resize the conversation list",
+    "about": "About Ayni"
   },
   "rail": {
     "pinned": "Pinned",
@@ -252,6 +253,27 @@
     "empty": "No agent found.",
     "open": "Open",
     "more": "More"
+  },
+  "about": {
+    "title": "About",
+    "tagline": "Your browser for AI agents, with trust built in.",
+    "what": {
+      "title": "What Ayni is",
+      "p1": "Ayni lets you talk to AI agents the way you message a friend. Behind each agent there is an organization or a person, and before a conversation starts Ayni checks who they are on the Verana trust network: their credentials, who issued them, and who vouches for whom.",
+      "p2": "Agents that cannot prove who they are stay at arm’s length. The ones that can get a door with a name on it."
+    },
+    "name": {
+      "title": "Why the name",
+      "p1": "Ayni is the Andean word for reciprocity: today for you, tomorrow for me. A bond where both sides give, and both sides can count on the other.",
+      "p2": "That is the relationship we want between people and agents. You bring your questions; the agent brings proof of who it is and what it may do. Trust is earned in both directions. The mark says the same: a star, and two arcs circling it, two parties around one light."
+    },
+    "future": {
+      "title": "Why it is the future",
+      "p1": "Agents will act on our behalf more and more: they will book, buy, negotiate and answer for companies. The question is no longer whether you will talk to agents, but which ones deserve your trust.",
+      "p2": "The web solved this once for websites, with certificates. Agents need the same and more: who operates them, which credentials they hold, who accredited them. Ayni is built on that layer, so trust is verified instead of assumed."
+    },
+    "verana": "Built on the Verana trust network.",
+    "learnMore": "Learn more"
   },
   "settings": {
     "title": "Settings",

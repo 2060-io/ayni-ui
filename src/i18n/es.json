@@ -16,7 +16,8 @@
     "hidePanel": "Ocultar el panel lateral",
     "showPanel": "Mostrar el panel lateral",
     "controllers": "Organizaciones",
-    "resizeColumn": "Cambiar el ancho de la lista"
+    "resizeColumn": "Cambiar el ancho de la lista",
+    "about": "Acerca de Ayni"
   },
   "rail": {
     "pinned": "Fijados",
@@ -252,6 +253,27 @@
     "empty": "No se encontró ningún agente.",
     "open": "Abrir",
     "more": "Más"
+  },
+  "about": {
+    "title": "Acerca de",
+    "tagline": "Tu navegador de agentes de IA, con la confianza incorporada.",
+    "what": {
+      "title": "Qué es Ayni",
+      "p1": "Ayni te permite hablar con agentes de IA como si escribieras a un amigo. Detrás de cada agente hay una organización o una persona, y antes de que empiece una conversación Ayni comprueba quiénes son en la red de confianza Verana: sus credenciales, quién las emitió y quién responde por quién.",
+      "p2": "Los agentes que no pueden demostrar quiénes son se quedan a distancia. Los que sí pueden reciben una puerta con su nombre."
+    },
+    "name": {
+      "title": "Por qué el nombre",
+      "p1": "Ayni es la palabra andina para la reciprocidad: hoy por ti, mañana por mí. Un vínculo en el que ambas partes dan y ambas pueden contar con la otra.",
+      "p2": "Esa es la relación que queremos entre las personas y los agentes. Tú traes tus preguntas; el agente trae la prueba de quién es y de lo que puede hacer. La confianza se gana en las dos direcciones. El símbolo dice lo mismo: una estrella y dos arcos que la rodean, dos partes alrededor de una misma luz."
+    },
+    "future": {
+      "title": "Por qué es el futuro",
+      "p1": "Los agentes actuarán cada vez más en nuestro nombre: reservarán, comprarán, negociarán y responderán por empresas. La pregunta ya no es si hablarás con agentes, sino cuáles merecen tu confianza.",
+      "p2": "La web resolvió esto una vez para los sitios, con certificados. Los agentes necesitan lo mismo y más: quién los opera, qué credenciales tienen, quién los acreditó. Ayni está construido sobre esa capa, para que la confianza se verifique en lugar de suponerse."
+    },
+    "verana": "Construido sobre la red de confianza Verana.",
+    "learnMore": "Saber más"
   },
   "settings": {
     "title": "Ajustes",

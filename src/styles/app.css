@@ -204,12 +204,68 @@ a {
 .rail .spacer {
   flex: 1;
 }
-/* the brand mark under the settings tile (UI-THEME-004) */
+/* the brand mark under the settings tile (UI-THEME-004); a button that opens the About page (UI-SHELL-017) */
+.rail-item.brand {
+  border: 0;
+  background: transparent;
+  margin-top: 2px;
+}
+.rail-item.brand:hover {
+  background: var(--border);
+}
 .rail-brand {
   width: 44px;
   height: 44px;
-  margin-top: 2px;
+  display: block;
   flex: none;
+}
+/* About page (UI-SHELL-017) */
+.about-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 6px 0 22px;
+}
+.about-hero img {
+  width: 88px;
+  height: 88px;
+  flex: none;
+}
+.about-wordmark {
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.about-block {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 22px;
+}
+.about-block img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.about-block h2 {
+  font-size: 17px;
+  margin: 0 0 6px;
+}
+.about-block p {
+  margin: 0 0 8px;
+}
+.about-foot {
+  margin-top: 8px;
+}
+@media (max-width: 600px) {
+  .about-block {
+    grid-template-columns: 1fr;
+  }
+  .about-block img {
+    max-width: 320px;
+  }
 }
 .rail-zone {
   display: flex;

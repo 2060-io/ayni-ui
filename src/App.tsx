@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { About } from './components/About.js'
 import { AddPage } from './components/AddPage.js'
 import { Column } from './components/Column.js'
 import { Conversation } from './components/Conversation.js'
@@ -54,6 +55,8 @@ function Shell() {
       <Directory />
     ) : snap.view === 'add' ? (
       <AddPage />
+    ) : snap.view === 'about' ? (
+      <About />
     ) : snap.view === 'settings' ? (
       <Settings />
     ) : (
