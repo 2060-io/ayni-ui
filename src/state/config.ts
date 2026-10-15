@@ -17,6 +17,7 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
 export const DEFAULT_BRAND: BrandConfig = {
   appName: 'Ayni',
   logo: '/brand/logo.svg',
+  mark: '/brand/mark.svg',
   colors: {
     light: {
       accent: '#0F766E',

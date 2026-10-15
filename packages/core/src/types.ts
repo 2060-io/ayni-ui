@@ -183,6 +183,8 @@ export interface RuntimeConfig {
 export interface BrandConfig {
   appName: string
   logo?: string
+  /** the mark alone, transparent background, for the rail (UI-THEME-004); falls back to logo */
+  mark?: string
   colors?: { light?: Record<string, string>; dark?: Record<string, string> }
   links?: { terms?: string; privacy?: string; support?: string }
   defaultLocale?: string

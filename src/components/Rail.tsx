@@ -130,14 +130,14 @@ export function Rail() {
       >
         <SettingsIcon size={22} />
       </button>
-      {snap.brand.logo ? (
+      {(snap.brand.mark ?? snap.brand.logo) ? (
         <img
           className="rail-brand"
-          src={snap.brand.logo}
+          src={snap.brand.mark ?? snap.brand.logo}
           alt={snap.brand.appName}
           title={snap.brand.appName}
-          width={32}
-          height={32}
+          width={44}
+          height={44}
           draggable={false}
         />
       ) : null}

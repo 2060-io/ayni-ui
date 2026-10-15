@@ -1,6 +1,7 @@
 {
   "appName": "Ayni",
   "logo": "/brand/logo.svg",
+  "mark": "/brand/mark.svg",
   "colors": {
     "light": {
       "accent": "#0F766E",
