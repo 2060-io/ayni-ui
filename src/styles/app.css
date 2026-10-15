@@ -204,6 +204,14 @@ a {
 .rail .spacer {
   flex: 1;
 }
+/* the brand mark under the settings tile (UI-THEME-004) */
+.rail-brand {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  margin-top: 4px;
+  flex: none;
+}
 .rail-zone {
   display: flex;
   flex-direction: column;

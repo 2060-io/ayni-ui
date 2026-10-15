@@ -2,6 +2,7 @@
  * The controller rail (UI-SHELL-001/002/011, D32): one tile per organization or persona behind the
  * person's agents, pinned ones above a separator; an unverified agent stands alone, greyed. Dragging a
  * tile across the separator pins or unpins it; dragging within the pinned area reorders.
+ * The rail ends with the settings tile and, below it, the brand mark from the brand configuration (UI-THEME-004).
  */
 import { orderControllers } from '@2060.io/ayni-ui-core'
 import { Pin, Plus, Settings as SettingsIcon } from 'lucide-react'
@@ -129,6 +130,17 @@ export function Rail() {
       >
         <SettingsIcon size={22} />
       </button>
+      {snap.brand.logo ? (
+        <img
+          className="rail-brand"
+          src={snap.brand.logo}
+          alt={snap.brand.appName}
+          title={snap.brand.appName}
+          width={32}
+          height={32}
+          draggable={false}
+        />
+      ) : null}
     </nav>
   )
 }
