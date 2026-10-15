@@ -19,7 +19,20 @@ if (typeof window !== 'undefined') {
   })
 }
 
-const ACCENTS = ['#0f766e', '#1d4ed8', '#7c3aed', '#b45309', '#be123c', '#0f172a']
+// six generic presets, then the Ayni palette: ground, ink, halo, lime, hot (UI-THEME-005)
+const ACCENTS = [
+  '#0f766e',
+  '#1d4ed8',
+  '#7c3aed',
+  '#b45309',
+  '#be123c',
+  '#0f172a',
+  '#0b1220',
+  '#0e2a2a',
+  '#b8ea3a',
+  '#d4f23c',
+  '#f6ffb0',
+]
 
 export function Settings() {
   const snap = useSnapshot()
