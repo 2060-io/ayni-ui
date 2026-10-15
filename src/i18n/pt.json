@@ -16,7 +16,8 @@
     "hidePanel": "Ocultar o painel lateral",
     "showPanel": "Mostrar o painel lateral",
     "controllers": "Organizações",
-    "resizeColumn": "Redimensionar a lista"
+    "resizeColumn": "Redimensionar a lista",
+    "about": "Sobre o Ayni"
   },
   "rail": {
     "pinned": "Fixados",
@@ -252,6 +253,26 @@
     "empty": "Nenhum agente encontrado.",
     "open": "Abrir",
     "more": "Mais"
+  },
+  "about": {
+    "tagline": "O seu navegador de agentes de IA, com a confiança incorporada.",
+    "what": {
+      "title": "O que é o Ayni",
+      "p1": "O Ayni permite falar com agentes de IA como quem escreve a um amigo. Por trás de cada agente há uma organização ou uma pessoa, e antes de uma conversa começar o Ayni verifica quem são na rede de confiança Verana: as suas credenciais, quem as emitiu e quem responde por quem.",
+      "p2": "Os agentes que não conseguem provar quem são ficam à distância. Os que conseguem recebem uma porta com o seu nome."
+    },
+    "name": {
+      "title": "Porquê o nome",
+      "p1": "Ayni é a palavra andina para reciprocidade: hoje por ti, amanhã por mim. Um laço em que ambas as partes dão e ambas podem contar com a outra.",
+      "p2": "É essa a relação que queremos entre as pessoas e os agentes. Você traz as suas perguntas; o agente traz a prova de quem é e do que pode fazer. A confiança ganha-se nos dois sentidos. O símbolo diz o mesmo: uma estrela e dois arcos à sua volta, duas partes em torno de uma mesma luz."
+    },
+    "future": {
+      "title": "Porque é o futuro",
+      "p1": "Os agentes vão agir cada vez mais em nosso nome: vão reservar, comprar, negociar e responder por empresas. A pergunta já não é se vai falar com agentes, mas quais merecem a sua confiança.",
+      "p2": "A web resolveu isto uma vez para os sites, com certificados. Os agentes precisam do mesmo e de mais: quem os opera, que credenciais têm, quem os acreditou. O Ayni está construído sobre essa camada, para que a confiança seja verificada em vez de presumida."
+    },
+    "verana": "Construído sobre a rede de confiança Verana.",
+    "learnMore": "Saber mais"
   },
   "settings": {
     "title": "Definições",

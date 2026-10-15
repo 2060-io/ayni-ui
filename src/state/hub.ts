@@ -34,7 +34,7 @@ import {
 } from '@2060.io/ayni-ui-core'
 import { loadConfig } from './config.js'
 
-export type View = 'list' | 'conversation' | 'directory' | 'add' | 'settings' | 'trust'
+export type View = 'list' | 'conversation' | 'directory' | 'add' | 'settings' | 'about' | 'trust'
 
 export interface Snapshot {
   ready: boolean

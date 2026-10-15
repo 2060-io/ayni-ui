@@ -16,7 +16,8 @@
     "hidePanel": "Masquer le panneau latéral",
     "showPanel": "Afficher le panneau latéral",
     "controllers": "Organisations",
-    "resizeColumn": "Redimensionner la liste"
+    "resizeColumn": "Redimensionner la liste",
+    "about": "À propos d’Ayni"
   },
   "rail": {
     "pinned": "Épinglés",
@@ -252,6 +253,26 @@
     "empty": "Aucun agent trouvé.",
     "open": "Ouvrir",
     "more": "Plus"
+  },
+  "about": {
+    "tagline": "Votre navigateur d’agents IA, avec la confiance intégrée.",
+    "what": {
+      "title": "Ce qu’est Ayni",
+      "p1": "Ayni vous permet de parler à des agents IA comme vous écrivez à un ami. Derrière chaque agent il y a une organisation ou une personne, et avant qu’une conversation commence, Ayni vérifie qui ils sont sur le réseau de confiance Verana : leurs attestations, qui les a délivrées et qui se porte garant de qui.",
+      "p2": "Les agents qui ne peuvent pas prouver qui ils sont restent à distance. Ceux qui le peuvent obtiennent une porte à leur nom."
+    },
+    "name": {
+      "title": "Pourquoi ce nom",
+      "p1": "Ayni est le mot andin pour la réciprocité : aujourd’hui pour toi, demain pour moi. Un lien où chacun donne et où chacun peut compter sur l’autre.",
+      "p2": "C’est la relation que nous voulons entre les personnes et les agents. Vous apportez vos questions ; l’agent apporte la preuve de qui il est et de ce qu’il a le droit de faire. La confiance se gagne dans les deux sens. Le symbole le dit aussi : une étoile et deux arcs qui l’entourent, deux parties autour d’une même lumière."
+    },
+    "future": {
+      "title": "Pourquoi c’est l’avenir",
+      "p1": "Les agents agiront de plus en plus en notre nom : ils réserveront, achèteront, négocieront et répondront pour des entreprises. La question n’est plus de savoir si vous parlerez à des agents, mais lesquels méritent votre confiance.",
+      "p2": "Le web a résolu cela une fois pour les sites, avec des certificats. Les agents ont besoin de la même chose et de plus encore : qui les opère, quelles attestations ils détiennent, qui les a accrédités. Ayni est construit sur cette couche, pour que la confiance soit vérifiée plutôt que supposée."
+    },
+    "verana": "Construit sur le réseau de confiance Verana.",
+    "learnMore": "En savoir plus"
   },
   "settings": {
     "title": "Réglages",

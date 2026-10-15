@@ -2,7 +2,7 @@
  * The controller rail (UI-SHELL-001/002/011, D32): one tile per organization or persona behind the
  * person's agents, pinned ones above a separator; an unverified agent stands alone, greyed. Dragging a
  * tile across the separator pins or unpins it; dragging within the pinned area reorders.
- * The rail ends with the settings tile and, below it, the brand mark from the brand configuration (UI-THEME-004).
+ * The rail ends with the settings tile and, below it, the brand mark from the brand configuration (UI-THEME-004), which opens the About page (UI-SHELL-017).
  */
 import { orderControllers } from '@2060.io/ayni-ui-core'
 import { Pin, Plus, Settings as SettingsIcon } from 'lucide-react'
@@ -131,15 +131,23 @@ export function Rail() {
         <SettingsIcon size={22} />
       </button>
       {(snap.brand.mark ?? snap.brand.logo) ? (
-        <img
-          className="rail-brand"
-          src={snap.brand.mark ?? snap.brand.logo}
-          alt={snap.brand.appName}
-          title={snap.brand.appName}
-          width={44}
-          height={44}
-          draggable={false}
-        />
+        <button
+          type="button"
+          className={['rail-item', 'brand', snap.view === 'about' ? 'selected' : ''].join(' ')}
+          title={t('app.about')}
+          aria-label={t('app.about')}
+          aria-pressed={snap.view === 'about'}
+          onClick={() => hub.setView(snap.view === 'about' ? 'list' : 'about')}
+        >
+          <img
+            className="rail-brand"
+            src={snap.brand.mark ?? snap.brand.logo}
+            alt=""
+            width={44}
+            height={44}
+            draggable={false}
+          />
+        </button>
       ) : null}
     </nav>
   )
