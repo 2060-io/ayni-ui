@@ -1,19 +1,19 @@
 /* Design tokens from the brand configuration (UI-THEME-001/003); light and dark (D16). */
 :root {
-  --light-accent: #4d7c0f;
+  --light-accent: #0f766e;
   --light-accentContrast: #ffffff;
   --light-bg: #ffffff;
   --light-surface: #f9fafb;
   --light-text: #111827;
   --light-muted: #6b7280;
   --light-border: #e5e7eb;
-  --dark-accent: #d4f23c;
-  --dark-accentContrast: #170f33;
-  --dark-bg: #170f33;
-  --dark-surface: #1f1640;
+  --dark-accent: #2dd4bf;
+  --dark-accentContrast: #042f2e;
+  --dark-bg: #0b1220;
+  --dark-surface: #111827;
   --dark-text: #f3f4f6;
-  --dark-muted: #a5a0b8;
-  --dark-border: #2e2552;
+  --dark-muted: #9ca3af;
+  --dark-border: #1f2937;
   --accent: var(--light-accent);
   --accent-contrast: var(--light-accentContrast);
   --bg: var(--light-bg);
