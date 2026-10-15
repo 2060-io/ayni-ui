@@ -263,9 +263,17 @@ a {
   height: auto;
   display: block;
 }
+/* every other section puts the illustration on the right, for balance */
+.about-block.flip {
+  grid-template-columns: 1fr minmax(220px, 320px);
+}
+.about-block.flip img {
+  order: 2;
+}
 .about-block h2 {
   font-size: 17px;
   margin: 0 0 6px;
+  color: var(--accent);
 }
 .about-block p {
   margin: 0 0 8px;
@@ -275,8 +283,12 @@ a {
   margin-top: 8px;
 }
 @media (max-width: 600px) {
-  .about-block {
+  .about-block,
+  .about-block.flip {
     grid-template-columns: 1fr;
+  }
+  .about-block.flip img {
+    order: 0;
   }
   .about-block img {
     max-width: 320px;

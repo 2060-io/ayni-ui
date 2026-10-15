@@ -35,8 +35,8 @@ export function About() {
           <p className="muted">{t('about.tagline')}</p>
         </div>
       </div>
-      {BLOCKS.map((b) => (
-        <section key={b.key} className="about-block">
+      {BLOCKS.map((b, i) => (
+        <section key={b.key} className={['about-block', i % 2 ? 'flip' : ''].join(' ')}>
           <img src={b.art} alt="" />
           <div>
             <h2>{t(`about.${b.key}.title`)}</h2>
