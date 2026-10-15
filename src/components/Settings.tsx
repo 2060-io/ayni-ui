@@ -19,7 +19,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-// six generic presets, then the Ayni palette: ground, ink, halo, lime, hot (UI-THEME-005)
+// six generic presets, then the Ayni palette: violet ground, ink, deep lime, halo, lime, hot (UI-THEME-005)
 const ACCENTS = [
   '#0f766e',
   '#1d4ed8',
@@ -27,8 +27,9 @@ const ACCENTS = [
   '#b45309',
   '#be123c',
   '#0f172a',
-  '#0b1220',
-  '#0e2a2a',
+  '#170f33',
+  '#1a2e05',
+  '#4d7c0f',
   '#b8ea3a',
   '#d4f23c',
   '#f6ffb0',
@@ -105,7 +106,7 @@ export function Settings() {
           <label className="swatch custom" title={t('settings.accentCustom')}>
             <input
               type="color"
-              value={snap.prefs.accent ?? '#0f766e'}
+              value={snap.prefs.accent ?? '#4d7c0f'}
               aria-label={t('settings.accentCustom')}
               onChange={(e) => void hub.setPreferences({ accent: e.target.value })}
             />

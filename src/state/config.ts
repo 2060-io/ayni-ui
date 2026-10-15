@@ -20,7 +20,7 @@ export const DEFAULT_BRAND: BrandConfig = {
   mark: '/brand/mark.svg',
   colors: {
     light: {
-      accent: '#0F766E',
+      accent: '#4D7C0F',
       accentContrast: '#FFFFFF',
       bg: '#FFFFFF',
       surface: '#F9FAFB',
@@ -29,13 +29,13 @@ export const DEFAULT_BRAND: BrandConfig = {
       border: '#E5E7EB',
     },
     dark: {
-      accent: '#2DD4BF',
-      accentContrast: '#042F2E',
-      bg: '#0B1220',
-      surface: '#111827',
+      accent: '#D4F23C',
+      accentContrast: '#170F33',
+      bg: '#170F33',
+      surface: '#1F1640',
       text: '#F3F4F6',
-      muted: '#9CA3AF',
-      border: '#1F2937',
+      muted: '#A5A0B8',
+      border: '#2E2552',
     },
   },
   links: { support: 'https://hologram.zone' },
