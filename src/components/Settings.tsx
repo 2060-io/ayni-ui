@@ -19,7 +19,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-// six generic presets, then the Ayni palette: ground, ink, halo, lime, hot (UI-THEME-005)
+// six generic presets, then the Ayni palette: teal body, halo, hot, navy ground, ink (UI-THEME-005)
 const ACCENTS = [
   '#0f766e',
   '#1d4ed8',
@@ -27,11 +27,11 @@ const ACCENTS = [
   '#b45309',
   '#be123c',
   '#0f172a',
+  '#0d9488',
+  '#2dd4bf',
+  '#5eead4',
   '#0b1220',
-  '#0e2a2a',
-  '#b8ea3a',
-  '#d4f23c',
-  '#f6ffb0',
+  '#042f2e',
 ]
 
 export function Settings() {
