@@ -206,9 +206,13 @@ a {
 }
 /* the brand mark under the settings tile (UI-THEME-004); a button that opens the About page (UI-SHELL-017) */
 .rail-item.brand {
-  border: 0;
+  border: 1px solid transparent;
   background: transparent;
   margin-top: 2px;
+}
+/* like the settings tile: the border takes the accent while the About page is open */
+.rail-item.brand.selected {
+  border-color: var(--accent);
 }
 .rail-item.brand:hover {
   background: var(--border);
