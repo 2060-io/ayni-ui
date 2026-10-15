@@ -222,16 +222,19 @@ a {
 /* About page (UI-SHELL-017): full width of the conversation area, no title, the hero text as tall as the mark */
 .panel.about {
   max-width: none;
+  position: relative;
 }
+/* the close control floats in the corner so the mark and the name start at the top */
 .about-close {
-  display: flex;
-  justify-content: flex-end;
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
 .about-hero {
   display: flex;
   align-items: center;
   gap: 18px;
-  margin: 0 0 26px;
+  margin: 0 56px 26px 0;
 }
 .about-hero img {
   width: 128px;
