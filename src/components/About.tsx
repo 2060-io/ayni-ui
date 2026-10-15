@@ -23,14 +23,13 @@ export function About() {
       <button type="button" className="btn small back" onClick={() => hub.setView('list')}>
         <ArrowLeft size={16} /> {t('app.back')}
       </button>
-      <div className="row-between">
-        <h1>{t('about.title')}</h1>
+      <div className="about-close">
         <button type="button" className="icon-btn" aria-label={t('app.close')} onClick={() => hub.setView('list')}>
           <X size={20} />
         </button>
       </div>
       <div className="about-hero">
-        {mark ? <img src={mark} alt="" width={88} height={88} /> : null}
+        {mark ? <img src={mark} alt="" width={128} height={128} /> : null}
         <div>
           <div className="about-wordmark">{snap.brand.appName}</div>
           <p className="muted">{t('about.tagline')}</p>
