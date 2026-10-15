@@ -1,3 +1,11 @@
+/* the wordmark face, bundled (SIL OFL, licence beside the file); used for the brand name only */
+@font-face {
+  font-family: "Alegreya Sans";
+  src: url("/brand/fonts/AlegreyaSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 /* Design tokens from the brand configuration (UI-THEME-001/003); light and dark (D16). */
 :root {
   --light-accent: #0f766e;
@@ -246,9 +254,10 @@ a {
   flex: none;
 }
 .about-wordmark {
-  font-size: 60px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-family: "Alegreya Sans", var(--font);
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: 1;
 }
 .about-hero .muted {
