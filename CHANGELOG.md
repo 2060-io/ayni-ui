@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/2060-io/ayni-ui/compare/v0.4.0...v0.4.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* icon.svg, the mark alone on a transparent background, for credentials ([a45bc2b](https://github.com/2060-io/ayni-ui/commit/a45bc2b3d1f7b5d9ed4dc7bda6f04540a6b6f508))
+
 ## [0.4.0](https://github.com/2060-io/ayni-ui/compare/v0.3.1...v0.4.0) (2026-10-16)
 
 
