@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.4.0](https://github.com/2060-io/ayni-ui/compare/v0.3.1...v0.4.0) (2026-10-16)
+
+
+### Features
+
+* **about:** full width, no title, larger mark with the wordmark and tagline matched to its height ([e542aa4](https://github.com/2060-io/ayni-ui/commit/e542aa4f87904a517a38d2f8b25b4373050a8809))
+* **about:** illustrations alternate sides; section titles in the accent colour ([990c9bc](https://github.com/2060-io/ayni-ui/commit/990c9bc22753293140a941e5f41e1971b38ebfb9))
+* **about:** the brand mark opens an About page (what Ayni is, why the name, why it is the future) with three illustrations (UI-SHELL-017) ([6908a7a](https://github.com/2060-io/ayni-ui/commit/6908a7af9cd7aa5f4b4f59e85889a6f94ca3c0a3))
+* **about:** the wordmark in Alegreya Sans Bold ([953e426](https://github.com/2060-io/ayni-ui/commit/953e426e855acdc244a5f5bf1d06f775e5850440))
+* **about:** the wordmark in Alegreya Sans Bold, bundled with its licence ([8203395](https://github.com/2060-io/ayni-ui/commit/8203395df44d763dbd2b3bb61a0f1627a67710f7))
+* **brand:** Ayni logo (Orbit mark), app icons and splash colour ([be33ebd](https://github.com/2060-io/ayni-ui/commit/be33ebd127ee7b1899384d73ac223ae2fb69d29d))
+* **brand:** Ayni logo (Orbit mark), app icons and splash colour ([2698c1a](https://github.com/2060-io/ayni-ui/commit/2698c1a8ed3a8a317397391e5a16da5940f1ad69))
+* **brand:** favicon is the bare mark, cropped to the ring ([edafc55](https://github.com/2060-io/ayni-ui/commit/edafc55c909211ef7cdab630fc3a7f5877d6cf21))
+* **brand:** favicon is the bare mark, cropped to the ring, no tile ([d3789ff](https://github.com/2060-io/ayni-ui/commit/d3789ffcab236b2cec6210cb935e03b6638b9f0a))
+* **brand:** night palette, lime on violet; adaptive mark and favicon; full mark as the app icon ([fd3bad8](https://github.com/2060-io/ayni-ui/commit/fd3bad8d5aff2c792476a2aa58ac5d93ff54b418))
+* **brand:** Orbit brand assets in teal, white tile app icon, adaptive mark and favicon, About page ([099f458](https://github.com/2060-io/ayni-ui/commit/099f458960099673a632746fd2d87bda57e41922))
+* **brand:** teal set: white tile icon with dark ink, white rim on navy for dark mode, adaptive mark and favicon ([fa2f284](https://github.com/2060-io/ayni-ui/commit/fa2f284e093fb0549dffc5531d36eee70f86a91b))
+* **settings:** Ayni palette among the accent presets (UI-THEME-005) ([591e54f](https://github.com/2060-io/ayni-ui/commit/591e54f69cb0591b63a561677cd8c14f1c1f8804))
+* **shell:** bare brand mark in the rail and Ayni accent presets ([5ab6830](https://github.com/2060-io/ayni-ui/commit/5ab6830afcf9c799752edd12f49562f8bc1a3fd5))
+* **shell:** brand mark at the bottom of the rail (UI-THEME-004) ([a5c9e91](https://github.com/2060-io/ayni-ui/commit/a5c9e91974e29acc7fe9c6095fe453cea7cd6e61))
+* **shell:** the rail shows the bare brand mark (brand.mark, falls back to logo) ([1f7ae5e](https://github.com/2060-io/ayni-ui/commit/1f7ae5ed4c4b51a5060f44a3941095966ac80386))
+
+
+### Bug Fixes
+
+* **about:** close control floats in the corner; the mark and the name start at the top ([4db69b4](https://github.com/2060-io/ayni-ui/commit/4db69b48db578d6e5205d43815a5e82f994901b5))
+* **history:** a message this device sent is recognized under the agent's id instead of shown twice (PROF-HIST-006) ([bc0e586](https://github.com/2060-io/ayni-ui/commit/bc0e5865fca6589e04ac28fdcd1e36f7a4307d42))
+* **hub:** serialize every transcript read-modify-write; the person's message no longer vanishes on a resumed conversation ([00228ad](https://github.com/2060-io/ayni-ui/commit/00228ad00a70288be2310979ef12b1a2141563aa))
+* **rail:** the brand button shows the accent border while the About page is open, like the settings tile ([77e2ee7](https://github.com/2060-io/ayni-ui/commit/77e2ee7d278a4b2bd9ee9c7fd88264e8f4f808c2))
+* **settings:** dark swatches get a light outline on the violet surface ([d78bb8d](https://github.com/2060-io/ayni-ui/commit/d78bb8d7697e1d8986e71b2211db7871db3cc900))
+* the person's message no longer vanishes on a resumed conversation, nor shows twice after a history reload ([203b09b](https://github.com/2060-io/ayni-ui/commit/203b09b4bbef50a284088467c1d8b90011782f61))
+
+
+### Reverts
+
+* **theme:** UI tokens, accents, presets and theme colour back to navy and teal; brand assets and violet splash stay ([e4486bd](https://github.com/2060-io/ayni-ui/commit/e4486bd850bbc33b6e45536787702d12597a1b13))
+
 ## [0.3.1](https://github.com/2060-io/ayni-ui/compare/v0.3.0...v0.3.1) (2026-10-14)
 
 
