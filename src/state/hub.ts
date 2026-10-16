@@ -550,7 +550,7 @@ export class Hub {
       session.archived = old.archived
     }
     await this.store.putSession(session)
-    await this.store.putTranscript(await this.inheritTranscript(session, old))
+    await this.serial(async () => this.store.putTranscript(await this.inheritTranscript(session, old)))
     if (session.conversationId) await this.collapseConversations(agentDid, session.sessionId)
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
@@ -685,18 +685,20 @@ export class Hub {
           const { client, token } = this.clientOf(s)
           void client.close(s.sessionId, token).catch(() => undefined)
         }
-        const have = await this.store.getTranscript(kept.sessionId)
-        const theirs = await this.store.getTranscript(s.sessionId)
-        if (!have?.messages.length && theirs?.messages.length)
-          await this.store.putTranscript({
-            ...theirs,
-            sessionId: kept.sessionId,
-            run: null,
-            complete: false,
-            oldestLoadedId: null,
-          })
-        await this.store.deleteSession(s.sessionId)
-        await this.store.deleteTranscript(s.sessionId)
+        await this.serial(async () => {
+          const have = await this.store.getTranscript(kept.sessionId)
+          const theirs = await this.store.getTranscript(s.sessionId)
+          if (!have?.messages.length && theirs?.messages.length)
+            await this.store.putTranscript({
+              ...theirs,
+              sessionId: kept.sessionId,
+              run: null,
+              complete: false,
+              oldestLoadedId: null,
+            })
+          await this.store.deleteSession(s.sessionId)
+          await this.store.deleteTranscript(s.sessionId)
+        })
         const { [s.sessionId]: _gone, ...transcripts } = this.snapshot.transcripts
         this.snapshot = {
           ...this.snapshot,
@@ -847,7 +849,7 @@ export class Hub {
       session.archived = old.archived
     }
     await this.store.putSession(session)
-    await this.store.putTranscript(await this.inheritTranscript(session, old))
+    await this.serial(async () => this.store.putTranscript(await this.inheritTranscript(session, old)))
     if (session.conversationId) await this.collapseConversations(agentDid, session.sessionId)
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
@@ -1137,60 +1139,78 @@ export class Hub {
     }
   }
 
-  private eventQueue = Promise.resolve()
+  private queue = Promise.resolve()
+
+  /**
+   * Transcripts are read, changed and written back by several concurrent flows: the session
+   * stream, a run, a history reload, a resume. Two of them in flight at once lose the change of
+   * whichever wrote first (the person's message vanished behind a history reload), so every such
+   * read-modify-write runs here, one after the other. A function on the queue never queues
+   * another one: it would wait for itself.
+   */
+  private serial<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.queue.then(fn)
+    this.queue = next.then(
+      () => undefined,
+      () => undefined
+    )
+    return next
+  }
 
   private onEvent(sessionId: string, event: AgUiEvent, id: number | undefined, fromRun: boolean): Promise<void> {
     // one failing event must not poison the queue for the events after it
-    this.eventQueue = this.eventQueue
-      .catch(() => undefined)
-      .then(async () => {
-        const session = await this.store.getSession(sessionId)
-        if (!session) return
-        const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
-        const onScreen = this.visible && this.snapshot.selectedSessionId === sessionId && this.snapshot.view !== 'list'
-        const { transcript: t, session: s, signals } = reduce(transcript, session, event, fromRun, onScreen)
-        const next = { ...s, lastEventId: id !== undefined ? Math.max(s.lastEventId, id) : s.lastEventId }
-        if (signals.includes('message') && !next.title) {
-          const firstUser = t.messages.find((m) => m.role === 'user')
-          next.title = (firstUser && firstUser.role !== 'activity' ? firstUser.content : next.lastPreview).slice(0, 60)
-        }
-        await this.store.putTranscript(t)
-        await this.store.putSession(next)
-        this.snapshot = {
-          ...this.snapshot,
-          transcripts: { ...this.snapshot.transcripts, [sessionId]: t },
-          sessions: this.snapshot.sessions.map((x) => (x.sessionId === sessionId ? next : x)),
-        }
-        if (signals.includes('message')) {
-          const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
-          if (agent) await this.store.putAgent({ ...agent, lastMessageAt: next.lastMessageAt })
-          if (!onScreen && this.snapshot.prefs.sounds && this.snapshot.config.soundsEnabled) playPing()
-        }
-        if (signals.includes('bound') && !fromRun) {
-          await this.loadHistory(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
-          void this.flushPending(sessionId)
-          await this.adoptPairing(next)
-          void this.syncConversations(next.agentDid).catch(() => undefined)
-        }
-        if (signals.includes('closed')) this.stopLeading(sessionId)
-        this.set({})
-        this.updateTitle()
-        this.bus?.post({ kind: 'transcript', sessionId })
-        if (signals.length) this.bus?.post({ kind: 'changed', what: 'sessions', id: sessionId })
-        if (event.type === 'CUSTOM' && event.name === CUSTOM_EVENT.sessionBound) await this.reload()
-      })
-    this.eventQueue = this.eventQueue.catch((e) => this.notify('error', String((e as Error).message ?? e)))
-    return this.eventQueue
+    return this.serial(async () => {
+      const session = await this.store.getSession(sessionId)
+      if (!session) return
+      const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+      const onScreen = this.visible && this.snapshot.selectedSessionId === sessionId && this.snapshot.view !== 'list'
+      const { transcript: t, session: s, signals } = reduce(transcript, session, event, fromRun, onScreen)
+      const next = { ...s, lastEventId: id !== undefined ? Math.max(s.lastEventId, id) : s.lastEventId }
+      if (signals.includes('message') && !next.title) {
+        const firstUser = t.messages.find((m) => m.role === 'user')
+        next.title = (firstUser && firstUser.role !== 'activity' ? firstUser.content : next.lastPreview).slice(0, 60)
+      }
+      await this.store.putTranscript(t)
+      await this.store.putSession(next)
+      this.snapshot = {
+        ...this.snapshot,
+        transcripts: { ...this.snapshot.transcripts, [sessionId]: t },
+        sessions: this.snapshot.sessions.map((x) => (x.sessionId === sessionId ? next : x)),
+      }
+      if (signals.includes('message')) {
+        const agent = this.snapshot.agents.find((a) => a.did === next.agentDid)
+        if (agent) await this.store.putAgent({ ...agent, lastMessageAt: next.lastMessageAt })
+        if (!onScreen && this.snapshot.prefs.sounds && this.snapshot.config.soundsEnabled) playPing()
+      }
+      if (signals.includes('bound') && !fromRun) {
+        await this.loadHistoryNow(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
+        void this.flushPending(sessionId)
+        await this.adoptPairing(next)
+        void this.syncConversations(next.agentDid).catch(() => undefined)
+      }
+      if (signals.includes('closed')) this.stopLeading(sessionId)
+      this.set({})
+      this.updateTitle()
+      this.bus?.post({ kind: 'transcript', sessionId })
+      if (signals.length) this.bus?.post({ kind: 'changed', what: 'sessions', id: sessionId })
+      if (event.type === 'CUSTOM' && event.name === CUSTOM_EVENT.sessionBound) await this.reload()
+    }).catch((e) => this.notify('error', String((e as Error).message ?? e)))
   }
 
   public async loadTranscript(sessionId: string, force = false): Promise<Transcript> {
     if (!force && this.snapshot.transcripts[sessionId]) return this.snapshot.transcripts[sessionId]
     const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+    // a change that landed while this read was in flight is newer than what was read
+    if (!force && this.snapshot.transcripts[sessionId]) return this.snapshot.transcripts[sessionId]
     this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: t } })
     return t
   }
 
-  public async loadHistory(sessionId: string, before?: string): Promise<void> {
+  public loadHistory(sessionId: string, before?: string): Promise<void> {
+    return this.serial(() => this.loadHistoryNow(sessionId, before))
+  }
+
+  private async loadHistoryNow(sessionId: string, before?: string): Promise<void> {
     const session = await this.store.getSession(sessionId)
     if (session?.state !== 'bound') return
     const { client, token } = this.clientOf(session)
@@ -1242,7 +1262,11 @@ export class Hub {
   }
 
   /** Drops a run indicator no tab is driving (a tab closed mid-run): streaming messages end interrupted. */
-  private async clearStaleRun(sessionId: string): Promise<void> {
+  private clearStaleRun(sessionId: string): Promise<void> {
+    return this.serial(() => this.clearStaleRunNow(sessionId))
+  }
+
+  private async clearStaleRunNow(sessionId: string): Promise<void> {
     const t = await this.store.getTranscript(sessionId)
     if (!t?.run) return
     const closed = {
@@ -1316,29 +1340,32 @@ export class Hub {
     if (this.runs.has(sessionId)) throw new Error('a run is in progress')
     this.runs.set(sessionId, { runId, controller })
     if (action.text) {
-      const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
-      const userMessage = {
-        id: `u_${runId}`,
-        role: 'user' as const,
-        content: action.text,
-        at: new Date().toISOString(),
-        replyTo: action.replyTo,
-      }
-      const next = {
-        ...transcript,
-        messages: [...transcript.messages, userMessage],
-        run: { runId, steps: [], log: [] },
-      }
-      await this.store.putTranscript(next)
-      const title = session.title || action.text.slice(0, 60)
-      await this.store.putSession({
-        ...session,
-        draft: '',
-        title,
-        lastMessageAt: userMessage.at,
-        lastPreview: action.text.slice(0, 120),
+      const text = action.text
+      await this.serial(async () => {
+        const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+        const userMessage = {
+          id: `u_${runId}`,
+          role: 'user' as const,
+          content: text,
+          at: new Date().toISOString(),
+          replyTo: action.replyTo,
+        }
+        const next = {
+          ...transcript,
+          messages: [...transcript.messages, userMessage],
+          run: { runId, steps: [], log: [] },
+        }
+        await this.store.putTranscript(next)
+        const current = (await this.store.getSession(sessionId)) ?? session
+        await this.store.putSession({
+          ...current,
+          draft: '',
+          title: current.title || text.slice(0, 60),
+          lastMessageAt: userMessage.at,
+          lastPreview: text.slice(0, 120),
+        })
+        this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
       })
-      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
       await this.reload()
       this.bus?.post({ kind: 'transcript', sessionId })
     }
@@ -1361,10 +1388,10 @@ export class Hub {
       } else if (!controller.signal.aborted) throw e
     } finally {
       this.runs.delete(sessionId)
-      // the run's own RunFinished may still be queued: let it land before judging the transcript
-      await this.eventQueue.catch(() => undefined)
-      const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
-      if (t.run?.runId === runId) {
+      // after the run's own RunFinished, which may still be queued
+      await this.serial(async () => {
+        const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+        if (t.run?.runId !== runId) return
         const closed = {
           ...t,
           run: null,
@@ -1375,7 +1402,7 @@ export class Hub {
         await this.store.putTranscript(closed)
         this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: closed } })
         this.bus?.post({ kind: 'transcript', sessionId })
-      }
+      })
     }
   }
 

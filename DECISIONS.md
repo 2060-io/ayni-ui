@@ -97,5 +97,14 @@
     rename (`ayni.*` events, `forwardedProps.ayni`, `state.ayni`, `/.well-known/ayni-agent.json`).
     The phone app is referred to as "the wallet app" in every language; its deep link domain is
     unchanged until the app itself is renamed.
-20. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+20. **Transcript writes are serialized** (UI-CONV-003, UI-SESS-003). The session stream, a run, a
+    history reload, a resume and the collapse of duplicate records all read a transcript, change it
+    and write it back. Two in flight at once lost the change of whichever wrote first: writing on a
+    conversation after its session had timed out made the new session's stream replay the bound
+    event, which reloads history, while the send appended the person's message; the reload's read
+    was taken before the append and written after it, and the message vanished while the agent's
+    answer arrived. Every such read-modify-write now runs on one queue, one after the other, and a
+    transcript loaded for display never replaces one that changed meanwhile. A test forces the
+    losing order with IndexedDB-like reads (taken at once, delivered later).
+21. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
