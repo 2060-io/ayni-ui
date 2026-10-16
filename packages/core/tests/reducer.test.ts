@@ -298,4 +298,32 @@ describe('reactions and replies (UI-CONV-011/018/019, PROF-RUN-010, PROF-HIST-00
     expect(m && m.role !== 'activity' ? m.steps : undefined).toEqual(['Searching invoices'])
     expect(t.run?.log).toEqual([])
   })
+  it('a message this device sent comes back from history under the agent id, once (PROF-HIST-006)', () => {
+    const local = {
+      ...emptyTranscript('s1'),
+      messages: [
+        { id: 'a1', role: 'assistant' as const, content: 'Earlier', at: '2026-01-01T00:00:01.000Z' },
+        { id: 'u_run1', role: 'user' as const, content: 'what is new?', at: '2026-01-01T00:00:02.000Z' },
+      ],
+      reactions: { u_run1: [{ emoji: '👍', by: 'Agent' }] },
+    }
+    const merged = mergeHistory(
+      local,
+      [
+        { id: 'a1', role: 'assistant', content: 'Earlier', metadata: { createdAt: '2026-01-01T00:00:01.000Z' } },
+        {
+          id: 'msg_7',
+          role: 'user',
+          content: 'what is new?',
+          metadata: { createdAt: '2026-01-01T00:00:02.100Z', externalId: 'u_run1' },
+        },
+        { id: 'a2', role: 'assistant', content: 'Nothing much', metadata: { createdAt: '2026-01-01T00:00:03.000Z' } },
+      ],
+      null
+    )
+    expect(merged.messages.map((m) => m.id)).toEqual(['a1', 'msg_7', 'a2'])
+    expect(merged.messages.filter((m) => m.role === 'user')).toHaveLength(1)
+    expect(merged.reactions.msg_7).toEqual([{ emoji: '👍', by: 'Agent' }])
+    expect(merged.reactions.u_run1).toBeUndefined()
+  })
 })
