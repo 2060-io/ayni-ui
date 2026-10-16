@@ -294,9 +294,23 @@ export function mergeHistory(
   nextBefore: string | null
 ): Transcript {
   const known = new Set(transcript.messages.map((m) => m.id))
-  const older = page.map(toTranscriptMessage).filter((m) => !known.has(m.id))
-  const messages = [...older, ...transcript.messages].sort((a, b) => a.at.localeCompare(b.at))
+  // a message this device sent is known under the id it gave the run; history names it under the
+  // agent's id and recalls ours in metadata.externalId (PROF-HIST-006): it is the same message,
+  // which takes the agent's id from here on so that reactions and replies name it the agent's way
+  const ownIdOf = new Map<string, string>()
+  for (const m of page) {
+    const external = (m.metadata as { externalId?: string } | undefined)?.externalId
+    if (external && known.has(external)) ownIdOf.set(external, String(m.id))
+  }
+  const renamedIds = new Set(ownIdOf.values())
+  const kept = transcript.messages.map((m) => (ownIdOf.has(m.id) ? { ...m, id: ownIdOf.get(m.id) as string } : m))
+  const older = page.map(toTranscriptMessage).filter((m) => !known.has(m.id) && !renamedIds.has(m.id))
+  const messages = [...older, ...kept].sort((a, b) => a.at.localeCompare(b.at))
   const reactions = { ...transcript.reactions, ...reactionsOf(page) }
+  for (const [own, theirs] of ownIdOf) {
+    if (reactions[own] && !reactions[theirs]) reactions[theirs] = reactions[own]
+    delete reactions[own]
+  }
   return {
     ...transcript,
     messages,
