@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.2](https://github.com/2060-io/ayni-ui/compare/v0.4.1...v0.4.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* **rail:** the whole rail takes drops, the pin line always shows, Pin/Unpin in the tile's context menu ([c7f2038](https://github.com/2060-io/ayni-ui/commit/c7f2038fff0177d499d20f22306f218d20b108f4))
+* **rail:** the whole rail takes drops, the pin line always shows, Pin/Unpin in the tile's context menu ([2ddbad7](https://github.com/2060-io/ayni-ui/commit/2ddbad79db910936377951c7f1e7ccda76781c1e))
+
 ## [0.4.1](https://github.com/2060-io/ayni-ui/compare/v0.4.0...v0.4.1) (2026-10-16)
 
 

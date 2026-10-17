@@ -1,6 +1,6 @@
 {
   "name": "ayni-ui",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "type": "module",
   "description": "Ayni UI: the browser Verifiable User Agent for Ayni Agents (ayni-spec v3)",
