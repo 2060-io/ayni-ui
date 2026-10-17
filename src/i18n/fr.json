@@ -23,9 +23,11 @@
     "pinned": "Épinglés",
     "notLinked": "Non lié",
     "unread": "{{count}} non lu(s)",
-    "pinnedHint": "Agents épinglés au-dessus de la ligne. Glissez un agent de l’autre côté pour l’épingler ou le détacher.",
+    "pinnedHint": "Épinglés au-dessus de la ligne. Glissez une vignette de l’autre côté pour l’épingler ou la détacher, ou faites un clic droit dessus.",
     "recent": "Récents",
-    "unverified": "non vérifié"
+    "unverified": "non vérifié",
+    "pin": "Épingler",
+    "unpin": "Désépingler"
   },
   "column": {
     "newConversation": "Nouvelle conversation",
@@ -36,8 +38,6 @@
     "closed": "Fermées",
     "noConversations": "Pas encore de conversation.",
     "options": "Options de l'agent",
-    "pin": "Épingler",
-    "unpin": "Désépingler",
     "linkAgain": "Lier à nouveau",
     "endAll": "Terminer toutes les conversations",
     "remove": "Retirer l'agent",
@@ -56,7 +56,6 @@
     "archiveAll": "Archiver toutes les conversations",
     "closeForGood": "Fermer définitivement",
     "closeForGoodConfirm": "Fermer cette conversation définitivement ? Elle disparaît de vos appareils. L’agent conserve son enregistrement selon sa politique.",
-    "controllerOptions": "Options",
     "kind": {
       "organization": "Organisation",
       "persona": "Personne",

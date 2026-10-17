@@ -316,9 +316,20 @@ a {
   width: 100%;
   border-radius: 12px;
 }
+/* while a tile is dragged both zones show as drop targets; the one under the pointer is marked (UI-SHELL-011) */
 .rail-zone.droppable {
   outline: 1px dashed color-mix(in srgb, var(--accent) 50%, transparent);
   outline-offset: -2px;
+}
+.rail-zone.target {
+  outline: 2px solid var(--accent);
+}
+/* the pinned zone takes no room when empty and grows to one slot while a tile is dragged */
+.rail-zone.rail-pinned:empty {
+  min-height: 0;
+}
+.rail-zone.rail-pinned.droppable {
+  min-height: 48px;
 }
 .rail-separator-wrap {
   position: relative;
@@ -334,7 +345,7 @@ a {
   border: 0;
   border-top: 1px solid var(--border);
 }
-.rail-separator.droppable {
+.rail-separator.target {
   border-top-color: var(--accent);
 }
 .rail-pin {
@@ -343,8 +354,19 @@ a {
   padding: 0 3px;
   box-sizing: content-box;
 }
-.rail-separator.droppable + .rail-pin {
+.rail-separator.target + .rail-pin {
   color: var(--accent);
+}
+/* a tile's context menu: Pin or Unpin, beside the tile (UI-SHELL-011) */
+.rail-menu {
+  position: fixed;
+  right: auto;
+  min-width: 160px;
+}
+.rail-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 fieldset.rail-zone,
 fieldset.quick {

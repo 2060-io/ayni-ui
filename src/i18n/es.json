@@ -23,9 +23,11 @@
     "pinned": "Fijados",
     "notLinked": "Sin vincular",
     "unread": "{{count}} sin leer",
-    "pinnedHint": "Agentes fijados encima de la línea. Arrastra un agente a través de ella para fijarlo o soltarlo.",
+    "pinnedHint": "Fijados encima de la línea. Arrastra un icono a través de ella para fijarlo o soltarlo, o haz clic derecho sobre él.",
     "recent": "Recientes",
-    "unverified": "sin verificar"
+    "unverified": "sin verificar",
+    "pin": "Fijar",
+    "unpin": "Desfijar"
   },
   "column": {
     "newConversation": "Nueva conversación",
@@ -36,8 +38,6 @@
     "closed": "Cerradas",
     "noConversations": "Aún no hay conversaciones.",
     "options": "Opciones del agente",
-    "pin": "Fijar",
-    "unpin": "Desfijar",
     "linkAgain": "Vincular de nuevo",
     "endAll": "Terminar todas las conversaciones",
     "remove": "Quitar agente",
@@ -56,7 +56,6 @@
     "archiveAll": "Archivar todas las conversaciones",
     "closeForGood": "Cerrar definitivamente",
     "closeForGoodConfirm": "¿Cerrar esta conversación definitivamente? Desaparece de tus dispositivos. El agente conserva su registro según su política.",
-    "controllerOptions": "Opciones",
     "kind": {
       "organization": "Organización",
       "persona": "Persona",
