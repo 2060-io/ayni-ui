@@ -1,46 +1,93 @@
 /**
  * The controller rail (UI-SHELL-001/002/011, D32): one tile per organization or persona behind the
- * person's agents, pinned ones above a separator; an unverified agent stands alone, greyed. Dragging a
- * tile across the separator pins or unpins it; dragging within the pinned area reorders.
+ * person's agents, pinned ones above a separator; an unverified agent stands alone, greyed. The whole
+ * rail is the drop surface: a tile dropped above the separator is pinned, before the pinned tile under
+ * the pointer or last; a tile dropped anywhere below the separator is unpinned. The separator and its
+ * pin stay visible when nothing is pinned, so the pinned area can be found. A tile's context menu
+ * (right-click, long press, the keyboard's context-menu key) offers Pin or Unpin for touch and keyboard.
  * The rail ends with the settings tile and, below it, the brand mark from the brand configuration (UI-THEME-004), which opens the About page (UI-SHELL-017).
  */
 import { orderControllers } from '@2060.io/ayni-ui-core'
-import { Pin, Plus, Settings as SettingsIcon } from 'lucide-react'
-import { type DragEvent, useState } from 'react'
+import { Pin, PinOff, Plus, Settings as SettingsIcon } from 'lucide-react'
+import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
+import { useDismiss } from './useDismiss.js'
 
 const MIME = 'application/x-ayni-controller'
+
+/** Where a drop would land: among the pinned, before a tile (last when `before` is null), or among the rest. */
+interface DropTarget {
+  zone: 'pinned' | 'rest'
+  before: string | null
+}
 
 export function Rail() {
   const snap = useSnapshot()
   const hub = useHub()
   const { t } = useTranslation()
+  const railRef = useRef<HTMLElement>(null)
+  const separatorRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState<string | null>(null)
-  const [over, setOver] = useState<string | null>(null)
+  const [target, setTarget] = useState<DropTarget | null>(null)
+  const [menu, setMenu] = useState<{ did: string; top: number; left: number } | null>(null)
+  useDismiss(
+    !!menu,
+    menuRef,
+    useCallback(() => setMenu(null), [])
+  )
+  useEffect(() => {
+    if (menu) menuRef.current?.querySelector('button')?.focus()
+  }, [menu])
+
   const agentsOf = (did: string) => snap.agents.filter((a) => a.controllerDid === did)
   const lastMessageAt = (did: string) => agentsOf(did).reduce((m, a) => (a.lastMessageAt > m ? a.lastMessageAt : m), '')
   const controllers = orderControllers(snap.controllers, (c) => lastMessageAt(c.did))
   const pinned = controllers.filter((c) => c.pinned)
   const rest = controllers.filter((c) => !c.pinned)
+  const menuController = menu ? controllers.find((c) => c.did === menu.did) : undefined
 
-  const accept = (e: DragEvent) => {
-    if (!dragging) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
+  /** The zone and insertion point under the pointer; the separator's midline divides the two zones. */
+  const targetAt = (e: DragEvent): DropTarget => {
+    const sep = separatorRef.current?.getBoundingClientRect()
+    if (sep && e.clientY > sep.top + sep.height / 2) return { zone: 'rest', before: null }
+    const tiles = railRef.current?.querySelectorAll<HTMLElement>('[data-pinned-did]') ?? []
+    for (const el of tiles) {
+      const did = el.dataset.pinnedDid
+      if (!did || did === dragging) continue
+      const r = el.getBoundingClientRect()
+      if (e.clientY < r.top + r.height / 2) return { zone: 'pinned', before: did }
+    }
+    return { zone: 'pinned', before: null }
   }
+  const ours = (e: DragEvent) => !!dragging || Array.from(e.dataTransfer.types).includes(MIME)
   const finish = () => {
     setDragging(null)
-    setOver(null)
+    setTarget(null)
   }
-  const dropOn = (zone: 'pinned' | 'rest', beforeDid: string | null) => (e: DragEvent) => {
+  const onDragOver = (e: DragEvent) => {
+    if (!ours(e)) return
     e.preventDefault()
-    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    const next = targetAt(e)
+    setTarget((cur) => (cur && cur.zone === next.zone && cur.before === next.before ? cur : next))
+  }
+  const onDragLeave = (e: DragEvent) => {
+    const to = e.relatedTarget as Node | null
+    if (!to || !railRef.current?.contains(to)) setTarget(null)
+  }
+  const onDrop = (e: DragEvent) => {
+    if (!ours(e)) return
+    e.preventDefault()
     const did = dragging ?? e.dataTransfer.getData(MIME)
+    const where = targetAt(e)
     finish()
     if (!did) return
-    void hub.movePin(did, zone === 'pinned', beforeDid).catch((err) => hub.notify('error', String(err.message ?? err)))
+    void hub
+      .movePin(did, where.zone === 'pinned', where.before)
+      .catch((err) => hub.notify('error', String(err.message ?? err)))
   }
 
   const tile = (c: (typeof controllers)[number]) => {
@@ -57,25 +104,26 @@ export function Rail() {
           selected ? 'selected' : '',
           c.kind === 'unverified' ? 'inactive' : '',
           dragging === c.did ? 'dragging' : '',
-          over === c.did && dragging && dragging !== c.did ? 'drop-before' : '',
+          target?.zone === 'pinned' && target.before === c.did ? 'drop-before' : '',
         ].join(' ')}
         title={c.kind === 'unverified' ? `${c.name} · ${t('rail.unverified')}` : c.name}
         aria-label={unread ? `${c.name}, ${t('rail.unread', { count: unread })}` : c.name}
         aria-current={selected ? 'true' : undefined}
+        data-pinned-did={c.pinned ? c.did : undefined}
         draggable
         onDragStart={(e) => {
           e.dataTransfer.setData(MIME, c.did)
           e.dataTransfer.effectAllowed = 'move'
-          setDragging(c.did)
+          // after the browser took its drag image, so the faded tile is not what travels with the pointer
+          setTimeout(() => setDragging(c.did), 0)
         }}
         onDragEnd={finish}
-        onDragOver={(e) => {
-          accept(e)
-          if (c.pinned) setOver(c.did)
-        }}
-        onDragLeave={() => setOver((o) => (o === c.did ? null : o))}
-        onDrop={c.pinned ? dropOn('pinned', c.did) : dropOn('rest', null)}
         onClick={() => hub.selectController(c.did)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          const r = e.currentTarget.getBoundingClientRect()
+          setMenu({ did: c.did, top: r.top, left: r.right + 6 })
+        }}
       >
         <Avatar name={c.name} src={c.logoRef} size={48} />
         {unread ? <span className="badge">{unread}</span> : null}
@@ -84,28 +132,29 @@ export function Rail() {
     )
   }
 
+  const zoneClass = (zone: DropTarget['zone']) =>
+    [dragging ? 'droppable' : '', target?.zone === zone ? 'target' : ''].join(' ')
+
   return (
-    <nav className="rail" aria-label={t('app.controllers')}>
-      <fieldset
-        className={['rail-zone', dragging ? 'droppable' : ''].join(' ')}
-        aria-label={t('rail.pinned')}
-        onDragOver={accept}
-        onDrop={dropOn('pinned', null)}
-      >
+    <nav
+      className="rail"
+      aria-label={t('app.controllers')}
+      ref={railRef}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      <fieldset className={['rail-zone', 'rail-pinned', zoneClass('pinned')].join(' ')} aria-label={t('rail.pinned')}>
         {pinned.map(tile)}
       </fieldset>
-      {pinned.length || dragging ? (
-        <div className="rail-separator-wrap" onDragOver={accept} onDrop={dropOn('pinned', null)} aria-hidden="true">
-          <hr className={['rail-separator', dragging ? 'droppable' : ''].join(' ')} title={t('rail.pinnedHint')} />
-          <Pin size={11} className="rail-pin" />
-        </div>
-      ) : null}
-      <fieldset
-        className={['rail-zone', 'rail-rest', dragging ? 'droppable' : ''].join(' ')}
-        aria-label={t('rail.recent')}
-        onDragOver={accept}
-        onDrop={dropOn('rest', null)}
-      >
+      <div className="rail-separator-wrap" ref={separatorRef} aria-hidden="true">
+        <hr
+          className={['rail-separator', target?.zone === 'pinned' ? 'target' : ''].join(' ')}
+          title={t('rail.pinnedHint')}
+        />
+        <Pin size={11} className="rail-pin" />
+      </div>
+      <fieldset className={['rail-zone', 'rail-rest', zoneClass('rest')].join(' ')} aria-label={t('rail.recent')}>
         {rest.map(tile)}
         <button
           type="button"
@@ -148,6 +197,27 @@ export function Rail() {
             draggable={false}
           />
         </button>
+      ) : null}
+      {menu && menuController ? (
+        <div
+          ref={menuRef}
+          className="menu-popover rail-menu"
+          role="menu"
+          aria-label={menuController.name}
+          style={{ top: menu.top, left: menu.left }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenu(null)
+              void hub.togglePin(menuController.did).catch((err) => hub.notify('error', String(err.message ?? err)))
+            }}
+          >
+            {menuController.pinned ? <PinOff size={16} aria-hidden="true" /> : <Pin size={16} aria-hidden="true" />}
+            {menuController.pinned ? t('rail.unpin') : t('rail.pin')}
+          </button>
+        </div>
       ) : null}
     </nav>
   )

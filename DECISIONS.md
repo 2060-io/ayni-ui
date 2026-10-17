@@ -106,5 +106,16 @@
     answer arrived. Every such read-modify-write now runs on one queue, one after the other, and a
     transcript loaded for display never replaces one that changed meanwhile. A test forces the
     losing order with IndexedDB-like reads (taken at once, delivered later).
-21. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+21. **The whole rail is the drop surface; the pin line always shows; Pin and Unpin live in the tile's
+    context menu** (UI-SHELL-011, D28). Dropping was only accepted on the two zones themselves, and
+    the unpinned zone is one tile tall when few agents are known: a pinned tile dragged "down" landed
+    on the spacer under the plus tile, where nothing accepted it, so dragging could pin but not
+    unpin. The rail element now takes every drop and decides by position: above the midline of the
+    separator pins (before the pinned tile under the pointer, or last), below it unpins, wherever the
+    pointer is. The separator and its pin icon are rendered even when nothing is pinned, so the area
+    above the line can be found; it grows to one slot while a tile is dragged. The controller header
+    lost its three-dot menu, whose only item was Pin or Unpin; a right-click, a long press or the
+    keyboard's context-menu key on a rail tile opens a one-item menu with the same, which keeps
+    pinning reachable without a pointer drag.
+22. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

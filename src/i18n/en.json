@@ -23,9 +23,11 @@
     "pinned": "Pinned",
     "notLinked": "Not linked",
     "unread": "{{count}} unread",
-    "pinnedHint": "Pinned agents above the line. Drag an agent across it to pin or unpin it.",
+    "pinnedHint": "Pinned above the line. Drag a tile across it to pin or unpin, or right-click a tile.",
     "recent": "Recent",
-    "unverified": "not verified"
+    "unverified": "not verified",
+    "pin": "Pin",
+    "unpin": "Unpin"
   },
   "column": {
     "newConversation": "New conversation",
@@ -36,8 +38,6 @@
     "closed": "Closed",
     "noConversations": "No conversations yet.",
     "options": "Agent options",
-    "pin": "Pin",
-    "unpin": "Unpin",
     "linkAgain": "Link again",
     "endAll": "End all conversations",
     "remove": "Remove agent",
@@ -56,7 +56,6 @@
     "archiveAll": "Archive all conversations",
     "closeForGood": "Close for good",
     "closeForGoodConfirm": "Close this conversation for good? It disappears from your devices. The agent keeps its record as its policy says.",
-    "controllerOptions": "Options",
     "kind": {
       "organization": "Organization",
       "persona": "Person",

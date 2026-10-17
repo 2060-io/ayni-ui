@@ -26,15 +26,7 @@ import { useDismiss } from './useDismiss.js'
 
 export function Column() {
   const snap = useSnapshot()
-  const hub = useHub()
   const { t } = useTranslation()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const headerRef = useRef<HTMLDivElement>(null)
-  useDismiss(
-    menuOpen,
-    headerRef,
-    useCallback(() => setMenuOpen(false), [])
-  )
   const controller = snap.controllers.find((c) => c.did === snap.selectedControllerDid)
   if (!controller) {
     return (
@@ -48,7 +40,7 @@ export function Column() {
     .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
   return (
     <aside className="column">
-      <div className="column-header relative" ref={headerRef}>
+      <div className="column-header">
         <div className="row-between">
           <h2 className="controller-title">
             {controller.kind === 'organization' ? (
@@ -65,30 +57,7 @@ export function Column() {
             ) : null}
             <span className="ellipsis">{controller.name}</span>
           </h2>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={t('column.controllerOptions')}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <MoreVertical size={20} />
-          </button>
         </div>
-        {menuOpen ? (
-          <div className="menu-popover" role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenuOpen(false)
-                void hub.togglePin(controller.did)
-              }}
-            >
-              {controller.pinned ? t('column.unpin') : t('column.pin')}
-            </button>
-          </div>
-        ) : null}
       </div>
       <div className="list">
         {agents.map((a) => (
