@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.3](https://github.com/2060-io/ayni-ui/compare/v0.4.2...v0.4.3) (2026-10-23)
+
+
+### Bug Fixes
+
+* **sessions:** one session opening at a time per agent; a never-bound conversation closes without the phone ([407211f](https://github.com/2060-io/ayni-ui/commit/407211fc73104bbab6a9f9c94be98c4c508b721b))
+* **sessions:** one session opening at a time per agent; a never-bound conversation closes without the phone ([8f79416](https://github.com/2060-io/ayni-ui/commit/8f79416e7416f3fd2389bb4602ac087614714e8f))
+
 ## [0.4.2](https://github.com/2060-io/ayni-ui/compare/v0.4.1...v0.4.2) (2026-10-17)
 
 
