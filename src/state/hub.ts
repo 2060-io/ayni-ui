@@ -490,60 +490,165 @@ export class Hub {
     )
   }
 
-  /** Connect: a provisional session with binding material (UI-BIND-001). */
+  /**
+   * Connect (UI-BIND-001): a provisional session with binding material, or one bound at once when the
+   * device is paired (UI-BIND-011) or another session of the agent is bound.
+   */
   public async connect(agentDid: string, resume?: ResumeTarget, fresh = false): Promise<SessionRecord> {
+    return this.open(agentDid, resume, fresh)
+  }
+
+  private readonly opening = new Map<string, Promise<unknown>>()
+
+  /**
+   * One session opening at a time per agent (UI-BIND-012). Two in flight would present the same device
+   * secret: the agent rotates it on the first and, seeing a stale secret on the second, revokes the
+   * pairing (IDENT-DEV-003). Across the tabs of this origin through the Web Locks API where the
+   * browser has it, within this tab otherwise.
+   */
+  private withOpening<T>(agentDid: string, fn: () => Promise<T>): Promise<T> {
+    const queued = () => {
+      const previous = this.opening.get(agentDid) ?? Promise.resolve()
+      const next = previous.then(fn, fn)
+      this.opening.set(
+        agentDid,
+        next.then(
+          () => undefined,
+          () => undefined
+        )
+      )
+      return next
+    }
+    const locks: LockManager | undefined = typeof navigator === 'undefined' ? undefined : navigator.locks
+    return locks ? (locks.request(`ayni-open:${agentDid}`, queued) as Promise<T>) : queued()
+  }
+
+  /** Opens a session for the agent, then streams it, loads what it continues and sends the text it carries. */
+  private async open(agentDid: string, resume?: ResumeTarget, fresh = false): Promise<SessionRecord> {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent) throw new Error('agent not found')
     if (!this.canConnect(agent)) throw new Error('agent is not trusted')
-    await recheckTrust(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
-    await refreshDescriptor(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
-    // a paired device binds silently with its proof (UI-BIND-011); a rejected proof is dropped
-    const created = await this.client(agent).create(
-      { ...CLIENT, platform: platformDescription() },
-      this.snapshot.prefs.locale ?? navigator.language,
-      undefined,
-      agent.deviceHandle,
-      resume?.sessionId,
-      agent.deviceSecret,
-      resume?.conversationId,
-      fresh
-    )
-    if (created.pairing) {
-      await this.store.putAgent({
-        ...agent,
-        deviceSecret: undefined,
-        deviceHandle: created.pairing === 'invalid' ? undefined : agent.deviceHandle,
-      })
-    } else if (created.deviceSecret) {
-      await this.store.putAgent({
-        ...agent,
-        deviceHandle: created.deviceHandle ?? agent.deviceHandle,
-        deviceSecret: created.deviceSecret,
-      })
+    const { session, reused } = await this.withOpening(agentDid, () => this.openNow(agentDid, resume, fresh))
+    this.selectSession(session.sessionId)
+    if (!reused) void this.lead(session.sessionId)
+    if (session.state === 'bound') {
+      if (!reused) {
+        await this.loadHistory(session.sessionId).catch(() => undefined)
+        await this.syncConversations(agentDid).catch(() => undefined)
+      }
+      if (resume?.text) await this.send(session.sessionId, resume.text)
     }
+    return session
+  }
+
+  /**
+   * Under the agent's opening lock. A conversation already open here is reused (UI-SESS-014); with a
+   * session bound the new one is its sibling and carries no proof; otherwise the device proof binds it
+   * silently on a paired device (UI-BIND-011), and a rejected or missing proof leaves it provisional,
+   * for the binding screen.
+   */
+  private async openNow(
+    agentDid: string,
+    resume: ResumeTarget | undefined,
+    fresh: boolean
+  ): Promise<{ session: SessionRecord; reused: boolean }> {
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    if (!agent) throw new Error('agent not found')
+    const live = resume?.conversationId
+      ? this.snapshot.sessions.find(
+          (s) =>
+            s.agentDid === agentDid &&
+            s.conversationId === resume.conversationId &&
+            s.state === 'bound' &&
+            s.sessionToken
+        )
+      : undefined
+    if (live) return { session: live, reused: true }
+    const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
+    const locale = this.snapshot.prefs.locale ?? navigator.language
     const old = this.previousRecord(resume)
-    const bound = created.state === 'bound'
-    const session: SessionRecord = {
-      sessionId: created.sessionId,
-      agentDid,
-      sessionToken: created.sessionToken,
-      title: '',
-      createdAt: new Date().toISOString(),
-      state: created.state,
-      binding: created.binding,
-      principal: created.principal,
-      lastEventId: 0,
-      unreadCount: 0,
-      lastPreview: '',
-      lastMessageAt: new Date().toISOString(),
-      draft: '',
-      ayni: null,
-      idleTimeoutSeconds: created.idleTimeoutSeconds,
-      rebindAsked: created.rebind === 'asked',
-      deviceHandle: created.deviceHandle,
-      conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
-      resumedFromSessionId: created.resumedFromSessionId ?? resume?.sessionId,
-      pendingText: bound ? undefined : resume?.text,
+    const now = new Date().toISOString()
+    let session: SessionRecord
+    if (bound) {
+      const { client, token } = this.clientOf(bound)
+      const created = await client.create(
+        { ...CLIENT, platform: platformDescription() },
+        locale,
+        token,
+        undefined,
+        resume?.sessionId,
+        undefined,
+        resume?.conversationId,
+        fresh
+      )
+      session = {
+        sessionId: created.sessionId,
+        agentDid,
+        sessionToken: created.sessionToken,
+        title: '',
+        createdAt: now,
+        parentSessionId: created.parentSessionId ?? bound.sessionId,
+        state: 'bound',
+        principal: created.principal ?? bound.principal,
+        lastEventId: 0,
+        unreadCount: 0,
+        lastPreview: '',
+        lastMessageAt: now,
+        draft: '',
+        ayni: null,
+        idleTimeoutSeconds: created.idleTimeoutSeconds,
+        conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
+        resumedFromSessionId: created.resumedFromSessionId,
+      }
+    } else {
+      await recheckTrust(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
+      await refreshDescriptor(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
+      // a paired device binds silently with its proof (UI-BIND-011); a rejected proof is dropped
+      const created = await this.client(agent).create(
+        { ...CLIENT, platform: platformDescription() },
+        locale,
+        undefined,
+        agent.deviceHandle,
+        resume?.sessionId,
+        agent.deviceSecret,
+        resume?.conversationId,
+        fresh
+      )
+      if (created.pairing) {
+        await this.store.putAgent({
+          ...agent,
+          deviceSecret: undefined,
+          deviceHandle: created.pairing === 'invalid' ? undefined : agent.deviceHandle,
+        })
+      } else if (created.deviceSecret) {
+        await this.store.putAgent({
+          ...agent,
+          deviceHandle: created.deviceHandle ?? agent.deviceHandle,
+          deviceSecret: created.deviceSecret,
+        })
+      }
+      session = {
+        sessionId: created.sessionId,
+        agentDid,
+        sessionToken: created.sessionToken,
+        title: '',
+        createdAt: now,
+        state: created.state,
+        binding: created.binding,
+        principal: created.principal,
+        lastEventId: 0,
+        unreadCount: 0,
+        lastPreview: '',
+        lastMessageAt: now,
+        draft: '',
+        ayni: null,
+        idleTimeoutSeconds: created.idleTimeoutSeconds,
+        rebindAsked: created.rebind === 'asked',
+        deviceHandle: created.deviceHandle,
+        conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
+        resumedFromSessionId: created.resumedFromSessionId ?? resume?.sessionId,
+        pendingText: created.state === 'bound' ? undefined : resume?.text,
+      }
     }
     if (old) {
       session.title = old.title
@@ -554,14 +659,7 @@ export class Hub {
     if (session.conversationId) await this.collapseConversations(agentDid, session.sessionId)
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
-    this.selectSession(session.sessionId)
-    void this.lead(session.sessionId)
-    if (bound) {
-      await this.loadHistory(session.sessionId).catch(() => undefined)
-      await this.syncConversations(agentDid).catch(() => undefined)
-      if (resume?.text) await this.send(session.sessionId, resume.text)
-    }
-    return session
+    return { session, reused: false }
   }
 
   /** The local record a new session continues: a session of ours, or the placeholder of a listed conversation. */
@@ -710,11 +808,17 @@ export class Hub {
     }
   }
 
-  /** A bound token for the agent, opening the conversation silently on a paired device when none is bound. */
+  /**
+   * A bound token for the agent: an open session's, else one opened silently on a paired device.
+   * An unpaired device gets no session out of this: the action needs the phone first, and a
+   * provisional session would only add a row and a binding screen.
+   */
   private async tokenFor(agentDid: string, conversationId?: string): Promise<{ client: ProfileClient; token: string }> {
     const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
     if (bound) return this.clientOf(bound)
-    const opened = await this.connect(agentDid, conversationId ? { conversationId } : undefined)
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    if (!agent?.deviceHandle || !agent.deviceSecret) throw new Error('link your phone first')
+    const opened = await this.open(agentDid, conversationId ? { conversationId } : undefined)
     if (opened.state !== 'bound' || !opened.sessionToken) throw new Error('link your phone first')
     return this.clientOf(opened)
   }
@@ -746,16 +850,29 @@ export class Hub {
       await this.setArchived(s.sessionId, true)
   }
 
-  /** Close for good (UI-SESS-004): the agent marks it final; nothing of it stays on this device. */
+  /**
+   * Close for good (UI-SESS-004): the agent marks the conversation final and nothing of it stays on
+   * this device. When the agent cannot be asked from here (nothing bound, device not paired) the
+   * conversation leaves this device anyway: its provisional session is closed; a record the agent
+   * holds for it comes back with the next pairing.
+   */
   public async closeForGood(sessionId: string): Promise<void> {
     const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
     if (!session) return
-    if (session.conversationId) {
+    if (session.conversationId && this.canAskAgent(session.agentDid)) {
       const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
       await client.deleteConversation(token, session.conversationId)
     }
     await this.afterSync(() => this.closeConversation(sessionId, true))
     void this.syncConversations(session.agentDid).catch(() => undefined)
+  }
+
+  /** Whether an action on the agent can go through without the phone: a bound session, or a paired device. */
+  private canAskAgent(agentDid: string): boolean {
+    if (this.snapshot.sessions.some((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken))
+      return true
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    return !!agent?.deviceHandle && !!agent.deviceSecret
   }
 
   /**
@@ -793,72 +910,10 @@ export class Hub {
     await client.revokeDevice(handle, { token })
   }
 
-  /** New conversation: a sibling when a bound one exists on this device, else the binding flow (UI-SESS-008). */
+  /** A new or resumed conversation of the agent (UI-SESS-001/013), through the agent's opening lock. */
   public async newConversation(agentDid: string, resume?: ResumeTarget): Promise<SessionRecord> {
     const fresh = !resume?.sessionId && !resume?.conversationId
-    // the conversation is already open on this device: no second session for it (UI-SESS-014)
-    const live = resume?.conversationId
-      ? this.snapshot.sessions.find(
-          (s) =>
-            s.agentDid === agentDid &&
-            s.conversationId === resume.conversationId &&
-            s.state === 'bound' &&
-            s.sessionToken
-        )
-      : undefined
-    if (live) {
-      this.selectSession(live.sessionId)
-      if (resume?.text) await this.send(live.sessionId, resume.text)
-      return live
-    }
-    const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
-    if (!bound) return this.connect(agentDid, resume, fresh)
-    const { client, token } = this.clientOf(bound)
-    const created = await client.create(
-      { ...CLIENT, platform: platformDescription() },
-      this.snapshot.prefs.locale ?? navigator.language,
-      token,
-      undefined,
-      resume?.sessionId,
-      undefined,
-      resume?.conversationId,
-      fresh
-    )
-    const old = this.previousRecord(resume)
-    const session: SessionRecord = {
-      sessionId: created.sessionId,
-      agentDid,
-      sessionToken: created.sessionToken,
-      title: '',
-      createdAt: new Date().toISOString(),
-      parentSessionId: created.parentSessionId ?? bound.sessionId,
-      state: 'bound',
-      principal: created.principal ?? bound.principal,
-      lastEventId: 0,
-      unreadCount: 0,
-      lastPreview: '',
-      lastMessageAt: new Date().toISOString(),
-      draft: '',
-      ayni: null,
-      idleTimeoutSeconds: created.idleTimeoutSeconds,
-      conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
-      resumedFromSessionId: created.resumedFromSessionId,
-    }
-    if (old) {
-      session.title = old.title
-      session.archived = old.archived
-    }
-    await this.store.putSession(session)
-    await this.serial(async () => this.store.putTranscript(await this.inheritTranscript(session, old)))
-    if (session.conversationId) await this.collapseConversations(agentDid, session.sessionId)
-    await this.reload()
-    this.bus?.post({ kind: 'changed', what: 'sessions' })
-    this.selectSession(session.sessionId)
-    void this.lead(session.sessionId)
-    if (resume?.conversationId || resume?.sessionId) await this.loadHistory(session.sessionId).catch(() => undefined)
-    void this.syncConversations(agentDid).catch(() => undefined)
-    if (resume?.text) await this.send(session.sessionId, resume.text)
-    return session
+    return this.open(agentDid, resume, fresh)
   }
 
   /** A resumed session takes over the closed conversation's local transcript and replaces its record. */

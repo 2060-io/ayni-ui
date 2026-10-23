@@ -117,5 +117,19 @@
     lost its three-dot menu, whose only item was Pin or Unpin; a right-click, a long press or the
     keyboard's context-menu key on a rail tile opens a one-item menu with the same, which keeps
     pinning reachable without a pointer drag.
-22. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+22. **One session opening at a time per agent; a never-bound conversation closes without the
+    phone** (UI-BIND-012, UI-SESS-004). Seen live on 2026-10-23: two session openings reached the
+    agent in the same second with the same device secret. The agent rotated it on the first and, as
+    IDENT-DEV-003 requires, read the second as a stale secret and revoked the pairing, so every new
+    conversation asked for the phone again. Four paths open a session with the proof (a listed
+    conversation clicked, a closed one written on, New conversation, and rename/archive/close when
+    nothing is bound), each after a trust re-check and a descriptor refresh that widen the window.
+    They now share one lock per agent (the Web Locks API across tabs, a promise chain within one),
+    and an opening that finds a session bound when its turn comes becomes that session's sibling
+    and carries no proof. The agent stays strict: the revocation is what protects against a copied
+    secret. In the same change, an action that needs the agent (rename, archive, delete) on an
+    unpaired device no longer opens a provisional session as a side effect, and "Close for good" is
+    offered on a conversation that never bound: its provisional session is closed and the row leaves,
+    with no phone involved.
+23. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
