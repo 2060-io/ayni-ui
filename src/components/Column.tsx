@@ -373,7 +373,8 @@ function ConversationRow({
               {s.archived ? t('column.unarchive') : t('column.archive')}
             </button>
           ) : null}
-          {s.archived ? (
+          {/* archived, or never bound: a conversation the person opened and will not link leaves without the phone */}
+          {s.archived || s.state === 'provisional' ? (
             <button
               type="button"
               role="menuitem"
