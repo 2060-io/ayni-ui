@@ -5,12 +5,13 @@
  */
 import { ArrowLeft, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { ABOUT_ART } from '../brand/aboutArt.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 
 const BLOCKS = [
-  { key: 'what', art: '/brand/about/seal.svg' },
-  { key: 'name', art: '/brand/about/reciprocity.svg' },
-  { key: 'future', art: '/brand/about/path.svg' },
+  { key: 'what', art: ABOUT_ART.seal },
+  { key: 'name', art: ABOUT_ART.reciprocity },
+  { key: 'future', art: ABOUT_ART.path },
 ] as const
 
 export function About() {
@@ -37,7 +38,8 @@ export function About() {
       </div>
       {BLOCKS.map((b, i) => (
         <section key={b.key} className={['about-block', i % 2 ? 'flip' : ''].join(' ')}>
-          <img src={b.art} alt="" />
+          {/* fetched at start (preloadAboutArt) and decoded with the frame: the page shows whole, at once */}
+          <img src={b.art} alt="" decoding="sync" />
           <div>
             <h2>{t(`about.${b.key}.title`)}</h2>
             <p>{t(`about.${b.key}.p1`)}</p>
