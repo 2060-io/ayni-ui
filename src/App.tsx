@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { preloadAboutArt } from './brand/aboutArt.js'
 import { About } from './components/About.js'
 import { AddPage } from './components/AddPage.js'
 import { Column } from './components/Column.js'
@@ -20,6 +21,10 @@ function Shell() {
   useEffect(() => {
     document.documentElement.dataset.theme = snap.prefs.theme === 'system' ? '' : snap.prefs.theme
   }, [snap.prefs.theme])
+  // the About page's illustrations are fetched now, so the page shows at once when the mark is pressed (UI-SHELL-017)
+  useEffect(() => {
+    preloadAboutArt()
+  }, [])
   // the person's accent overrides the brand's; the contrast colour follows its luminance (UI-THEME-003)
   useEffect(() => {
     const root = document.documentElement.style

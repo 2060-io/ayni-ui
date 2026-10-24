@@ -131,5 +131,12 @@
     unpaired device no longer opens a provisional session as a side effect, and "Close for good" is
     offered on a conversation that never bound: its provisional session is closed and the row leaves,
     with no phone involved.
-23. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+23. **The About page's illustrations are bundled and fetched at start** (UI-SHELL-017). They lived
+    under `/brand/`, which nginx serves with `no-cache` so that a deployment can swap the brand
+    files, and were fetched when the page opened: three requests and a visible delay at every
+    press of the mark. They are the app's own content, not a deployment's brand, so they now ship
+    through the bundle under a hashed name (cached for a year, immutable), the shell fetches them
+    once at start and keeps the image elements, and the page decodes them with the frame. The
+    mark and the logo stay under `/brand/`, swappable.
+24. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
