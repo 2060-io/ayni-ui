@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.4](https://github.com/2060-io/ayni-ui/compare/v0.4.3...v0.4.4) (2026-10-24)
+
+
+### Bug Fixes
+
+* **about:** the illustrations are bundled and fetched at start, so the page shows at once ([0a9411a](https://github.com/2060-io/ayni-ui/commit/0a9411ad5a0512dfc390a28731c02123b38cea50))
+* **about:** the illustrations are bundled and fetched at start, so the page shows at once ([adcc40a](https://github.com/2060-io/ayni-ui/commit/adcc40ad1f7383d414b7af79f8d8e3a616cee36c))
+
 ## [0.4.3](https://github.com/2060-io/ayni-ui/compare/v0.4.2...v0.4.3) (2026-10-23)
 
 
