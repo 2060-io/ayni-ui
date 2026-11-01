@@ -1,6 +1,6 @@
 /** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
-import { ACTIVITY, CLOSURE_REASONS } from '@2060.io/ayni-agui-profile'
-import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@2060.io/ayni-ui-core'
+import { ACTIVITY, CLOSURE_REASONS } from '@ayni.org/ayni-agui-profile'
+import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, ChevronDown, ChevronUp, Loader2, Menu as MenuIcon, Search, ShieldCheck, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

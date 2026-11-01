@@ -10,7 +10,7 @@ the wire contract is the [Ayni AG-UI Profile v3](https://github.com/2060-io/ayni
 
 | Path | What it holds | Spec areas |
 |------|---------------|------------|
-| `packages/core/` | `@2060.io/ayni-ui-core`, published to npm for the Ayni app: framework-independent TypeScript (descriptor discovery, trust resolution, directory search, the profile client with its SSE reader, the AG-UI event reducer, the IndexedDB device store, the tab sync bus with leader election). The wire types come from `@2060.io/ayni-agui-profile` on npm, published from `ayni-agent` | UI-SHELL-004, UI-TRUST, UI-AGENTS, UI-SESS, UI-CONV |
+| `packages/core/` | `@ayni.org/ayni-ui-core`, published to npm for the Ayni app: framework-independent TypeScript (descriptor discovery, trust resolution, directory search, the profile client with its SSE reader, the AG-UI event reducer, the IndexedDB device store, the tab sync bus with leader election). The wire types come from `@ayni.org/ayni-agui-profile` on npm, published from `ayni-agent` | UI-SHELL-004, UI-TRUST, UI-AGENTS, UI-SESS, UI-CONV |
 | `src/state/` | runtime configuration and brand (`config.ts`), the application hub: store, leadership per session, streams, runs, actions (`hub.ts`) | UI-SHELL-005..010, UI-SESS-*, UI-PLAT-004 |
 | `src/components/` | the shell: agent rail, conversation column, conversation pane (transcript, cards, composer, binding, closure banners), trust card, directory, add agent (URL, DID, QR), settings, details panel | UI-SHELL-001/002/011/012/013, UI-BIND, UI-CONV, UI-APPR, UI-CAP, UI-MEDIA, UI-AGENTS, UI-I18N, UI-THEME, UI-A11Y |
 | `src/i18n/` | en, es, fr, pt | UI-I18N-003 |

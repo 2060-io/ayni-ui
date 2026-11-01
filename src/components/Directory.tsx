@@ -1,5 +1,5 @@
 /** Directory (D20, UI-AGENTS-004): every Verifiable Service declaring a AyniAgUI endpoint, trusted first. */
-import { type DirectoryHit, searchDirectory } from '@2060.io/ayni-ui-core'
+import { type DirectoryHit, searchDirectory } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

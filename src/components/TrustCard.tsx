@@ -1,5 +1,5 @@
 /** Trust card (D4, UI-TRUST-002/003/004/005/006): service, operator, accreditations, result with reasons. */
-import type { AgentRecord, TrustSummary } from '@2060.io/ayni-ui-core'
+import type { AgentRecord, TrustSummary } from '@ayni.org/ayni-ui-core'
 import { ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'

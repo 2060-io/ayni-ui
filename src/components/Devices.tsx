@@ -1,5 +1,5 @@
 /** Linked devices of the person with an agent (UI-AGENTS-006, PROF-SESS-011/012): list and unlink. */
-import type { AgentRecord } from '@2060.io/ayni-ui-core'
+import type { AgentRecord } from '@ayni.org/ayni-ui-core'
 import { Laptop, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

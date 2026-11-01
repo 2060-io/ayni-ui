@@ -19,11 +19,11 @@ permissions:
 
 jobs:
   core:
-    name: '@2060.io/ayni-ui-core'
+    name: '@ayni.org/ayni-ui-core'
     runs-on: ubuntu-latest
     env:
       PACKAGE_DIR: packages/core
-      PACKAGE_NAME: '@2060.io/ayni-ui-core'
+      PACKAGE_NAME: '@ayni.org/ayni-ui-core'
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

@@ -5,7 +5,7 @@
  * agent's answer appeared). A fake agent answers over fetch; the store delays every operation so
  * that read-modify-write sequences interleave as they do with IndexedDB.
  */
-import { MemoryDeviceStore } from '@2060.io/ayni-ui-core'
+import { MemoryDeviceStore } from '@ayni.org/ayni-ui-core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Hub } from '../src/state/hub.js'
 

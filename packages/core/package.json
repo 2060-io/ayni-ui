@@ -1,5 +1,5 @@
 {
-  "name": "@2060.io/ayni-ui-core",
+  "name": "@ayni.org/ayni-ui-core",
   "version": "0.1.0",
   "description": "Framework-independent core of the Ayni UI (UI-SHELL-004): agents and controllers, trust resolution, sessions and binding, the conversation reducer, the local store and sync; shared by the browser UI and the Ayni app",
   "type": "module",
@@ -16,7 +16,7 @@
     "check-types": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@2060.io/ayni-agui-profile": "^3.1.0",
+    "@ayni.org/ayni-agui-profile": "^3.1.0",
     "idb": "^8.0.4"
   },
   "devDependencies": {

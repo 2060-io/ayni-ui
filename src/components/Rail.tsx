@@ -7,7 +7,7 @@
  * (right-click, long press, the keyboard's context-menu key) offers Pin or Unpin for touch and keyboard.
  * The rail ends with the settings tile and, below it, the brand mark from the brand configuration (UI-THEME-004), which opens the About page (UI-SHELL-017).
  */
-import { orderControllers } from '@2060.io/ayni-ui-core'
+import { orderControllers } from '@ayni.org/ayni-ui-core'
 import { Pin, PinOff, Plus, Settings as SettingsIcon } from 'lucide-react'
 import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

@@ -3,7 +3,7 @@
  * (stream and runs), and the in-memory snapshot React renders from. Framework-independent core
  * underneath (UI-SHELL-004); this file is the shell's state.
  */
-import { type AyniAction, CUSTOM_EVENT } from '@2060.io/ayni-agui-profile'
+import { type AyniAction, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import {
   type AgentRecord,
   type AgUiEvent,
@@ -31,7 +31,7 @@ import {
   type SyncBus,
   type SyncMessage,
   type Transcript,
-} from '@2060.io/ayni-ui-core'
+} from '@ayni.org/ayni-ui-core'
 import { loadConfig } from './config.js'
 
 export type View = 'list' | 'conversation' | 'directory' | 'add' | 'settings' | 'about' | 'trust'

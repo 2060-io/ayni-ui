@@ -1,5 +1,5 @@
 /** Directory through the Verana Graph search (D20, UI-AGENTS-004): every service declaring a AyniAgUI endpoint. */
-import { DID_SERVICE_TYPE } from '@2060.io/ayni-agui-profile'
+import { DID_SERVICE_TYPE } from '@ayni.org/ayni-agui-profile'
 
 export interface DirectoryHit {
   did: string

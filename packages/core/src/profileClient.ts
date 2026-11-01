@@ -10,7 +10,7 @@ import type {
   HistoryPage,
   SessionStatus,
   UploadResponse,
-} from '@2060.io/ayni-agui-profile'
+} from '@ayni.org/ayni-agui-profile'
 import { readSse } from './sse.js'
 
 export class ProfileError extends Error {
