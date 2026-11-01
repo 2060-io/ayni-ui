@@ -22,7 +22,7 @@
   "devDependencies": {
     "typescript": "^5.9.3"
   },
-  "license": "Apache-2.0",
+  "license": "AGPL-3.0-only",
   "homepage": "https://github.com/2060-io/ayni-ui/tree/main/packages/core",
   "repository": {
     "type": "git",
