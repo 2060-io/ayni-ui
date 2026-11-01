@@ -3,7 +3,7 @@
  * bar, the full emoji picker, the context menu, and the touch sheet. One reaction per person per
  * message (UI-CONV-011): picking another replaces it, picking the current one removes it.
  */
-import type { TranscriptMessage } from '@2060.io/ayni-ui-core'
+import type { TranscriptMessage } from '@ayni.org/ayni-ui-core'
 import { Copy, FileText, Info, MoreHorizontal, PenLine, Reply, SmilePlus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

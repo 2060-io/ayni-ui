@@ -15,8 +15,8 @@
     "validate": "pnpm check-types && pnpm check-format"
   },
   "dependencies": {
-    "@2060.io/ayni-agui-profile": "workspace:*",
-    "@2060.io/ayni-ui-core": "workspace:*",
+    "@ayni.org/ayni-agui-profile": "^3.1.0",
+    "@ayni.org/ayni-ui-core": "workspace:*",
     "@ag-ui/client": "1.0.2",
     "@ag-ui/core": "1.0.2",
     "i18next": "^26.4.4",

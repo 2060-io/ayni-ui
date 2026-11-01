@@ -2,7 +2,7 @@
  * Trust before binding (D4, UI-TRUST-001/002/005): descriptor discovery from a URL, a DID or a link,
  * and the Verifiable Trust resolution of the descriptor's `did` through the resolution service.
  */
-import { type AgentDescriptor, DESCRIPTOR_PATH, DID_SERVICE_TYPE, PROFILE_MAJOR } from '@2060.io/ayni-agui-profile'
+import { type AgentDescriptor, DESCRIPTOR_PATH, DID_SERVICE_TYPE, PROFILE_MAJOR } from '@ayni.org/ayni-agui-profile'
 import type { TrustSummary } from './types.js'
 
 export interface ResolveResponse {

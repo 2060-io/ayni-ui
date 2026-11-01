@@ -4,7 +4,7 @@
  * conversation closes for good without the phone (UI-SESS-004), and an action that needs the agent
  * opens nothing on an unpaired device. A fake agent over fetch rotates the secret as the real one does.
  */
-import { MemoryDeviceStore } from '@2060.io/ayni-ui-core'
+import { MemoryDeviceStore } from '@ayni.org/ayni-ui-core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Hub } from '../src/state/hub.js'
 

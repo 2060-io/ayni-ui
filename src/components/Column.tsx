@@ -3,7 +3,7 @@
  * controller's agents as collapsible cards, each with its trust icon, menu, link state, new
  * conversation, search, and its active or archived conversations.
  */
-import { type AgentRecord, flagOf, type SessionRecord } from '@2060.io/ayni-ui-core'
+import { type AgentRecord, flagOf, type SessionRecord } from '@ayni.org/ayni-ui-core'
 import {
   Archive,
   Building2,

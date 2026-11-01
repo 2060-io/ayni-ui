@@ -1,5 +1,5 @@
 /** Attachments by reference through the agent (D13, UI-MEDIA-001/002/007): fetched with the token, shown as revocable object URLs. */
-import type { AttachmentActivity } from '@2060.io/ayni-agui-profile'
+import type { AttachmentActivity } from '@ayni.org/ayni-agui-profile'
 import { Download, FileText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

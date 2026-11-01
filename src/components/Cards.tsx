@@ -1,6 +1,6 @@
 /** Inline menus, approval cards, elevation form, routed capabilities, generating placeholders (UI-CONV-004/006, UI-APPR-*, UI-CAP-*). */
-import type { ApprovalActivity, CapabilityActivity, MenuActivity } from '@2060.io/ayni-agui-profile'
-import type { SessionRecord } from '@2060.io/ayni-ui-core'
+import type { ApprovalActivity, CapabilityActivity, MenuActivity } from '@ayni.org/ayni-agui-profile'
+import type { SessionRecord } from '@ayni.org/ayni-ui-core'
 import { Smartphone } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'

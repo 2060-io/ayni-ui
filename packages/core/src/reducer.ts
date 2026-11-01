@@ -2,7 +2,7 @@
  * AG-UI events (runs and the session stream) to the local transcript and session state
  * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015, UI-CAP-001, UI-APPR-002).
  */
-import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@2060.io/ayni-agui-profile'
+import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import type { AgUiEvent } from './profileClient.js'
 import type { SessionRecord, Transcript, TranscriptMessage } from './types.js'
 

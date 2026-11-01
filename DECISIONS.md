@@ -4,7 +4,7 @@
    that depends only on web platform primitives (fetch, streams, IndexedDB through `idb`,
    BroadcastChannel, Web Locks). Project conventions from `2060-io/ts-project-template` (Biome,
    pnpm, vitest, reusable CI/CD, Helm chart).
-2. **Profile package.** The wire types come from `@2060.io/ayni-agui-profile`, whose source of
+2. **Profile package.** The wire types come from `@ayni.org/ayni-agui-profile`, whose source of
    truth is `ayni-agent/packages/agui-profile`. Until it is published to a registry the package
    is copied here (`packages/agui-profile`, `SOURCE` records the commit, `scripts/sync-profile.sh`
    refreshes it) so that CI builds without access to the agent repository.
@@ -92,8 +92,8 @@
     when selected or when a slot frees. Found live: five duplicated sessions on one conversation each
     held a stream, and the browser's six connections per host were gone, so archive and every other
     request queued forever.
-19. **Renamed from Hologram to Ayni** (2026-10-14). App name, packages (`@2060.io/ayni-ui-core`,
-    `@2060.io/ayni-agui-profile`), Helm chart `ayni-ui` and every wire identifier follow the agent's
+19. **Renamed from Hologram to Ayni** (2026-10-14). App name, packages (`@ayni.org/ayni-ui-core`,
+    `@ayni.org/ayni-agui-profile`), Helm chart `ayni-ui` and every wire identifier follow the agent's
     rename (`ayni.*` events, `forwardedProps.ayni`, `state.ayni`, `/.well-known/ayni-agent.json`).
     The phone app is referred to as "the wallet app" in every language; its deep link domain is
     unchanged until the app itself is renamed.

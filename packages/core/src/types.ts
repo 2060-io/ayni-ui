@@ -5,7 +5,7 @@ import type {
   ClosureReason,
   PrincipalDisplay,
   SessionState,
-} from '@2060.io/ayni-agui-profile'
+} from '@ayni.org/ayni-agui-profile'
 
 export type TrustStatus = 'trusted' | 'untrusted' | 'unverified'
 
