@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/2060-io/ayni-ui/compare/v0.4.4...v0.5.0) (2026-11-01)
+
+
+### Features
+
+* **core:** publish [@2060](https://github.com/2060).io/ayni-ui-core to npm and take the AG-UI profile 3.1 from npm ([8b615c5](https://github.com/2060-io/ayni-ui/commit/8b615c524c45feefbba12ad1d399fc7ea1e44aca))
+* **core:** publish [@ayni](https://github.com/ayni).org/ayni-ui-core to npm and take the AG-UI profile from npm ([3f64e60](https://github.com/2060-io/ayni-ui/commit/3f64e605bad426764f8e27aa1a0dc5f773ec7524))
+
 ## [0.4.4](https://github.com/2060-io/ayni-ui/compare/v0.4.3...v0.4.4) (2026-10-24)
 
 
