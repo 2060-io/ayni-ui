@@ -16,8 +16,9 @@ RUN apk add --no-cache gettext
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
 # sourced (.envsh) before nginx's own envsubst step, so the CSP origins reach the template
 COPY docker/entrypoint.sh /docker-entrypoint.d/15-ayni-config.envsh
-COPY docker/render-well-known.sh /docker-entrypoint.d/render-well-known.sh
-RUN chmod +x /docker-entrypoint.d/15-ayni-config.envsh /docker-entrypoint.d/render-well-known.sh
+# kept out of /docker-entrypoint.d/: the nginx entrypoint runs every executable there with no arguments
+COPY docker/render-well-known.sh /usr/local/bin/ayni-render-well-known.sh
+RUN chmod +x /docker-entrypoint.d/15-ayni-config.envsh /usr/local/bin/ayni-render-well-known.sh
 COPY --from=builder /app/dist /usr/share/nginx/html
 ENV PORT=8080 NGINX_PORT=8080
 EXPOSE 8080

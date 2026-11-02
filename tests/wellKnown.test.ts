@@ -52,3 +52,15 @@ describe('app-link association files (CC-WEB-001)', () => {
     })
   })
 })
+
+describe('container wiring', () => {
+  it('keeps the renderer out of /docker-entrypoint.d/, where nginx would run it without its argument', () => {
+    const dockerfile = readFileSync('Dockerfile', 'utf8')
+    const entrypointDir = dockerfile.split('\n').filter((l) => /^COPY\b.*\/docker-entrypoint\.d\//.test(l))
+    expect(entrypointDir.every((l) => l.trim().endsWith('.envsh'))).toBe(true)
+    expect(readFileSync('docker/entrypoint.sh', 'utf8')).toContain(
+      'sh /usr/local/bin/ayni-render-well-known.sh "$HTML"'
+    )
+    expect(dockerfile).toContain('COPY docker/render-well-known.sh /usr/local/bin/ayni-render-well-known.sh')
+  })
+})
