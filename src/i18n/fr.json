@@ -27,7 +27,9 @@
     "recent": "Récents",
     "unverified": "non vérifié",
     "pin": "Épingler",
-    "unpin": "Désépingler"
+    "unpin": "Désépingler",
+    "identified": "Identifiés",
+    "identifiedNotice": "{{name}} vous a délivré un justificatif : il figure désormais parmi vos organisations identifiées."
   },
   "column": {
     "newConversation": "Nouvelle conversation",

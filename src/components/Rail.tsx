@@ -43,8 +43,9 @@ export function Rail() {
   }, [menu])
 
   const agentsOf = (did: string) => snap.agents.filter((a) => a.controllerDid === did)
-  const lastMessageAt = (did: string) => agentsOf(did).reduce((m, a) => (a.lastMessageAt > m ? a.lastMessageAt : m), '')
-  const controllers = orderControllers(snap.controllers, (c) => lastMessageAt(c.did))
+  // connection order: when the controller's first agent was added; activity never reorders the rail (D37)
+  const connectedAt = (did: string) => agentsOf(did).reduce((m, a) => (m === '' || a.addedAt < m ? a.addedAt : m), '')
+  const controllers = orderControllers(snap.controllers, (c) => connectedAt(c.did))
   const pinned = controllers.filter((c) => c.pinned)
   const rest = controllers.filter((c) => !c.pinned)
   const menuController = menu ? controllers.find((c) => c.did === menu.did) : undefined

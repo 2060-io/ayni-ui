@@ -27,7 +27,9 @@
     "recent": "Recentes",
     "unverified": "não verificado",
     "pin": "Fixar",
-    "unpin": "Desafixar"
+    "unpin": "Desafixar",
+    "identified": "Identificados",
+    "identifiedNotice": "{{name}} emitiu-lhe uma credencial: agora aparece entre as suas organizações identificadas."
   },
   "column": {
     "newConversation": "Nova conversa",

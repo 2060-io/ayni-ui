@@ -138,5 +138,12 @@
     through the bundle under a hashed name (cached for a year, immutable), the shell fetches them
     once at start and keeps the image elements, and the page decodes them with the frame. The
     mark and the logo stay under `/brand/`, swappable.
-24. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+24. **Stable rail** (v4 D37, UI-SHELL-011). The rail is ordered by relationship, never by time: pinned
+    controllers in the person's order, then the identified ones (an agent of theirs issued the person a
+    credential, known from a completed `issue` flow card, kept as `identifiedAt` on the controller), then
+    the others, both in connection order (the first agent's `addedAt`), then the unverified tiles. A
+    message or an unread count moves nothing; a controller moves to the identified group once, with a
+    toast, when its first credential arrives, on the stream or from history. Supersedes the recency
+    order of entries 12 and 17.
+25. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

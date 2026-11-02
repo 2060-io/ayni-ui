@@ -27,7 +27,9 @@
     "recent": "Recent",
     "unverified": "not verified",
     "pin": "Pin",
-    "unpin": "Unpin"
+    "unpin": "Unpin",
+    "identified": "Identified",
+    "identifiedNotice": "{{name}} issued you a credential: it now sits with your identified organizations."
   },
   "column": {
     "newConversation": "New conversation",

@@ -18,6 +18,7 @@ import {
   emptyTranscript,
   excerpt,
   fileUnderController,
+  hasIssuedCredential,
   IndexedDbStore,
   isAppLink,
   mergeHistory,
@@ -35,6 +36,7 @@ import {
   type SyncMessage,
   type Transcript,
 } from '@ayni.org/ayni-ui-core'
+import i18next from '../i18n/index.js'
 import { loadConfig } from './config.js'
 
 export type View =
@@ -1334,6 +1336,7 @@ export class Hub {
         void this.syncConversations(next.agentDid).catch(() => undefined)
       }
       if (signals.includes('closed')) this.stopLeading(sessionId)
+      if (signals.includes('identified')) await this.markIdentified(next.agentDid)
       this.set({})
       this.updateTitle()
       this.bus?.post({ kind: 'transcript', sessionId })
@@ -1365,6 +1368,23 @@ export class Hub {
     await this.store.putTranscript(merged)
     this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: merged } })
     this.bus?.post({ kind: 'transcript', sessionId })
+    // a credential issued earlier in this conversation identifies the controller too (D37)
+    if (hasIssuedCredential(merged.messages)) await this.markIdentified(session.agentDid)
+  }
+
+  /**
+   * A controller whose agent issued the person a credential joins the identified group of the rail, once, with a
+   * notice (UI-SHELL-011, D37); a later credential changes nothing.
+   */
+  public async markIdentified(agentDid: string): Promise<boolean> {
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    const controller = agent?.controllerDid ? await this.store.getController(agent.controllerDid) : undefined
+    if (!agent || !controller || controller.identifiedAt) return false
+    await this.store.putController({ ...controller, identifiedAt: new Date().toISOString() })
+    await this.reload()
+    this.bus?.post({ kind: 'changed', what: 'agents' })
+    this.notify('info', i18next.t('rail.identifiedNotice', { name: controller.name }))
+    return true
   }
 
   /** Older messages load as soon as the top of the transcript comes into view (UI-CONV-012). */

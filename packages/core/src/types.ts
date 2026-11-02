@@ -42,6 +42,8 @@ export interface ControllerRecord {
   countryCode?: string
   pinned: boolean
   pinOrder: number
+  /** when one of its agents first issued the person a credential, known from a completed `issue` flow card (D37) */
+  identifiedAt?: string
 }
 
 export interface AgentRecord {
