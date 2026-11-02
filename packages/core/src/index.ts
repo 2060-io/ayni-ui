@@ -94,18 +94,29 @@ export function flagOf(countryCode?: string): string {
 }
 
 /** Rail order for controllers (UI-SHELL-011): pinned in the person's order, then by activity, then unverified. */
-export function orderControllers<T extends { did: string; kind: string; pinned: boolean; pinOrder: number }>(
-  controllers: T[],
-  lastMessageAt: (c: T) => string
-): T[] {
+/**
+ * The stable rail (UI-SHELL-011, D37): pinned controllers in the person's order, then the identified ones (an
+ * agent of theirs issued the person a credential), then the others, both in connection order, then the unverified
+ * tiles. Nothing here depends on activity: a message never moves a tile.
+ */
+export function orderControllers<
+  T extends { did: string; kind: string; pinned: boolean; pinOrder: number; identifiedAt?: string },
+>(controllers: T[], connectedAt: (c: T) => string): T[] {
+  const byConnection = (a: T, b: T) => connectedAt(a).localeCompare(connectedAt(b)) || a.did.localeCompare(b.did)
   const pinned = controllers.filter((c) => c.pinned).sort((a, b) => a.pinOrder - b.pinOrder)
   const rest = controllers.filter((c) => !c.pinned)
-  const verified = rest
-    .filter((c) => c.kind !== 'unverified')
-    .sort((a, b) => lastMessageAt(b).localeCompare(lastMessageAt(a)))
-  const unverified = rest
-    .filter((c) => c.kind === 'unverified')
-    .sort((a, b) => lastMessageAt(b).localeCompare(lastMessageAt(a)))
-  return [...pinned, ...verified, ...unverified]
+  const identified = rest.filter((c) => c.kind !== 'unverified' && c.identifiedAt).sort(byConnection)
+  const others = rest.filter((c) => c.kind !== 'unverified' && !c.identifiedAt).sort(byConnection)
+  const unverified = rest.filter((c) => c.kind === 'unverified').sort(byConnection)
+  return [...pinned, ...identified, ...others, ...unverified]
+}
+
+/** Whether a transcript records a credential issued to the person: a completed `issue` flow card (D37). */
+export function hasIssuedCredential(messages: { role: string; activityType?: string; content?: unknown }[]): boolean {
+  return messages.some((m) => {
+    if (m.role !== 'activity' || m.activityType !== 'ayni.flow') return false
+    const c = (m.content ?? {}) as { kind?: unknown; state?: unknown }
+    return c.kind === 'issue' && c.state === 'completed'
+  })
 }
 export * from './trustDetails.js'

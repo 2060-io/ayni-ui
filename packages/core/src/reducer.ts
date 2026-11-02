@@ -10,7 +10,7 @@ export interface Reduction {
   transcript: Transcript
   session: SessionRecord
   /** signals the shell reacts to (title, badge, sound) */
-  signals: ('message' | 'bound' | 'closed' | 'token' | 'approval')[]
+  signals: ('message' | 'bound' | 'closed' | 'token' | 'approval' | 'identified')[]
 }
 
 export function emptyTranscript(sessionId: string): Transcript {
@@ -145,6 +145,8 @@ export function reduce(
       const flowAt = activityType === ACTIVITY.flow && typeof content.openedAt === 'string' ? content.openedAt : at
       if (activityType === ACTIVITY.flow && content.flowId && isClosedFlow(content.state)) {
         routed = Object.fromEntries(Object.entries(routed).filter(([, r]) => r.flowId !== content.flowId))
+        // a credential issued in this conversation identifies its controller on the rail (D37)
+        if (content.kind === 'issue' && content.state === 'completed') signals.push('identified')
       }
       if (activityType === ACTIVITY.attachment && content.entryId) {
         messages = messages.filter(

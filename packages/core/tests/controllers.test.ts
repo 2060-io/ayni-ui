@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { controllerOf, orderControllers } from '../src/index.js'
+import { controllerOf, hasIssuedCredential, orderControllers } from '../src/index.js'
 
 const agent = (
   did: string,
@@ -45,13 +45,35 @@ describe('controllers (D32, UI-SHELL-001/011)', () => {
     expect(controllerOf(agent('did:y', 'unverified')).did).toBe('did:y')
   })
 
-  it('orders pinned first, then by activity, unverified last', () => {
+  it('orders pinned first, then identified, then the others in connection order, unverified last (D37)', () => {
     const list = [
-      { did: 'u', kind: 'unverified', pinned: false, pinOrder: 0, last: '2026-03-01' },
-      { did: 'b', kind: 'organization', pinned: false, pinOrder: 0, last: '2026-02-01' },
-      { did: 'p', kind: 'organization', pinned: true, pinOrder: 1, last: '2026-01-01' },
-      { did: 'a', kind: 'organization', pinned: false, pinOrder: 0, last: '2026-02-15' },
+      { did: 'u', kind: 'unverified', pinned: false, pinOrder: 0, since: '2026-01-01' },
+      { did: 'b', kind: 'organization', pinned: false, pinOrder: 0, since: '2026-02-01' },
+      { did: 'p', kind: 'organization', pinned: true, pinOrder: 1, since: '2026-03-01' },
+      { did: 'a', kind: 'organization', pinned: false, pinOrder: 0, since: '2026-02-15' },
+      { did: 'i2', kind: 'organization', pinned: false, pinOrder: 0, since: '2026-02-20', identifiedAt: '2026-03-02' },
+      { did: 'i1', kind: 'persona', pinned: false, pinOrder: 0, since: '2026-01-10', identifiedAt: '2026-03-03' },
     ]
-    expect(orderControllers(list, (c) => c.last).map((c) => c.did)).toEqual(['p', 'a', 'b', 'u'])
+    expect(orderControllers(list, (c) => c.since).map((c) => c.did)).toEqual(['p', 'i1', 'i2', 'b', 'a', 'u'])
+    // activity changes nothing: the same input in another array order yields the same rail
+    expect(orderControllers([...list].reverse(), (c) => c.since).map((c) => c.did)).toEqual([
+      'p',
+      'i1',
+      'i2',
+      'b',
+      'a',
+      'u',
+    ])
+  })
+
+  it('recognizes an issued credential from a completed issue flow card only', () => {
+    const issue = (state: string, kind = 'issue') => ({
+      role: 'activity',
+      activityType: 'ayni.flow',
+      content: { kind, state },
+    })
+    expect(hasIssuedCredential([issue('completed')])).toBe(true)
+    expect(hasIssuedCredential([issue('pending'), issue('completed', 'present')])).toBe(false)
+    expect(hasIssuedCredential([{ role: 'assistant', content: 'hello' }])).toBe(false)
   })
 })
