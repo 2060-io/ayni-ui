@@ -20,7 +20,9 @@ cat > "$HTML/config.json" <<JSON
   "locales": [${LOCALES_JSON}],
   "defaultLocale": "${DEFAULT_LOCALE:-}",
   "soundsEnabled": ${SOUNDS_ENABLED:-true},
-  "installPromptEnabled": ${INSTALL_PROMPT_ENABLED:-true}
+  "installPromptEnabled": ${INSTALL_PROMPT_ENABLED:-true},
+  "appStoreUrl": "${APP_STORE_URL:-}",
+  "playStoreUrl": "${PLAY_STORE_URL:-}"
 }
 JSON
 # the CSP connect-src gets the configured agent origins (the browser adds nothing at runtime)

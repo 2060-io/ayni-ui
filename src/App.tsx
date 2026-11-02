@@ -4,9 +4,11 @@ import { preloadAboutArt } from './brand/aboutArt.js'
 import { About } from './components/About.js'
 import { AddPage } from './components/AddPage.js'
 import { Column } from './components/Column.js'
+import { ConnectPage } from './components/ConnectPage.js'
 import { Conversation } from './components/Conversation.js'
 import { MessageInfo } from './components/Details.js'
 import { Directory } from './components/Directory.js'
+import { PhonePage } from './components/PhonePage.js'
 import { ProofOfTrust } from './components/ProofOfTrust.js'
 import { Rail } from './components/Rail.js'
 import { Settings } from './components/Settings.js'
@@ -64,6 +66,10 @@ function Shell() {
       <About />
     ) : snap.view === 'settings' ? (
       <Settings />
+    ) : snap.view === 'phone' ? (
+      <PhonePage />
+    ) : snap.view === 'connect' ? (
+      <ConnectPage />
     ) : (
       <Conversation />
     )

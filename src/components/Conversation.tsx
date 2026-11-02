@@ -1,8 +1,8 @@
 /** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
 import { ACTIVITY, CLOSURE_REASONS } from '@ayni.org/ayni-agui-profile'
-import { CLOSURE_REASON_KEYS, type TranscriptMessage } from '@ayni.org/ayni-ui-core'
+import { CLOSURE_REASON_KEYS, destinationKey, parseAppLink, type TranscriptMessage } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, ChevronDown, ChevronUp, Loader2, Menu as MenuIcon, Search, ShieldCheck, X } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -11,7 +11,7 @@ import { Binding } from './Binding.js'
 import { ApprovalCard, CapabilityCard, ElevationForm, FlowCard, GeneratingCard, MenuCard } from './Cards.js'
 import { Composer } from './Composer.js'
 import { type HighlightSpec, highlight } from './Highlight.js'
-import { Markdown } from './Markdown.js'
+import { type AppLinkSpec, Markdown } from './Markdown.js'
 import { MessageTools, type Popover, plainText, ReactionPill, useLongPress } from './MessageActions.js'
 import { useDismiss } from './useDismiss.js'
 
@@ -32,6 +32,20 @@ export function Conversation() {
   const agent = snap.agents.find((a) => a.did === session?.agentDid)
   const transcript = session ? snap.transcripts[session.sessionId] : undefined
   const messages = transcript?.messages ?? []
+  // transcript links on the app-link domain open their web route in place (UI-LINK-001); delegated on the list
+  useEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    const onClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest?.('a[data-app-link]') as HTMLAnchorElement | null
+      if (!anchor) return
+      e.preventDefault()
+      hub.openAppLink(anchor.href)
+    }
+    list.addEventListener('click', onClick)
+    return () => list.removeEventListener('click', onClick)
+  }, [hub])
+
   const flowCardIds = new Set(
     messages.flatMap((x) =>
       x.role === 'activity' && x.activityType === ACTIVITY.flow ? [String(x.content.flowId)] : []
@@ -393,6 +407,21 @@ function Dots() {
   )
 }
 
+/** App links in a reply are named on hover by their destination (UI-LINK-003). */
+function useAppLinkSpec(): AppLinkSpec {
+  const { t } = useTranslation()
+  return useMemo(
+    () => ({
+      origin: location.origin,
+      title: (href: string) =>
+        t(`link.destination.${destinationKey(parseAppLink(href, location.origin))}`, {
+          defaultValue: t('link.destination.unknown'),
+        }),
+    }),
+    [t]
+  )
+}
+
 function Message({
   m,
   sessionId,
@@ -409,6 +438,7 @@ function Message({
   hl?: HighlightSpec
 }) {
   const { t, i18n } = useTranslation()
+  const appLinks = useAppLinkSpec()
   const hub = useHub()
   const [open, setOpen] = useState<Popover>(null)
   const longPress = useLongPress(() => setOpen('menu'))
@@ -490,7 +520,11 @@ function Message({
             </a>
           ) : null}
           <span id={`msg-${m.id}`} className="body">
-            {m.role === 'assistant' ? <Markdown text={m.content} hl={hl} /> : highlight(m.content, hl, m.id)}
+            {m.role === 'assistant' ? (
+              <Markdown text={m.content} hl={hl} app={appLinks} />
+            ) : (
+              highlight(m.content, hl, m.id)
+            )}
           </span>
           <span className="meta">
             {m.interrupted ? <span className="interrupted">{t('conversation.interrupted')}</span> : null}

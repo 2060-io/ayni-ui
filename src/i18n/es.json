@@ -420,5 +420,37 @@
     "transaction": "Transacción",
     "reference": "Referencia",
     "reason": "Motivo"
+  },
+  "link": {
+    "title": "Abrir en tu teléfono",
+    "onPhone": "Abre {{destination}} en la app Ayni de tu teléfono.",
+    "getApp": "¿Aún no tienes la app?",
+    "appStore": "App Store",
+    "playStore": "Google Play",
+    "connectTitle": "Conecta con tu cartera",
+    "connectHint": "Escanea este código con tu app de cartera para aceptar la invitación.",
+    "back": "Volver",
+    "devicesTitle": "Dispositivos vinculados",
+    "devicesHint": "Los navegadores vinculados a cada agente; desvincula cualquiera desde la tarjeta del agente.",
+    "noAgents": "Aún no hay agentes.",
+    "destination": {
+      "home": "Inicio",
+      "recent": "Recientes",
+      "recentFeed": "el feed de Recientes",
+      "scan": "el escáner",
+      "explore": "Explorar",
+      "exploreCreate": "Crear un servicio",
+      "wallet": "tu cartera",
+      "walletDocuments": "tus documentos",
+      "walletHistory": "el historial de tu cartera",
+      "walletCard": "esta tarjeta",
+      "walletSend": "Enviar",
+      "service": "este servicio",
+      "settings": "Ajustes",
+      "settingsBackup": "Ajustes › Copia de seguridad",
+      "settingsDevices": "Dispositivos vinculados",
+      "connect": "esta invitación",
+      "unknown": "esta página"
+    }
   }
 }

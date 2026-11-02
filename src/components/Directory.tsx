@@ -10,7 +10,8 @@ export function Directory() {
   const snap = useSnapshot()
   const hub = useHub()
   const { t } = useTranslation()
-  const [filter, setFilter] = useState('')
+  // a search typed by an app link (`/app/explore?q=`, UI-LINK-001) seeds the field once
+  const [filter, setFilter] = useState(() => hub.takeDirectoryQuery() ?? '')
   const [untrusted, setUntrusted] = useState(false)
   const [hits, setHits] = useState<DirectoryHit[]>([])
   const [cursor, setCursor] = useState<string | null>(null)

@@ -420,5 +420,37 @@
     "transaction": "Transaction",
     "reference": "Référence",
     "reason": "Motif"
+  },
+  "link": {
+    "title": "Ouvrir sur votre téléphone",
+    "onPhone": "Ouvrez {{destination}} dans l’app Ayni de votre téléphone.",
+    "getApp": "Pas encore l’app ?",
+    "appStore": "App Store",
+    "playStore": "Google Play",
+    "connectTitle": "Connectez-vous avec votre portefeuille",
+    "connectHint": "Scannez ce code avec votre app de portefeuille pour accepter l’invitation.",
+    "back": "Retour",
+    "devicesTitle": "Appareils liés",
+    "devicesHint": "Les navigateurs liés à chaque agent ; déliez-en un depuis la carte de l’agent.",
+    "noAgents": "Aucun agent pour l’instant.",
+    "destination": {
+      "home": "l’accueil",
+      "recent": "Récents",
+      "recentFeed": "le fil Récents",
+      "scan": "le scanner",
+      "explore": "Explorer",
+      "exploreCreate": "Créer un service",
+      "wallet": "votre portefeuille",
+      "walletDocuments": "vos documents",
+      "walletHistory": "l’historique de votre portefeuille",
+      "walletCard": "cette carte",
+      "walletSend": "Envoyer",
+      "service": "ce service",
+      "settings": "les réglages",
+      "settingsBackup": "Réglages › Sauvegarde",
+      "settingsDevices": "les appareils liés",
+      "connect": "cette invitation",
+      "unknown": "cette page"
+    }
   }
 }

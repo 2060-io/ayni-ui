@@ -9,5 +9,7 @@
   "allowedAgentOrigins": [],
   "locales": ["en", "es", "fr", "pt"],
   "soundsEnabled": true,
-  "installPromptEnabled": true
+  "installPromptEnabled": true,
+  "appStoreUrl": "",
+  "playStoreUrl": ""
 }

@@ -7,6 +7,7 @@ import { type AyniAction, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import {
   type AgentRecord,
   type AgUiEvent,
+  type AppLinkDestination,
   type BrandConfig,
   BroadcastSyncBus,
   type ControllerRecord,
@@ -18,10 +19,12 @@ import {
   excerpt,
   fileUnderController,
   IndexedDbStore,
+  isAppLink,
   mergeHistory,
   type Preferences,
   ProfileClient,
   ProfileError,
+  parseAppLink,
   type ReplyQuote,
   type RuntimeConfig,
   recheckTrust,
@@ -34,7 +37,18 @@ import {
 } from '@ayni.org/ayni-ui-core'
 import { loadConfig } from './config.js'
 
-export type View = 'list' | 'conversation' | 'directory' | 'add' | 'settings' | 'about' | 'trust'
+export type View =
+  | 'list'
+  | 'conversation'
+  | 'directory'
+  | 'add'
+  | 'settings'
+  | 'about'
+  | 'trust'
+  /** an app link whose destination lives on the phone (UI-LINK-001, CC-WEB-002) */
+  | 'phone'
+  /** `/app/connect?oob=`: the invitation as a QR for other wallets (CC-WEB-002) */
+  | 'connect'
 
 export interface Snapshot {
   ready: boolean
@@ -72,6 +86,14 @@ export interface Snapshot {
   search: Record<string, { query: string; current: number } | undefined>
   /** the Proof of Trust shown in the conversation area (D33): which agent, whether a Connect follows, where to return */
   trustFor: { did: string; connect: boolean; returnTo: View } | null
+  /** a search typed by an app link, read once by the directory (`/app/explore?q=`, UI-LINK-001) */
+  directoryQuery: string | null
+  /** the destination an app link named that is only on the phone (view `phone`) */
+  phoneFor: AppLinkDestination | null
+  /** the invitation of `/app/connect?oob=` (view `connect`) */
+  connectOob: string | null
+  /** the settings section an app link asked for (`/app/settings/devices`) */
+  settingsSection: 'devices' | null
 }
 
 type Listener = () => void
@@ -114,6 +136,10 @@ export class Hub {
       loadingOlder: {},
       search: {},
       trustFor: null,
+      directoryQuery: null,
+      phoneFor: null,
+      connectOob: null,
+      settingsSection: null,
     }
   }
 
@@ -157,6 +183,11 @@ export class Hub {
     const params = new URLSearchParams(location.search)
     if (params.get('agent') && !this.snapshot.config.singleAgent)
       void this.addAgent(params.get('agent') ?? '').catch((e) => this.notify('error', String(e.message ?? e)))
+    // an app link opened in the browser lands on its web route or on "on your phone" (UI-LINK-001, CC-WEB-002)
+    if (isAppLink(location.href, location.origin)) {
+      this.openAppLink(location.href)
+      history.replaceState(null, '', '/')
+    }
     // the most recent conversations stream first; the budget parks the rest (UI-SHELL-016)
     for (const s of [...this.snapshot.sessions].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt)))
       if (s.state !== 'closed' && s.sessionToken) void this.lead(s.sessionId)
@@ -302,6 +333,65 @@ export class Hub {
 
   public setView(view: View): void {
     this.set({ view })
+  }
+
+  /**
+   * An app link (AG-UI profile §10, UI-LINK-001/002, D38): the matching web route in place when one exists, else
+   * "on your phone" naming the destination. Navigates, never acts. Returns false for a link that is not one.
+   */
+  public openAppLink(href: string): boolean {
+    const origin = typeof location !== 'undefined' ? location.origin : this.snapshot.config.publicUrl
+    if (!isAppLink(href, origin)) return false
+    const destination = parseAppLink(href, origin)
+    const reset = { phoneFor: null, connectOob: null, settingsSection: null, trustFor: null } as const
+    switch (destination.path) {
+      case 'home':
+        if (destination.controller && this.snapshot.controllers.some((c) => c.did === destination.controller))
+          this.selectController(destination.controller)
+        else this.set({ ...reset, selectedControllerDid: null, selectedSessionId: null, view: 'list' })
+        return true
+      case 'explore':
+        if (destination.create) break
+        this.set({ ...reset, directoryQuery: destination.q ?? '', view: 'directory' })
+        return true
+      case 'service': {
+        const agent = this.snapshot.agents.find((a) => a.did === destination.did)
+        if (agent) {
+          // its conversation when it is one, else its Proof of Trust (UI-LINK-001)
+          const session = this.snapshot.sessions
+            .filter((s) => s.agentDid === agent.did && s.state !== 'closed')
+            .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))[0]
+          this.set(reset)
+          if (session) this.selectSession(session.sessionId)
+          else this.showTrust(agent.did, true)
+        } else {
+          this.set(reset)
+          void this.addAgent(destination.did)
+            .then((added) => this.showTrust(added.did, true))
+            .catch((e) => this.notify('error', String((e as Error).message ?? e)))
+        }
+        return true
+      }
+      case 'settings':
+        if (destination.section === 'backup') break
+        this.set({ ...reset, settingsSection: destination.section === 'devices' ? 'devices' : null, view: 'settings' })
+        return true
+      case 'connect':
+        if (!destination.oob) break
+        this.set({ ...reset, connectOob: destination.oob, view: 'connect' })
+        return true
+      default:
+        break
+    }
+    this.set({ ...reset, phoneFor: destination, view: 'phone' })
+    return true
+  }
+
+  /** The directory reads the search an app link typed, once. */
+  public takeDirectoryQuery(): string | null {
+    const q = this.snapshot.directoryQuery
+    if (q !== null) this.set({ directoryQuery: null })
+    return q
   }
 
   /** The Proof of Trust takes the conversation area (D33, UI-TRUST-002). */
