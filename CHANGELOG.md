@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/2060-io/ayni-ui/compare/v0.5.0...v0.6.0) (2026-11-02)
+
+
+### Features
+
+* **conversation:** flow cards, flow ids on routed capabilities, 3.1 client description (UI-CONV-021, UI-CAP-005) ([6b12607](https://github.com/2060-io/ayni-ui/commit/6b12607bb582d65247cde240eab7c84433cdd293))
+* **conversation:** flow cards, flow ids on routed capabilities, 3.1 client description (UI-CONV-021, UI-CAP-005) ([af13433](https://github.com/2060-io/ayni-ui/commit/af1343315ca14f789003b49465879865d76a5d70))
+* **links:** app links open their web route in place or show "on your phone" (UI-LINK-001..003, CC-WEB-002) ([8ef4b65](https://github.com/2060-io/ayni-ui/commit/8ef4b6552affa5fed897c3597742efbaaa9871ac))
+* **links:** app links open their web route in place or show on your phone (UI-LINK-001..003, CC-WEB-002) ([2d4b92e](https://github.com/2060-io/ayni-ui/commit/2d4b92e5bc7bb7755ff7651869cc36bc09c38701))
+* **platform:** app-link association files on /.well-known (CC-WEB-001) ([40e7b44](https://github.com/2060-io/ayni-ui/commit/40e7b44b82fc937863a0834d543e842b0d90a0da))
+* **platform:** app-link association files on /.well-known (CC-WEB-001) ([a192c43](https://github.com/2060-io/ayni-ui/commit/a192c43c66cde5cfdf6a0a5eaff9c24b3b99c094))
+* **rail:** stable order by relationship, identified controllers from issued credentials (UI-SHELL-011, D37) ([1920ebc](https://github.com/2060-io/ayni-ui/commit/1920ebc4d5ca65f952dc83b9c9b2dc61cd72a044))
+* **rail:** stable order by relationship; identified controllers from issued credentials (UI-SHELL-011, D37) ([a8d30b3](https://github.com/2060-io/ayni-ui/commit/a8d30b3c61853d7d6cdc9b27c935d1ca97ea8ebc))
+
 ## [0.5.0](https://github.com/2060-io/ayni-ui/compare/v0.4.4...v0.5.0) (2026-11-01)
 
 
