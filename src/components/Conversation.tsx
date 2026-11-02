@@ -8,7 +8,7 @@ import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { AttachmentView } from './AttachmentView.js'
 import { Binding } from './Binding.js'
-import { ApprovalCard, CapabilityCard, ElevationForm, GeneratingCard, MenuCard } from './Cards.js'
+import { ApprovalCard, CapabilityCard, ElevationForm, FlowCard, GeneratingCard, MenuCard } from './Cards.js'
 import { Composer } from './Composer.js'
 import { type HighlightSpec, highlight } from './Highlight.js'
 import { Markdown } from './Markdown.js'
@@ -32,6 +32,11 @@ export function Conversation() {
   const agent = snap.agents.find((a) => a.did === session?.agentDid)
   const transcript = session ? snap.transcripts[session.sessionId] : undefined
   const messages = transcript?.messages ?? []
+  const flowCardIds = new Set(
+    messages.flatMap((x) =>
+      x.role === 'activity' && x.activityType === ACTIVITY.flow ? [String(x.content.flowId)] : []
+    )
+  )
   const lastId = messages[messages.length - 1]?.id
   const lastContent =
     messages[messages.length - 1] && messages[messages.length - 1].role !== 'activity'
@@ -339,6 +344,8 @@ export function Conversation() {
             ))}
             {Object.entries(transcript?.routed ?? {})
               .filter(([, r]) => r.status === 'pending' || Date.now() - Date.parse(r.at) < 60_000)
+              // a capability served as a flow is shown by its flow card once that card exists (UI-CAP-005)
+              .filter(([, r]) => !r.flowId || !flowCardIds.has(r.flowId))
               .map(([key, r]) => (
                 <CapabilityCard
                   key={key}
@@ -434,6 +441,8 @@ function Message({
         return <ApprovalCard sessionId={sessionId} approval={m.content as never} />
       case ACTIVITY.capability:
         return <CapabilityCard capability={m.content as never} />
+      case ACTIVITY.flow:
+        return <FlowCard flow={m.content as never} />
       case ACTIVITY.generating:
         return <GeneratingCard />
       default:

@@ -228,7 +228,11 @@
       "expired": "Expired",
       "unavailable": "Your phone is not available",
       "degraded": "Skipped"
-    }
+    },
+    "authorization": "Authorization",
+    "confirmation": "Confirmation",
+    "signature": "Signature",
+    "link-session": "Link this browser"
   },
   "add": {
     "title": "Add an agent",
@@ -363,5 +367,58 @@
       "HOLDER": "Holder"
     },
     "via": "via {{chain}}"
+  },
+  "flow": {
+    "onPhone": "On your phone",
+    "kind": {
+      "present": "Share a credential",
+      "issue": "Receive a credential",
+      "nfc-read": "Passport check",
+      "call": "Face check",
+      "authorize": "Approval",
+      "confirm": "Confirmation",
+      "link-session": "Link this browser",
+      "sign-tx": "Payment or signature",
+      "session-grant": "Session",
+      "reissue": "Credential restore",
+      "notify": "Notification",
+      "revoked": "Credential revoked",
+      "identify-ua": "Wallet check"
+    },
+    "pending": {
+      "present": "Share a credential on your phone",
+      "issue": "Receive the credential on your phone",
+      "nfc-read": "Read your passport on your phone",
+      "call": "Face check on your phone",
+      "authorize": "Decide on your phone",
+      "confirm": "Confirm on your phone",
+      "link-session": "Confirm the link on your phone",
+      "sign-tx": "Confirm on your phone",
+      "default": "Continue on your phone"
+    },
+    "outcome": {
+      "completed": "Completed",
+      "declined": "Declined",
+      "cancelled": "Cancelled",
+      "failed": "Failed",
+      "expired": "Expired"
+    },
+    "credentialReceived": "Credential received",
+    "openInWallet": "Open it in your wallet on your phone",
+    "shared": "Shared",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "confirmed": "Confirmed",
+    "notConfirmed": "Not confirmed",
+    "attested": "verified with {{method}}",
+    "attestation": {
+      "biometric": "biometrics",
+      "passcode": "the passcode",
+      "none": "no device check"
+    },
+    "linked": "Browser linked",
+    "transaction": "Transaction",
+    "reference": "Reference",
+    "reason": "Reason"
   }
 }

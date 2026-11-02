@@ -1,7 +1,10 @@
-/** Inline menus, approval cards, elevation form, routed capabilities, generating placeholders (UI-CONV-004/006, UI-APPR-*, UI-CAP-*). */
-import type { ApprovalActivity, CapabilityActivity, MenuActivity } from '@ayni.org/ayni-agui-profile'
-import type { SessionRecord } from '@ayni.org/ayni-ui-core'
-import { Smartphone } from 'lucide-react'
+/**
+ * Inline menus, approval cards, elevation form, routed capabilities, flow cards, generating placeholders
+ * (UI-CONV-004/006/021, UI-APPR-*, UI-CAP-*).
+ */
+import type { ApprovalActivity, CapabilityActivity, FlowActivity, MenuActivity } from '@ayni.org/ayni-agui-profile'
+import { isClosedFlow, type SessionRecord } from '@ayni.org/ayni-ui-core'
+import { BadgeCheck, Smartphone } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
@@ -204,6 +207,7 @@ export function ElevationForm({ session, onClose }: { session: SessionRecord; on
   )
 }
 
+/** The "continue on your phone" card names the kind of what the phone is doing (UI-CAP-001/005). */
 export function CapabilityCard({ capability }: { capability: Partial<CapabilityActivity> & { kind?: string } }) {
   const { t } = useTranslation()
   const status = capability.status ?? 'pending'
@@ -217,6 +221,114 @@ export function CapabilityCard({ capability }: { capability: Partial<CapabilityA
       </h3>
       <div>{label}</div>
       <div className="muted">{capability.message ?? t(`capability.status.${status}`)}</div>
+    </div>
+  )
+}
+
+const HIDDEN_PREVIEW_KEYS = new Set([
+  'claims',
+  'attributes',
+  'attestation',
+  'decision',
+  'confirmed',
+  'txHash',
+  'browser',
+])
+
+function labelOf(key: string): string {
+  return key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase())
+}
+
+/** A key/value list of what the person received or disclosed (claims, attributes, anything else the agent previews). */
+function PreviewList({ values }: { values: Record<string, unknown> }) {
+  const entries = Object.entries(values).filter(([, v]) => v !== undefined && v !== null && typeof v !== 'object')
+  if (!entries.length) return null
+  return (
+    <dl className="flow-claims">
+      {entries.map(([k, v]) => (
+        <div key={k}>
+          <dt>{labelOf(k)}</dt>
+          <dd>{String(v)}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+/**
+ * The flow card (UI-CONV-021, PROF-MAP-007): the pending text of its kind while the flow is open, then its outcome
+ * and the preview the agent built from what the person received or disclosed. Ordered at the open time, replaced
+ * in place at the close by the reducer.
+ */
+export function FlowCard({ flow }: { flow: Partial<FlowActivity> & { kind?: string; reason?: string } }) {
+  const { t } = useTranslation()
+  const kind = flow.kind ?? 'present'
+  const closed = isClosedFlow(flow.state)
+  const preview = (flow.preview ?? {}) as Record<string, unknown>
+  const kindLabel = t(`flow.kind.${kind}`, { defaultValue: t('capability.title') })
+  if (!closed) {
+    return (
+      <div className="card flow pending" role="status" data-flow-id={flow.flowId}>
+        <h3 className="row-between" style={{ justifyContent: 'flex-start', gap: 8 }}>
+          <Smartphone size={16} aria-hidden="true" /> {kindLabel}
+        </h3>
+        <div>{flow.title}</div>
+        <div className="muted">{t(`flow.pending.${kind}`, { defaultValue: t('flow.pending.default') })}</div>
+      </div>
+    )
+  }
+  const outcome = flow.outcome ?? (flow.state as string)
+  const ok = outcome === 'completed'
+  const attestation = preview.attestation as { method?: string } | undefined
+  const attested = attestation?.method
+    ? t('flow.attested', { method: t(`flow.attestation.${attestation.method}`, { defaultValue: attestation.method }) })
+    : undefined
+  const result = (() => {
+    if (!ok) return t(`flow.outcome.${outcome}`, { defaultValue: outcome })
+    switch (kind) {
+      case 'issue':
+        return t('flow.credentialReceived')
+      case 'present':
+        return t('flow.shared')
+      case 'authorize':
+        return preview.decision === 'rejected' ? t('flow.rejected') : t('flow.approved')
+      case 'confirm':
+        return preview.confirmed === false ? t('flow.notConfirmed') : t('flow.confirmed')
+      case 'link-session':
+        return t('flow.linked')
+      default:
+        return t('flow.outcome.completed')
+    }
+  })()
+  const claims = (preview.claims ?? preview.attributes) as Record<string, unknown> | undefined
+  const rest = Object.fromEntries(Object.entries(preview).filter(([k]) => !HIDDEN_PREVIEW_KEYS.has(k)))
+  const txHash = (preview.txHash as string | undefined) ?? flow.references?.find((r) => r.type === 'transaction')?.id
+  return (
+    <div className={['card', 'flow', ok ? 'completed' : 'ended'].join(' ')} data-flow-id={flow.flowId}>
+      <h3 className="row-between" style={{ justifyContent: 'flex-start', gap: 8 }}>
+        <BadgeCheck size={16} aria-hidden="true" /> {kindLabel}
+      </h3>
+      <div>{flow.title}</div>
+      <div className={ok ? '' : 'muted'}>
+        {result}
+        {attested ? <span className="muted">, {attested}</span> : null}
+      </div>
+      {flow.reason ? (
+        <div className="muted">
+          {t('flow.reason')}: {flow.reason}
+        </div>
+      ) : null}
+      {claims ? <PreviewList values={claims} /> : null}
+      <PreviewList values={rest} />
+      {txHash ? (
+        <div className="meta muted">
+          {t('flow.transaction')}: <code>{txHash}</code>
+        </div>
+      ) : null}
+      {ok && kind === 'issue' ? <div className="meta muted">{t('flow.openInWallet')}</div> : null}
     </div>
   )
 }

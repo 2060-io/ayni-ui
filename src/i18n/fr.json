@@ -228,7 +228,11 @@
       "expired": "Expirée",
       "unavailable": "Votre téléphone n'est pas disponible",
       "degraded": "Ignorée"
-    }
+    },
+    "authorization": "Autorisation",
+    "confirmation": "Confirmation",
+    "signature": "Signature",
+    "link-session": "Lier ce navigateur"
   },
   "add": {
     "title": "Ajouter un agent",
@@ -363,5 +367,58 @@
       "HOLDER": "Détenteur"
     },
     "via": "via {{chain}}"
+  },
+  "flow": {
+    "onPhone": "Sur votre téléphone",
+    "kind": {
+      "present": "Partager un justificatif",
+      "issue": "Recevoir un justificatif",
+      "nfc-read": "Vérification du passeport",
+      "call": "Vérification du visage",
+      "authorize": "Approbation",
+      "confirm": "Confirmation",
+      "link-session": "Lier ce navigateur",
+      "sign-tx": "Paiement ou signature",
+      "session-grant": "Session",
+      "reissue": "Restauration du justificatif",
+      "notify": "Notification",
+      "revoked": "Justificatif révoqué",
+      "identify-ua": "Vérification du portefeuille"
+    },
+    "pending": {
+      "present": "Partagez un justificatif sur votre téléphone",
+      "issue": "Recevez le justificatif sur votre téléphone",
+      "nfc-read": "Lisez votre passeport sur votre téléphone",
+      "call": "Vérification du visage sur votre téléphone",
+      "authorize": "Décidez sur votre téléphone",
+      "confirm": "Confirmez sur votre téléphone",
+      "link-session": "Confirmez le lien sur votre téléphone",
+      "sign-tx": "Confirmez sur votre téléphone",
+      "default": "Continuez sur votre téléphone"
+    },
+    "outcome": {
+      "completed": "Terminée",
+      "declined": "Refusée",
+      "cancelled": "Annulée",
+      "failed": "Échouée",
+      "expired": "Expirée"
+    },
+    "credentialReceived": "Justificatif reçu",
+    "openInWallet": "Ouvrez-le dans le portefeuille de votre téléphone",
+    "shared": "Partagé",
+    "approved": "Approuvée",
+    "rejected": "Rejetée",
+    "confirmed": "Confirmée",
+    "notConfirmed": "Non confirmée",
+    "attested": "vérifiée par {{method}}",
+    "attestation": {
+      "biometric": "la biométrie",
+      "passcode": "le code",
+      "none": "aucune vérification de l’appareil"
+    },
+    "linked": "Navigateur lié",
+    "transaction": "Transaction",
+    "reference": "Référence",
+    "reason": "Motif"
   }
 }

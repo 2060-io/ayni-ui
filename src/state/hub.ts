@@ -9,8 +9,8 @@ import {
   type AgUiEvent,
   type BrandConfig,
   BroadcastSyncBus,
-  CLIENT,
   type ControllerRecord,
+  clientDescription,
   addAgent as coreAddAgent,
   countOccurrences,
   type DeviceStore,
@@ -572,7 +572,7 @@ export class Hub {
     if (bound) {
       const { client, token } = this.clientOf(bound)
       const created = await client.create(
-        { ...CLIENT, platform: platformDescription() },
+        clientDescription(agent.descriptor.profileVersion, platformDescription()),
         locale,
         token,
         undefined,
@@ -605,7 +605,7 @@ export class Hub {
       await refreshDescriptor(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
       // a paired device binds silently with its proof (UI-BIND-011); a rejected proof is dropped
       const created = await this.client(agent).create(
-        { ...CLIENT, platform: platformDescription() },
+        clientDescription(agent.descriptor.profileVersion, platformDescription()),
         locale,
         undefined,
         agent.deviceHandle,
