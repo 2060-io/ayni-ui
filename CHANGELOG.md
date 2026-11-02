@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/2060-io/ayni-ui/compare/v0.6.0...v0.6.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **docker:** render the association files from /usr/local/bin, not /docker-entrypoint.d ([638f8a8](https://github.com/2060-io/ayni-ui/commit/638f8a8e127873800b32be666d9dcba8f0d841d8))
+* **docker:** render the association files from /usr/local/bin, not /docker-entrypoint.d ([9bcbbf3](https://github.com/2060-io/ayni-ui/commit/9bcbbf38421e22f3d7cb56e6ca160ef422a9a12d))
+
 ## [0.6.0](https://github.com/2060-io/ayni-ui/compare/v0.5.0...v0.6.0) (2026-11-02)
 
 
