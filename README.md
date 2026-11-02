@@ -52,6 +52,13 @@ and otherwise shows "Open … in the Ayni app on your phone" with the store link
 `PLAY_STORE_URL` are set (UI-LINK-001..003, CC-WEB-002). Only the profile's parameters are read; a link never
 acts. Every other link opens in a new tab with no referrer and no opener.
 
+The same host serves the association files that let the phone claim the domain (CC-WEB-001):
+`/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json`, rendered at container start by
+`docker/render-well-known.sh` from `APP_ID` (`org.ayni.app.dev` on devnet, `org.ayni.app.test` on testnet,
+`org.ayni.app` on mainnet), `APPLE_TEAM_ID` and `ANDROID_CERT_FINGERPRINTS` (comma-separated SHA-256 fingerprints
+of the Android signing certificates; empty until the key exists). `tests/wellKnown.test.ts` is CI's check that
+both files are valid.
+
 ## What stays on the phone
 
 Authentication, credential exchange, auth challenges (device, face match, document) and calls are
