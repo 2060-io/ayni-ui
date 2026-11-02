@@ -327,3 +327,83 @@ describe('reactions and replies (UI-CONV-011/018/019, PROF-RUN-010, PROF-HIST-00
     expect(merged.reactions.u_run1).toBeUndefined()
   })
 })
+
+describe('flow cards (UI-CONV-021, UI-CAP-005, PROF-MAP-007)', () => {
+  const flow = (state: string, extra: Record<string, unknown> = {}) => ({
+    type: 'ACTIVITY_SNAPSHOT',
+    messageId: 'e-flow',
+    activityType: 'ayni.flow',
+    content: {
+      flowId: 'flow-1',
+      kind: 'confirm',
+      state,
+      title: 'Confirm: Wire 100 EUR',
+      openedAt: '2026-01-01T00:00:05.000Z',
+      ...extra,
+    },
+  })
+
+  it('sits at the open time, is replaced in place at the close and retires the routed card of its flow', () => {
+    let { transcript: t, session: s } = reduce(
+      emptyTranscript('s1'),
+      session(),
+      {
+        type: 'CUSTOM',
+        name: 'ayni.capability.routed',
+        value: {
+          kind: 'auth-challenge',
+          challengeType: 'device',
+          status: 'pending',
+          originSessionId: 's1',
+          flowId: 'flow-1',
+        },
+      },
+      false,
+      true
+    )
+    expect(Object.values(t.routed)[0]).toMatchObject({ status: 'pending', flowId: 'flow-1' })
+    ;({ transcript: t, session: s } = reduce(t, s, flow('pending'), false, true))
+    expect(t.messages).toHaveLength(1)
+    expect(t.messages[0]).toMatchObject({ id: 'e-flow', role: 'activity', at: '2026-01-01T00:00:05.000Z' })
+    expect(Object.keys(t.routed)).toHaveLength(1) // the phone is still busy: the routed card stays known
+    ;({ transcript: t } = reduce(
+      t,
+      s,
+      flow('completed', {
+        outcome: 'completed',
+        closedAt: '2026-01-01T00:00:09.000Z',
+        preview: { confirmed: true, attestation: { method: 'biometric', at: '2026-01-01T00:00:08.000Z' } },
+      }),
+      false,
+      true
+    ))
+    expect(t.messages).toHaveLength(1) // replaced, not appended
+    expect(t.messages[0].at).toBe('2026-01-01T00:00:05.000Z')
+    expect((t.messages[0] as { content: Record<string, unknown> }).content).toMatchObject({ state: 'completed' })
+    expect(Object.keys(t.routed)).toHaveLength(0) // the flow card took over (UI-CAP-005)
+  })
+
+  it('comes back from history at the entry time with its flow id', () => {
+    const t = mergeHistory(
+      emptyTranscript('s1'),
+      [
+        {
+          id: 'e-flow',
+          role: 'activity',
+          activityType: 'ayni.flow',
+          content: {
+            flowId: 'flow-1',
+            kind: 'issue',
+            state: 'completed',
+            title: 'Your badge',
+            openedAt: '2026-01-01T00:00:05.000Z',
+          },
+          metadata: { createdAt: '2026-01-01T00:00:05.000Z', flowId: 'flow-1' },
+        },
+        { id: 'a2', role: 'assistant', content: 'Done.', metadata: { createdAt: '2026-01-01T00:00:10.000Z' } },
+      ],
+      null
+    )
+    expect(t.messages.map((m) => m.id)).toEqual(['e-flow', 'a2'])
+  })
+})

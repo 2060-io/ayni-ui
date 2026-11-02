@@ -8,7 +8,20 @@ export * from './sync.js'
 export * from './trust.js'
 export * from './types.js'
 
-export const CLIENT = { name: 'ayni-ui', version: '3.0.0' } as const
+export const CLIENT = { name: 'ayni-ui', version: '3.1.0' } as const
+
+/**
+ * The client description sent at session creation (PROF-SESS-014): a 3.1 agent gets `platform: web` and the
+ * browser as `description`; a 3.0 agent gets the browser as the free-text platform it expects.
+ */
+export function clientDescription(
+  profileVersion: string | undefined,
+  browser: string
+): { name: string; version: string; platform: string; description?: string } {
+  const [major, minor] = (profileVersion ?? '3.0').split('.').map(Number)
+  const supportsDescription = major > 3 || (major === 3 && (minor ?? 0) >= 1)
+  return supportsDescription ? { ...CLIENT, platform: 'web', description: browser } : { ...CLIENT, platform: browser }
+}
 
 export const CLOSURE_REASON_KEYS: Record<string, string> = {
   user: 'closure.user',

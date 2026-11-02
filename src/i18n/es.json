@@ -228,7 +228,11 @@
       "expired": "Caducada",
       "unavailable": "Tu teléfono no está disponible",
       "degraded": "Omitida"
-    }
+    },
+    "authorization": "Autorización",
+    "confirmation": "Confirmación",
+    "signature": "Firma",
+    "link-session": "Vincular este navegador"
   },
   "add": {
     "title": "Añadir un agente",
@@ -363,5 +367,58 @@
       "HOLDER": "Titular"
     },
     "via": "vía {{chain}}"
+  },
+  "flow": {
+    "onPhone": "En tu teléfono",
+    "kind": {
+      "present": "Compartir una credencial",
+      "issue": "Recibir una credencial",
+      "nfc-read": "Verificación del pasaporte",
+      "call": "Verificación facial",
+      "authorize": "Aprobación",
+      "confirm": "Confirmación",
+      "link-session": "Vincular este navegador",
+      "sign-tx": "Pago o firma",
+      "session-grant": "Sesión",
+      "reissue": "Restaurar credencial",
+      "notify": "Notificación",
+      "revoked": "Credencial revocada",
+      "identify-ua": "Verificación de la cartera"
+    },
+    "pending": {
+      "present": "Comparte una credencial en tu teléfono",
+      "issue": "Recibe la credencial en tu teléfono",
+      "nfc-read": "Lee tu pasaporte en tu teléfono",
+      "call": "Verificación facial en tu teléfono",
+      "authorize": "Decide en tu teléfono",
+      "confirm": "Confirma en tu teléfono",
+      "link-session": "Confirma el vínculo en tu teléfono",
+      "sign-tx": "Confirma en tu teléfono",
+      "default": "Continúa en tu teléfono"
+    },
+    "outcome": {
+      "completed": "Completada",
+      "declined": "Rechazada",
+      "cancelled": "Cancelada",
+      "failed": "Fallida",
+      "expired": "Caducada"
+    },
+    "credentialReceived": "Credencial recibida",
+    "openInWallet": "Ábrela en la cartera de tu teléfono",
+    "shared": "Compartido",
+    "approved": "Aprobada",
+    "rejected": "Rechazada",
+    "confirmed": "Confirmada",
+    "notConfirmed": "No confirmada",
+    "attested": "verificada con {{method}}",
+    "attestation": {
+      "biometric": "biometría",
+      "passcode": "el código",
+      "none": "sin verificación del dispositivo"
+    },
+    "linked": "Navegador vinculado",
+    "transaction": "Transacción",
+    "reference": "Referencia",
+    "reason": "Motivo"
   }
 }

@@ -19,6 +19,13 @@ export function emptyTranscript(sessionId: string): Transcript {
 
 const now = () => new Date().toISOString()
 
+/** The five closed states of a flow (flow profile §5.2). */
+export function isClosedFlow(state: unknown): boolean {
+  return (
+    state === 'completed' || state === 'declined' || state === 'cancelled' || state === 'failed' || state === 'expired'
+  )
+}
+
 function upsertMessage(messages: TranscriptMessage[], message: TranscriptMessage): TranscriptMessage[] {
   const index = messages.findIndex((m) => m.id === message.id)
   if (index < 0) return [...messages, message]
@@ -132,6 +139,13 @@ export function reduce(
       const id = String(event.messageId)
       // a late artifact replaces its generating placeholder at the initiation position (UI-CONV-006)
       let messages = t.messages
+      let routed = t.routed
+      // a flow card sits at the flow's open time and is replaced in place at its close (UI-CONV-021, PROF-MAP-007);
+      // once closed it takes over from the "continue on your phone" card of the same flow (UI-CAP-005)
+      const flowAt = activityType === ACTIVITY.flow && typeof content.openedAt === 'string' ? content.openedAt : at
+      if (activityType === ACTIVITY.flow && content.flowId && isClosedFlow(content.state)) {
+        routed = Object.fromEntries(Object.entries(routed).filter(([, r]) => r.flowId !== content.flowId))
+      }
       if (activityType === ACTIVITY.attachment && content.entryId) {
         messages = messages.filter(
           (m) =>
@@ -140,12 +154,13 @@ export function reduce(
       }
       t = {
         ...t,
+        routed,
         messages: upsertMessage(messages, {
           id,
           role: 'activity',
           activityType,
           content,
-          at,
+          at: flowAt,
           entryId: content.entryId as string | undefined,
         }),
       }
@@ -219,6 +234,7 @@ export function reduce(
                 status: String(value.status),
                 message: value.message as string | undefined,
                 at,
+                flowId: typeof value.flowId === 'string' ? value.flowId : undefined,
               },
             },
           }

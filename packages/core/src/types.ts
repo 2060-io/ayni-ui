@@ -144,7 +144,11 @@ export interface Transcript {
   complete: boolean
   /** the run in progress, if any (one at a time per session, UI-CONV-003) */
   run: RunProgress | null
-  routed: Record<string, { kind: string; challengeType?: string; status: string; message?: string; at: string }>
+  /** trust-bound events being served on the phone (UI-CAP-001); `flowId` when served as a flow (PROF-MAP-007) */
+  routed: Record<
+    string,
+    { kind: string; challengeType?: string; status: string; message?: string; at: string; flowId?: string }
+  >
   /** current reactions per message, one per person (UI-CONV-011) */
   reactions: Record<string, { emoji: string; by: string }[]>
 }
