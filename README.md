@@ -38,8 +38,19 @@ The image serves static files; at start `docker/entrypoint.sh` renders `config.j
 variables of the specification's reference implementation profile (`PUBLIC_URL`, `DEFAULT_AGENT`,
 `SINGLE_AGENT`, `TRUST_POLICY`, `TRUST_RECHECK_INTERVAL_SECONDS`, `VERANA_INDEXER_URL`,
 `VERANA_GRAPH_URL`, `DID_RESOLVER_URL`, `ALLOWED_AGENT_ORIGINS`, `BRAND_CONFIG_URL`, `LOCALES`,
-`DEFAULT_LOCALE`, `SOUNDS_ENABLED`, `INSTALL_PROMPT_ENABLED`). The UI holds no secrets. The embeddable
-single-agent mode is `?agent=<descriptor>&single=1` or `SINGLE_AGENT=true` with `DEFAULT_AGENT`.
+`DEFAULT_LOCALE`, `SOUNDS_ENABLED`, `INSTALL_PROMPT_ENABLED`, `APP_STORE_URL`, `PLAY_STORE_URL`). The UI holds
+no secrets. The embeddable single-agent mode is `?agent=<descriptor>&single=1` or `SINGLE_AGENT=true` with
+`DEFAULT_AGENT`.
+
+## App links
+
+The UI's host is the network's app-link domain (ayni-spec app D39: `app.dev.ayni.org`, `app.test.ayni.org`,
+`app.ayni.org`). An `/app/...` link of the AG-UI profile 3.1 §10, opened in the browser or clicked in a reply,
+opens its web route in place when one exists (`/app/home[/{controller}]`, `/app/explore[?q=]`,
+`/app/service/{did}`, `/app/settings`, `/app/settings/devices`, `/app/connect?oob=` as a QR for other wallets)
+and otherwise shows "Open … in the Ayni app on your phone" with the store links when `APP_STORE_URL` /
+`PLAY_STORE_URL` are set (UI-LINK-001..003, CC-WEB-002). Only the profile's parameters are read; a link never
+acts. Every other link opens in a new tab with no referrer and no opener.
 
 ## What stays on the phone
 

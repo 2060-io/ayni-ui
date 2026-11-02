@@ -420,5 +420,37 @@
     "transaction": "Transaction",
     "reference": "Reference",
     "reason": "Reason"
+  },
+  "link": {
+    "title": "Open on your phone",
+    "onPhone": "Open {{destination}} in the Ayni app on your phone.",
+    "getApp": "Don’t have the app yet?",
+    "appStore": "App Store",
+    "playStore": "Google Play",
+    "connectTitle": "Connect with your wallet",
+    "connectHint": "Scan this code with your wallet app to accept the invitation.",
+    "back": "Back",
+    "devicesTitle": "Linked devices",
+    "devicesHint": "The browsers linked to each agent; unlink any of them from the agent’s card.",
+    "noAgents": "No agents yet.",
+    "destination": {
+      "home": "Home",
+      "recent": "Recent",
+      "recentFeed": "the Recent feed",
+      "scan": "the scanner",
+      "explore": "Explore",
+      "exploreCreate": "Create a service",
+      "wallet": "your wallet",
+      "walletDocuments": "your documents",
+      "walletHistory": "your wallet history",
+      "walletCard": "this card",
+      "walletSend": "Send",
+      "service": "this service",
+      "settings": "Settings",
+      "settingsBackup": "Settings › Backup",
+      "settingsDevices": "Linked devices",
+      "connect": "this invitation",
+      "unknown": "this page"
+    }
   }
 }

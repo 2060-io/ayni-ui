@@ -2290,3 +2290,20 @@ mark.hit.current {
 .card.flow.ended {
   opacity: 0.85;
 }
+
+/* app-link fallbacks (UI-LINK-001, CC-WEB-002) */
+.phone-page p,
+.connect-page p {
+  max-width: 48ch;
+}
+.connect-page .qr {
+  display: block;
+  margin: 12px 0;
+  border-radius: 8px;
+  background: #fff;
+}
+.settings-section[data-focus] {
+  outline: 2px solid var(--accent, #0f766e);
+  outline-offset: 6px;
+  border-radius: 8px;
+}

@@ -182,6 +182,9 @@ export interface RuntimeConfig {
   defaultLocale?: string
   soundsEnabled: boolean
   installPromptEnabled: boolean
+  /** store pages of the Ayni app, shown by the web fallback of an app link (CC-WEB-002); absent until published */
+  appStoreUrl?: string
+  playStoreUrl?: string
 }
 
 export interface BrandConfig {

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18next, { LOCALES } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { DevicesDialog } from './Devices.js'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -161,6 +162,35 @@ export function Settings() {
           </a>
         ) : null}
       </div>
+      <LinkedDevices />
     </div>
+  )
+}
+
+/** The agents paired with this browser; each opens its Linked devices (UI-AGENTS-006), reached by `/app/settings/devices`. */
+function LinkedDevices() {
+  const snap = useSnapshot()
+  const { t } = useTranslation()
+  const [open, setOpen] = useState<string | null>(null)
+  const paired = snap.agents.filter((a) => a.deviceHandle)
+  const agent = paired.find((a) => a.did === open)
+  return (
+    <section className="settings-section" id="devices" data-focus={snap.settingsSection === 'devices' || undefined}>
+      <h2>{t('link.devicesTitle')}</h2>
+      <p className="muted">{t('link.devicesHint')}</p>
+      {paired.length === 0 ? <div className="muted">{t('link.noAgents')}</div> : null}
+      {paired.map((a) => (
+        <button
+          key={a.did}
+          type="button"
+          className="btn small"
+          onClick={() => setOpen(a.did)}
+          style={{ marginRight: 8 }}
+        >
+          {a.name}
+        </button>
+      ))}
+      {agent ? <DevicesDialog agent={agent} onClose={() => setOpen(null)} /> : null}
+    </section>
   )
 }
