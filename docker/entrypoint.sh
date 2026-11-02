@@ -25,6 +25,8 @@ cat > "$HTML/config.json" <<JSON
   "playStoreUrl": "${PLAY_STORE_URL:-}"
 }
 JSON
+# the app-link association files for this network's app (CC-WEB-001)
+sh /docker-entrypoint.d/render-well-known.sh "$HTML"
 # the CSP connect-src gets the configured agent origins (the browser adds nothing at runtime)
 export ALLOWED_AGENT_ORIGINS_CSP="$(printf '%s' "${ALLOWED_AGENT_ORIGINS:-}" | tr ',' ' ')"
 export PORT="${PORT:-8080}"
