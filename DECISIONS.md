@@ -145,5 +145,15 @@
     message or an unread count moves nothing; a controller moves to the identified group once, with a
     toast, when its first credential arrives, on the stream or from history. Supersedes the recency
     order of entries 12 and 17.
-25. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+25. **One conversation, every device** (2026-11-11; UI-CONV-022, PROF-STREAM-005, PROF-HIST-007). The agent
+    now sends what another device adds to a conversation on this session's stream; the reducer already
+    placed a text message by its role and id, so a message typed on the phone shows on the person's side
+    here as it arrives. Two things were missing:
+    - **Catch-up.** History was read only for an empty transcript. It is now read every time a stream
+      attaches (`hub.catchUp`): the newest pages, going back until one reaches what the browser holds
+      (`readCatchUp`, `catchUp` in the core). The transcript keeps its own paging position; when more was
+      missed than four pages, it starts over from what was read, so it never shows a hole.
+    - **A replayed message keeps its place.** A stream replays its events after a reconnect; a message
+      already held keeps its time and so its position.
+26. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

@@ -28,6 +28,7 @@ import {
   parseAppLink,
   type ReplyQuote,
   type RuntimeConfig,
+  readCatchUp,
   recheckTrust,
   reduce,
   refreshDescriptor,
@@ -1180,8 +1181,9 @@ export class Hub {
         if (status.state === 'closed') return
         // the leader runs the runs: a run shown on the transcript that it does not hold is a leftover
         if (!this.runs.has(sessionId)) await this.clearStaleRun(sessionId)
-        if (status.state === 'bound' && !(await this.store.getTranscript(sessionId))?.messages.length)
-          await this.loadHistory(sessionId)
+        // every time the stream attaches: what another device added to the conversation meanwhile, and what the
+        // agent's stream can no longer replay (UI-CONV-022, PROF-HIST-007)
+        if (status.state === 'bound') await this.catchUp(sessionId).catch(() => undefined)
         if (status.state === 'bound') void this.syncConversations(session.agentDid).catch(() => undefined)
         controller = new AbortController()
         this.streams.set(sessionId, controller)
@@ -1356,6 +1358,28 @@ export class Hub {
 
   public loadHistory(sessionId: string, before?: string): Promise<void> {
     return this.serial(() => this.loadHistoryNow(sessionId, before))
+  }
+
+  /**
+   * Reads the end of the conversation's history and adds what this browser does not hold (UI-CONV-022): a
+   * conversation continued on the phone while this tab was closed, asleep or offline.
+   */
+  public catchUp(sessionId: string): Promise<void> {
+    return this.serial(async () => {
+      const session = await this.store.getSession(sessionId)
+      if (session?.state !== 'bound') return
+      const { client, token } = this.clientOf(session)
+      const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+      const merged = await readCatchUp(transcript, async (before) => {
+        const page = await client.history(sessionId, token, before, 50)
+        return { messages: page.messages as Record<string, unknown>[], nextBefore: page.nextBefore }
+      })
+      if (merged === transcript) return
+      await this.store.putTranscript(merged)
+      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: merged } })
+      this.bus?.post({ kind: 'transcript', sessionId })
+      if (hasIssuedCredential(merged.messages)) await this.markIdentified(session.agentDid)
+    })
   }
 
   private async loadHistoryNow(sessionId: string, before?: string): Promise<void> {

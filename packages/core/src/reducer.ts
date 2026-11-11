@@ -93,9 +93,13 @@ export function reduce(
       break
     case 'TEXT_MESSAGE_START': {
       const role = event.role === 'user' ? 'user' : event.role === 'system' ? 'system' : 'assistant'
+      const id = String(event.messageId)
+      // a message already held comes again when a stream replays it after a reconnect: it keeps its time, so
+      // it stays where it is in the transcript
+      const held = t.messages.find((m) => m.id === id)
       t = {
         ...t,
-        messages: upsertMessage(t.messages, { id: String(event.messageId), role, content: '', at, streaming: true }),
+        messages: upsertMessage(t.messages, { id, role, content: '', at: held?.at ?? at, streaming: true }),
       }
       break
     }
@@ -336,4 +340,62 @@ export function mergeHistory(
     oldestLoadedId: nextBefore,
     complete: nextBefore === null || page.length === 0,
   }
+}
+
+/** A page of history as the agent returns it (PROF-HIST-001): newest last, with where the page before it starts. */
+export interface HistoryPage {
+  messages: Record<string, unknown>[]
+  nextBefore: string | null
+}
+
+/** Whether a page of history reaches what the transcript holds: one of its messages is already there. */
+export function reachesTranscript(transcript: Transcript, page: Record<string, unknown>[]): boolean {
+  const known = new Set(transcript.messages.map((m) => m.id))
+  return page.some((m) => {
+    const external = (m.metadata as { externalId?: string } | undefined)?.externalId
+    return known.has(String(m.id)) || (!!external && known.has(external))
+  })
+}
+
+/**
+ * What a device missed while it was away, merged into the transcript it holds (UI-CONV-022, PROF-HIST-007): a
+ * conversation continued from another device, or events its stream could not replay. `pages` are the newest pages
+ * of history, newest first, read until one reached the transcript or history ended. The transcript keeps its own
+ * paging position when a page reached it. When none did, more was missed than was read: the transcript starts
+ * over from the pages, so it never shows a hole between what it held and what it read.
+ */
+export function catchUp(transcript: Transcript, pages: readonly HistoryPage[]): Transcript {
+  if (!pages.length) return transcript
+  const held = transcript.messages.length > 0
+  const reached = !held || pages.some((p) => p.nextBefore === null || reachesTranscript(transcript, p.messages))
+  let merged: Transcript = reached ? transcript : { ...transcript, messages: [], reactions: {} }
+  for (const page of pages) merged = mergeHistory(merged, page.messages, page.nextBefore)
+  return held && reached
+    ? { ...merged, oldestLoadedId: transcript.oldestLoadedId, complete: transcript.complete }
+    : merged
+}
+
+/**
+ * Reads what `catchUp` needs: the newest pages of history, going back until one reaches the transcript, history
+ * ends, or `maxPages` were read; then merges them.
+ */
+export async function readCatchUp(
+  transcript: Transcript,
+  read: (before?: string) => Promise<HistoryPage>,
+  maxPages = 4
+): Promise<Transcript> {
+  const pages: HistoryPage[] = []
+  let before: string | undefined
+  for (let i = 0; i < maxPages; i++) {
+    const page = await read(before)
+    pages.push(page)
+    const done =
+      page.nextBefore === null ||
+      page.messages.length === 0 ||
+      transcript.messages.length === 0 ||
+      reachesTranscript(transcript, page.messages)
+    if (done) break
+    before = page.nextBefore ?? undefined
+  }
+  return catchUp(transcript, pages)
 }
