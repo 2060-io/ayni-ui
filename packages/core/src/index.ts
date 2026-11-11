@@ -1,5 +1,6 @@
 export * from './agents.js'
 export * from './appLinks.js'
+export * from './conversationDesign.js'
 export * from './directory.js'
 export * from './profileClient.js'
 export * from './reducer.js'

@@ -2,6 +2,8 @@
  * The emoji set of the reaction picker (UI-CONV-017): bundled, so it works offline and under the
  * CSP; searched by English name. The quick bar shows the first six of QUICK.
  */
+import { QUICK_REACTIONS } from '@ayni.org/ayni-ui-core'
+
 export interface EmojiEntry {
   e: string
   name: string
@@ -12,14 +14,8 @@ export interface EmojiCategory {
   items: EmojiEntry[]
 }
 
-export const QUICK: EmojiEntry[] = [
-  { e: '❤️', name: 'heart' },
-  { e: '👍', name: 'thumbs up' },
-  { e: '👎', name: 'thumbs down' },
-  { e: '😂', name: 'laughing' },
-  { e: '😮', name: 'surprised' },
-  { e: '😢', name: 'sad' },
-]
+/** The quick row is the core's: the app offers the same six. */
+export const QUICK: EmojiEntry[] = [...QUICK_REACTIONS]
 
 const smileys: EmojiEntry[] = [
   { e: '😀', name: 'grinning' },

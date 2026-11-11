@@ -1,6 +1,13 @@
 /** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
 import { ACTIVITY, CLOSURE_REASONS } from '@ayni.org/ayni-agui-profile'
-import { CLOSURE_REASON_KEYS, destinationKey, parseAppLink, type TranscriptMessage } from '@ayni.org/ayni-ui-core'
+import {
+  CLOSURE_REASON_KEYS,
+  CONVERSATION_DESIGN,
+  destinationKey,
+  parseAppLink,
+  replyQuoteOf,
+  type TranscriptMessage,
+} from '@ayni.org/ayni-ui-core'
 import {
   ArrowDown,
   ArrowLeft,
@@ -22,11 +29,11 @@ import { ApprovalCard, CapabilityCard, ElevationForm, FlowCard, GeneratingCard, 
 import { Composer } from './Composer.js'
 import { type HighlightSpec, highlight } from './Highlight.js'
 import { type AppLinkSpec, Markdown } from './Markdown.js'
-import { MessageTools, type Popover, plainText, ReactionPill, useLongPress } from './MessageActions.js'
+import { MessageTools, type Popover, ReactionPill, useLongPress } from './MessageActions.js'
 import { useDismiss } from './useDismiss.js'
 
-/** Scrolled up beyond this distance from the latest message, the button that returns to it shows. */
-const AWAY_BEYOND = 320
+/** Scrolled up beyond this distance from the latest message, the button that returns to it shows (shared with the app). */
+const AWAY_BEYOND = CONVERSATION_DESIGN.latestButton.awayBeyond
 
 export function Conversation() {
   const snap = useSnapshot()
@@ -512,12 +519,7 @@ function Message({
   }
   if (m.role === 'system') return <div className="msg system">{m.content}</div>
   const mine = m.role === 'user'
-  const reply = () =>
-    hub.setReply(sessionId, {
-      id: m.id,
-      text: plainText(m.content).slice(0, 200),
-      role: m.role as 'user' | 'assistant',
-    })
+  const reply = () => hub.setReply(sessionId, replyQuoteOf(m))
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
     <article
