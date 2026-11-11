@@ -157,6 +157,7 @@
     "copied": "Copiado",
     "copyFailed": "Não foi possível copiar",
     "loadingOlder": "Carregando mensagens anteriores",
+    "backToLatest": "Voltar à última mensagem",
     "replyingTo": "Respondendo a {{name}}",
     "cancelReply": "Cancelar resposta",
     "you": "Você",
