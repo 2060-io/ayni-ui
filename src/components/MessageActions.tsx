@@ -3,12 +3,15 @@
  * bar, the full emoji picker, the context menu, and the touch sheet. One reaction per person per
  * message (UI-CONV-011): picking another replaces it, picking the current one removes it.
  */
-import type { TranscriptMessage } from '@ayni.org/ayni-ui-core'
+import { plainText, reactionPillOf, type TranscriptMessage } from '@ayni.org/ayni-ui-core'
 import { Copy, FileText, Info, MoreHorizontal, PenLine, Reply, SmilePlus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CATEGORIES, type EmojiEntry, nameOf, QUICK, searchEmoji } from '../emoji.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+
+// the clipboard text of a message is the core's: the app strips markdown the same way
+export { plainText }
 
 export type Reaction = { emoji: string; by: string }
 export type Popover = 'quick' | 'picker' | 'menu' | null
@@ -280,30 +283,27 @@ export function ReactionPill({
   onOwn?: () => void
 }) {
   const { t } = useTranslation()
-  if (!reactions.length) return null
-  const mine = reactions.find((r) => r.by === me)
-  const others = reactions.filter((r) => r.by !== me)
-  const title = reactions.map((r) => `${r.emoji} ${r.by === me ? t('conversation.you') : r.by}`).join(', ')
-  if (mine && onOwn) {
+  // what the pill holds and in which order is the core's rule, shared with the app
+  const pill = reactionPillOf(reactions, me)
+  if (!pill) return null
+  const title = pill.emojis.map((r) => `${r.emoji} ${r.own ? t('conversation.you') : r.by}`).join(', ')
+  if (pill.mine && onOwn) {
     return (
       <button
         type="button"
         className="pill mine"
         title={title}
-        aria-label={t('conversation.yourReaction', { emoji: nameOf(mine.emoji) })}
+        aria-label={t('conversation.yourReaction', { emoji: nameOf(pill.mine) })}
         aria-pressed="true"
         onClick={onOwn}
       >
-        {mine.emoji}
-        {others.map((r) => (
-          <span key={r.by}>{r.emoji}</span>
-        ))}
+        {pill.emojis.map((r) => (r.own ? r.emoji : <span key={r.by}>{r.emoji}</span>))}
       </button>
     )
   }
   return (
     <span className="pill" title={title} role="img" aria-label={title}>
-      {reactions.map((r) => (
+      {pill.emojis.map((r) => (
         <span key={r.by}>{r.emoji}</span>
       ))}
     </span>
@@ -326,20 +326,4 @@ export function useLongPress(onLongPress: () => void, ms = 450) {
     onTouchMove: clear,
     onTouchCancel: clear,
   }
-}
-
-/** Markdown markers stripped for the clipboard. */
-export function plainText(markdown: string): string {
-  return markdown
-    .replace(/<\/?(u|b|i|em|strong|s)>/g, '')
-    .replace(/\*\*\*([^*]+)\*\*\*/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*\n]+)\*/g, '$1')
-    .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1 ($2)')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^>\s?/gm, '')
-    .replace(/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/gm, '')
-    .replace(/^[-*+]\s+/gm, '• ')
 }

@@ -1,6 +1,12 @@
 /** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
 import { ACTIVITY, CLOSURE_REASONS } from '@ayni.org/ayni-agui-profile'
-import { CLOSURE_REASON_KEYS, destinationKey, parseAppLink, type TranscriptMessage } from '@ayni.org/ayni-ui-core'
+import {
+  CLOSURE_REASON_KEYS,
+  destinationKey,
+  parseAppLink,
+  replyQuoteOf,
+  type TranscriptMessage,
+} from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, ChevronDown, ChevronUp, Loader2, Menu as MenuIcon, Search, ShieldCheck, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +18,7 @@ import { ApprovalCard, CapabilityCard, ElevationForm, FlowCard, GeneratingCard, 
 import { Composer } from './Composer.js'
 import { type HighlightSpec, highlight } from './Highlight.js'
 import { type AppLinkSpec, Markdown } from './Markdown.js'
-import { MessageTools, type Popover, plainText, ReactionPill, useLongPress } from './MessageActions.js'
+import { MessageTools, type Popover, ReactionPill, useLongPress } from './MessageActions.js'
 import { useDismiss } from './useDismiss.js'
 
 export function Conversation() {
@@ -481,12 +487,7 @@ function Message({
   }
   if (m.role === 'system') return <div className="msg system">{m.content}</div>
   const mine = m.role === 'user'
-  const reply = () =>
-    hub.setReply(sessionId, {
-      id: m.id,
-      text: plainText(m.content).slice(0, 200),
-      role: m.role as 'user' | 'assistant',
-    })
+  const reply = () => hub.setReply(sessionId, replyQuoteOf(m))
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
     <article
