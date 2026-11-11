@@ -28,6 +28,23 @@ export const HOME_DESIGN = {
     dot: { bottom: 4, right: 4, size: 9, borderWidth: 2 },
     /** the line under the pinned tiles, with its pin */
     separator: { width: 48, height: 14, lineWidth: 1, pinSize: 11, pinPaddingX: 3 },
+    /**
+     * The two zones a tile is dragged between, the pinned one above the line and the rest below: while a tile is
+     * dragged both show a dashed outline, the one under the pointer a solid one; the empty pinned zone grows to
+     * one slot.
+     */
+    zone: {
+      minHeight: 12,
+      radius: 12,
+      droppableMinHeight: 48,
+      droppableOutlineWidth: 1,
+      /** the share of the accent in the dashed outline */
+      droppableOutlineShare: 0.5,
+      outlineOffset: -2,
+      targetOutlineWidth: 2,
+    },
+    /** the tile being dragged, where it stood; and the line above the pinned tile it would land before */
+    drag: { opacity: 0.4, scale: 0.96, dropLineWidth: 3 },
   },
   column: {
     header: { height: 64, paddingLeft: 12, paddingRight: 8, gap: 8, fontSize: 16, iconSize: 18, flagFontSize: 16 },
@@ -77,7 +94,9 @@ export const HOME_COLORS = {
   selectedBar: { background: 'accent' },
   badge: { background: 'danger' },
   dot: { background: 'warning', border: 'surface' },
-  separator: { line: 'border', pin: 'muted', pinBackground: 'surface' },
+  separator: { line: 'border', pin: 'muted', pinBackground: 'surface', target: 'accent' },
+  zone: { outline: 'accent' },
+  drag: { dropLine: 'accent' },
   column: { background: 'bg', border: 'border' },
   header: { icon: 'muted' },
   selectedCard: { background: 'surface' },
