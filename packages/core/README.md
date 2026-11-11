@@ -24,5 +24,20 @@ The browser's stylesheet is the reference: tests in this repository compare it, 
 with these values, so a change made on one side only fails. The app builds its styles from the same values. A change
 of look or wording on one of these surfaces starts here.
 
+## One conversation, every device
+
+A conversation shows the same transcript on every device of a person (AG-UI profile PROF-STREAM-005,
+PROF-HIST-007). The agent sends a session what the person's other devices add; the reducer places a text message
+by its role and its id, so a message typed elsewhere lands on the person's side. For what a client missed while it
+was away:
+
+| Function | What it does |
+| --- | --- |
+| `readCatchUp(transcript, read)` | Reads the newest pages of history, going back until one reaches what the transcript holds, history ends, or four pages were read; then merges them. |
+| `catchUp(transcript, pages)` | The merge itself. The transcript keeps its own paging position; when more was missed than was read, it starts over from the pages, so it never shows a hole. |
+| `reachesTranscript(transcript, page)` | Whether a page of history holds a message the transcript already has. |
+
+A client calls `readCatchUp` every time a session's stream attaches.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.
