@@ -642,6 +642,29 @@ fieldset.quick {
 .transcript::-webkit-scrollbar {
   display: none;
 }
+/* the way back to the latest message, over the bottom right of the transcript */
+.latest-anchor {
+  position: relative;
+  height: 0;
+}
+.latest {
+  position: absolute;
+  right: 20px;
+  bottom: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 18%, transparent);
+  cursor: pointer;
+}
+.latest:hover {
+  background: var(--surface);
+}
 .loading-older {
   align-self: center;
   display: inline-flex;

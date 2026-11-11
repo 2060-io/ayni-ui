@@ -105,4 +105,16 @@ describe('the stylesheet follows the shared conversation design', () => {
     expect(mine['border-color']).toBe(role(CONVERSATION_COLORS.reactionPill.mineBorder))
     expect(mine.background).toBe(`color-mix(in srgb, var(--accent) ${pct(p.mineTint)}, var(--bg))`)
   })
+
+  it('the button back to the latest message', () => {
+    const l = D.latestButton
+    const latest = rule('.latest')
+    expect(latest.width).toBe(px(l.size))
+    expect(latest.height).toBe(px(l.size))
+    expect(latest.right).toBe(px(l.right))
+    expect(latest.bottom).toBe(px(l.bottom))
+    expect(latest.background).toBe(role(CONVERSATION_COLORS.latestButton.background))
+    expect(latest.border).toBe(`1px solid ${role(CONVERSATION_COLORS.latestButton.border)}`)
+    expect(latest.color).toBe(role(CONVERSATION_COLORS.latestButton.icon))
+  })
 })

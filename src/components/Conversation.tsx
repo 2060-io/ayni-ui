@@ -2,12 +2,23 @@
 import { ACTIVITY, CLOSURE_REASONS } from '@ayni.org/ayni-agui-profile'
 import {
   CLOSURE_REASON_KEYS,
+  CONVERSATION_DESIGN,
   destinationKey,
   parseAppLink,
   replyQuoteOf,
   type TranscriptMessage,
 } from '@ayni.org/ayni-ui-core'
-import { ArrowLeft, ChevronDown, ChevronUp, Loader2, Menu as MenuIcon, Search, ShieldCheck, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Menu as MenuIcon,
+  Search,
+  ShieldCheck,
+  X,
+} from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
@@ -20,6 +31,9 @@ import { type HighlightSpec, highlight } from './Highlight.js'
 import { type AppLinkSpec, Markdown } from './Markdown.js'
 import { MessageTools, type Popover, ReactionPill, useLongPress } from './MessageActions.js'
 import { useDismiss } from './useDismiss.js'
+
+/** Scrolled up beyond this distance from the latest message, the button that returns to it shows (shared with the app). */
+const AWAY_BEYOND = CONVERSATION_DESIGN.latestButton.awayBeyond
 
 export function Conversation() {
   const snap = useSnapshot()
@@ -63,6 +77,8 @@ export function Conversation() {
       ? (messages[messages.length - 1] as { content: string }).content.length
       : 0
   const stickToBottom = useRef(true)
+  // scrolled up beyond a screen or so, a button offers the way back to the latest message
+  const [away, setAway] = useState(false)
   const loadingOlder = session ? !!snap.loadingOlder[session.sessionId] : false
   const search = session ? snap.search[session.sessionId] : undefined
   const query = search?.query.trim() ?? ''
@@ -107,11 +123,20 @@ export function Conversation() {
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight
   }, [lastId, lastContent, session?.sessionId])
 
+  const toLatest = () => {
+    const el = listRef.current
+    if (!el) return
+    stickToBottom.current = true
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }
+
   // older pages load as the top comes into view, keeping the scroll position (UI-CONV-012)
   const onScroll = () => {
     const el = listRef.current
     if (!el || !session) return
-    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    const fromLatest = el.scrollHeight - el.scrollTop - el.clientHeight
+    stickToBottom.current = fromLatest < 40
+    setAway(fromLatest > AWAY_BEYOND)
     if (el.scrollTop < 80 && transcript && !transcript.complete && !loadingOlder && messages.length) {
       const before = el.scrollHeight
       void hub.loadOlder(session.sessionId).then(() => {
@@ -392,6 +417,13 @@ export function Conversation() {
             ) : null}
             {elevation ? <ElevationForm session={session} onClose={() => setElevation(false)} /> : null}
           </div>
+          {away ? (
+            <div className="latest-anchor">
+              <button type="button" className="latest" onClick={toLatest} aria-label={t('conversation.backToLatest')}>
+                <ArrowDown size={18} aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
           {session.state === 'bound' || closed ? (
             <Composer sessionId={session.sessionId} disabled={trustBlocked} />
           ) : null}
