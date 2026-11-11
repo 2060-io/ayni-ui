@@ -128,3 +128,18 @@ describe('a message from another device (PROF-STREAM-005)', () => {
     expect(t.messages.find((m) => m.id === 'm3')?.content).toBe('typed on the laptop')
   })
 })
+
+describe('the list of conversations changed elsewhere (PROF-CONV-008)', () => {
+  it('tells the client to read the list again, and leaves the transcript alone', () => {
+    const t = held(1, 2)
+    const out = reduce(
+      t,
+      session(),
+      { type: 'CUSTOM', name: 'ayni.conversation.changed', value: { conversationId: 'c1', title: 'Renamed' } },
+      false,
+      true
+    )
+    expect(out.signals).toEqual(['conversations'])
+    expect(out.transcript).toBe(t)
+  })
+})

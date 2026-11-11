@@ -10,7 +10,7 @@ export interface Reduction {
   transcript: Transcript
   session: SessionRecord
   /** signals the shell reacts to (title, badge, sound) */
-  signals: ('message' | 'bound' | 'closed' | 'token' | 'approval' | 'identified')[]
+  signals: ('message' | 'bound' | 'closed' | 'token' | 'approval' | 'identified' | 'conversations')[]
 }
 
 export function emptyTranscript(sessionId: string): Transcript {
@@ -18,6 +18,12 @@ export function emptyTranscript(sessionId: string): Transcript {
 }
 
 const now = () => new Date().toISOString()
+
+/**
+ * The agent's signal that the person's list of conversations changed (PROF-CONV-008): a title, an archive, a
+ * closure, made from any device. Named here until the profile package that lists it is the one every client has.
+ */
+export const CONVERSATION_CHANGED = 'ayni.conversation.changed'
 
 /** The five closed states of a flow (flow profile §5.2). */
 export function isClosedFlow(state: unknown): boolean {
@@ -212,6 +218,11 @@ export function reduce(
           }
           break
         }
+        case CONVERSATION_CHANGED:
+          // a conversation of the person was renamed, archived or closed, here or on another device: the client
+          // reads the agent's list again (PROF-CONV-008)
+          signals.push('conversations')
+          break
         case CUSTOM_EVENT.sessionBound:
           s = {
             ...s,

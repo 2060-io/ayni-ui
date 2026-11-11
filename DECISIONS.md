@@ -155,5 +155,12 @@
       missed than four pages, it starts over from what was read, so it never shows a hole.
     - **A replayed message keeps its place.** A stream replays its events after a reconnect; a message
       already held keeps its time and so its position.
-26. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+26. **The column follows a rename made elsewhere** (2026-11-11; UI-SESS-013, PROF-CONV-008). A conversation
+    renamed, archived or closed from the phone kept its old line here until the next reconnect: nothing told
+    the browser. The agent now sends `ayni.conversation.changed` on the person's session streams; the reducer
+    turns it into the `conversations` signal and the hub reads the agent's list again.
+27. **The agent-is-working indicator is in the shared design** (2026-11-11; UI-CONV-016). Its bubble, its
+    three dots with their bounce, its wording and the rule of when it shows (`progressOf`) moved to the core
+    (0.3.3) so that the Ayni app shows the same; nothing changes in the browser.
+28. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

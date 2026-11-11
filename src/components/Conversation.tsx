@@ -5,6 +5,7 @@ import {
   CONVERSATION_DESIGN,
   destinationKey,
   parseAppLink,
+  progressOf,
   replyQuoteOf,
   type TranscriptMessage,
 } from '@ayni.org/ayni-ui-core'
@@ -185,7 +186,7 @@ export function Conversation() {
   const reasonKey = CLOSURE_REASON_KEYS[session.closedReason ?? 'agent'] ?? 'closure.agent'
   const contextual = session.ayni?.contextualMenu.items ?? []
   const me = session.principal?.displayName
-  const thinking = transcript?.run && !messages.some((m) => m.role !== 'activity' && m.streaming)
+  const progress = progressOf(transcript)
   const step = (delta: number) => {
     if (!total) return
     hub.setSearch(session.sessionId, { current: (current + delta + total) % total })
@@ -402,14 +403,14 @@ export function Conversation() {
                   }}
                 />
               ))}
-            {transcript?.run?.steps.length ? (
+            {progress?.kind === 'steps' ? (
               <div className="progress steps" aria-live="polite">
                 <Dots />
-                {transcript.run.steps.map((s) => (
+                {progress.steps.map((s) => (
                   <span key={s}>{s}…</span>
                 ))}
               </div>
-            ) : thinking ? (
+            ) : progress ? (
               <div className="progress thinking" role="status" aria-live="polite">
                 <Dots />
                 {t('conversation.thinking')}

@@ -1338,6 +1338,8 @@ export class Hub {
         void this.syncConversations(next.agentDid).catch(() => undefined)
       }
       if (signals.includes('closed')) this.stopLeading(sessionId)
+      // a conversation was renamed, archived or closed from another device: the column follows (UI-SESS-013)
+      if (signals.includes('conversations')) void this.syncConversations(next.agentDid).catch(() => undefined)
       if (signals.includes('identified')) await this.markIdentified(next.agentDid)
       this.set({})
       this.updateTitle()
