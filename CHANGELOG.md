@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/2060-io/ayni-ui/compare/v0.8.0...v0.9.0) (2026-11-11)
+
+
+### Features
+
+* **core:** the design of a rail tile being dragged, shared with the Ayni app (core 0.3.1) ([c51c5bd](https://github.com/2060-io/ayni-ui/commit/c51c5bda3fd3318827eb0c159839ff000a6ae319))
+* **core:** the design of a rail tile being dragged, shared with the Ayni app (core 0.3.1) ([c54d822](https://github.com/2060-io/ayni-ui/commit/c54d82222289bbbfba21d05ec1426774b7904e12))
+
 ## [0.8.0](https://github.com/2060-io/ayni-ui/compare/v0.7.0...v0.8.0) (2026-11-11)
 
 
