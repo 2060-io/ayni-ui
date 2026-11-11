@@ -4,7 +4,7 @@
  */
 import { BASE_TEXT, HOME_COLORS as C, HOME_DESIGN as D, TRUST_MARK } from '@ayni.org/ayni-ui-core'
 import { describe, expect, it } from 'vitest'
-import { css, em, px, role, rule, tint } from './stylesheet.js'
+import { css, em, pct, px, role, rule, tint } from './stylesheet.js'
 
 describe('the stylesheet follows the shared base text', () => {
   it('its size and its line height', () => {
@@ -80,6 +80,33 @@ describe('the stylesheet follows the shared design of the rail', () => {
     const pin = rule('.rail-pin')
     expect(pin.background).toBe(role(C.separator.pinBackground))
     expect(pin.padding).toBe(`0 ${px(r.separator.pinPaddingX)}`)
+  })
+})
+
+describe('the stylesheet follows the shared design of a tile being dragged', () => {
+  const r = D.rail
+  it('the two zones', () => {
+    const zone = rule('.rail-zone')
+    expect(zone['min-height']).toBe(px(r.zone.minHeight))
+    expect(zone['border-radius']).toBe(px(r.zone.radius))
+    const droppable = rule('.rail-zone.droppable')
+    expect(droppable.outline).toBe(
+      `${px(r.zone.droppableOutlineWidth)} dashed color-mix(in srgb, ${role(C.zone.outline)} ${pct(r.zone.droppableOutlineShare)}, transparent)`
+    )
+    expect(droppable['outline-offset']).toBe(px(r.zone.outlineOffset))
+    expect(rule('.rail-zone.target').outline).toBe(`${px(r.zone.targetOutlineWidth)} solid ${role(C.zone.outline)}`)
+    expect(rule('.rail-zone.rail-pinned.droppable')['min-height']).toBe(px(r.zone.droppableMinHeight))
+    expect(rule('.rail-separator.target')['border-top-color']).toBe(role(C.separator.target))
+    expect(rule('.rail-separator.target + .rail-pin').color).toBe(role(C.separator.target))
+  })
+
+  it('the tile where it stood, and the line where it would land', () => {
+    const dragging = rule('.rail-item.dragging')
+    expect(dragging.opacity).toBe(String(r.drag.opacity))
+    expect(dragging.transform).toBe(`scale(${r.drag.scale})`)
+    expect(rule('.rail-item.drop-before')['box-shadow']).toBe(
+      `0 ${px(-r.drag.dropLineWidth)} 0 0 ${role(C.drag.dropLine)}`
+    )
   })
 })
 
