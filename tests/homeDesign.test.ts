@@ -2,9 +2,16 @@
  * The browser's stylesheet against the shared design of the home page (`HOME_DESIGN` in the core): the rail of
  * controllers and the column of the selected one. The Ayni app builds its styles from those values.
  */
-import { HOME_COLORS as C, HOME_DESIGN as D, TRUST_MARK } from '@ayni.org/ayni-ui-core'
+import { BASE_TEXT, HOME_COLORS as C, HOME_DESIGN as D, TRUST_MARK } from '@ayni.org/ayni-ui-core'
 import { describe, expect, it } from 'vitest'
 import { css, em, px, role, rule, tint } from './stylesheet.js'
+
+describe('the stylesheet follows the shared base text', () => {
+  it('its size and its line height', () => {
+    expect(rule('body')['font-size']).toBe(px(BASE_TEXT.fontSize))
+    expect(rule('body')['line-height']).toBe(String(BASE_TEXT.lineHeight))
+  })
+})
 
 describe('the stylesheet follows the shared design of the rail', () => {
   const r = D.rail

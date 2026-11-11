@@ -9,6 +9,9 @@
  */
 import type { ColorRole } from './conversationDesign.js'
 
+/** The text every surface starts from: its size, and its line height as a multiple of the size. */
+export const BASE_TEXT = { fontSize: 15, lineHeight: 1.45 } as const
+
 export const HOME_DESIGN = {
   rail: {
     width: 64,
