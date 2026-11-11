@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.0](https://github.com/2060-io/ayni-ui/compare/v0.7.0...v0.8.0) (2026-11-11)
+
+
+### Features
+
+* **core:** the base text size in the shared design ([5fc742b](https://github.com/2060-io/ayni-ui/commit/5fc742b40c189063e5d4d2a009ebf1f504dfc80e))
+* **core:** the design of the home page and of the Proof of Trust, shared with the Ayni app (core 0.3.0) ([ea6b9f1](https://github.com/2060-io/ayni-ui/commit/ea6b9f1a7d450301d142afca5b9d898f1675ed5a))
+* **core:** the design of the home page and of the Proof of Trust, shared with the Ayni app (core 0.3.0) ([098337b](https://github.com/2060-io/ayni-ui/commit/098337b8febddce5a0503814aa09a3cd92368bc3))
+
 ## [0.7.0](https://github.com/2060-io/ayni-ui/compare/v0.6.1...v0.7.0) (2026-11-11)
 
 
