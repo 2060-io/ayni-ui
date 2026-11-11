@@ -3,7 +3,14 @@
  * controller's agents as collapsible cards, each with its trust icon, menu, link state, new
  * conversation, search, and its active or archived conversations.
  */
-import { type AgentRecord, flagOf, type SessionRecord } from '@ayni.org/ayni-ui-core'
+import {
+  type AgentRecord,
+  CONTROLLER_KIND_ICON,
+  flagOf,
+  HOME_DESIGN,
+  type SessionRecord,
+  TRUST_MARK,
+} from '@ayni.org/ayni-ui-core'
 import {
   Archive,
   Building2,
@@ -24,6 +31,10 @@ import { Avatar } from './Avatar.js'
 import { DevicesDialog } from './Devices.js'
 import { useDismiss } from './useDismiss.js'
 
+const D = HOME_DESIGN.column
+const KIND_ICON = { building: Building2, user: User, 'shield-question': ShieldQuestion }
+const TRUST_ICON = { 'shield-check': ShieldCheck, 'shield-alert': ShieldAlert, 'shield-question': ShieldQuestion }
+
 export function Column() {
   const snap = useSnapshot()
   const { t } = useTranslation()
@@ -35,6 +46,7 @@ export function Column() {
       </aside>
     )
   }
+  const KindIcon = KIND_ICON[CONTROLLER_KIND_ICON[controller.kind]]
   const agents = snap.agents
     .filter((a) => a.controllerDid === controller.did)
     .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
@@ -43,13 +55,7 @@ export function Column() {
       <div className="column-header">
         <div className="row-between">
           <h2 className="controller-title">
-            {controller.kind === 'organization' ? (
-              <Building2 size={18} role="img" aria-label={t('column.kind.organization')} />
-            ) : controller.kind === 'persona' ? (
-              <User size={18} role="img" aria-label={t('column.kind.persona')} />
-            ) : (
-              <ShieldQuestion size={18} role="img" aria-label={t('column.kind.unverified')} />
-            )}
+            <KindIcon size={D.header.iconSize} role="img" aria-label={t(`column.kind.${controller.kind}`)} />
             {flagOf(controller.countryCode) ? (
               <span className="flag" role="img" aria-label={controller.countryCode}>
                 {flagOf(controller.countryCode)}
@@ -118,8 +124,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
     if (!selected) hub.selectAgent(agent.did)
     else hub.toggleAgentExpanded(agent.did)
   }
-  const TrustIcon =
-    agent.trust.result === 'trusted' ? ShieldCheck : agent.trust.result === 'untrusted' ? ShieldAlert : ShieldQuestion
+  const TrustIcon = TRUST_ICON[TRUST_MARK[agent.trust.result].icon]
   return (
     <section className={['agent-card', selected ? 'selected' : '', expanded ? 'open' : ''].join(' ')} ref={cardRef}>
       <div className="agent-row relative">
@@ -130,7 +135,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
           aria-expanded={expanded}
           onClick={toggle}
         >
-          <Avatar name={agent.name} src={agent.logoRef} size={40} />
+          <Avatar name={agent.name} src={agent.logoRef} size={D.agentAvatar.size} />
         </button>
         <div className="agent-text">
           <div className="agent-title-row">
@@ -145,7 +150,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
               title={t(`trust.${agent.trust.result}`)}
               onClick={() => hub.showTrust(agent.did)}
             >
-              <TrustIcon size={16} />
+              <TrustIcon size={D.trustMark.iconSize} />
             </button>
           </div>
           {agent.trust.links?.terms || agent.trust.links?.privacy ? (
@@ -170,7 +175,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((v) => !v)}
         >
-          <MoreVertical size={18} />
+          <MoreVertical size={D.smallButton.iconSize} />
         </button>
         {menuOpen ? (
           <div className="menu-popover" role="menu" style={{ top: 40 }}>
@@ -223,7 +228,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
             <span className="state">
               {bound?.principal ? (
                 <>
-                  <Link2 size={12} aria-hidden="true" />{' '}
+                  <Link2 size={D.meta.iconSize} aria-hidden="true" />{' '}
                   {t('column.linkedSince', { time: formatTime(bound.createdAt, i18n.language) })}
                 </>
               ) : (
@@ -238,7 +243,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
                 title={t('column.newConversation')}
                 onClick={() => run(() => hub.newConversation(agent.did))}
               >
-                <Plus size={18} />
+                <Plus size={D.smallButton.iconSize} />
               </button>
               <button
                 type="button"
@@ -251,7 +256,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
                   setFilter('')
                 }}
               >
-                <Search size={18} />
+                <Search size={D.smallButton.iconSize} />
               </button>
             </span>
           </div>
@@ -267,7 +272,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
           ) : null}
           {archivedView ? (
             <div className="section-label">
-              <Archive size={12} aria-hidden="true" /> {t('column.archived')}
+              <Archive size={D.sectionLabel.iconSize} aria-hidden="true" /> {t('column.archived')}
             </div>
           ) : null}
           {shown.length === 0 ? (
@@ -349,11 +354,17 @@ function ConversationRow({
       <button
         type="button"
         className="icon-btn"
-        style={{ position: 'absolute', right: 0, top: 0, width: 36, height: 36 }}
+        style={{
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          width: D.conversationRow.menuButtonSize,
+          height: D.conversationRow.menuButtonSize,
+        }}
         aria-label={t('column.options')}
         onClick={() => setMenu((v) => !v)}
       >
-        <MoreVertical size={16} />
+        <MoreVertical size={D.conversationRow.menuIconSize} />
       </button>
       {menu ? (
         <div className="menu-popover" role="menu" style={{ top: 36 }}>

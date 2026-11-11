@@ -2,7 +2,10 @@ export * from './agents.js'
 export * from './appLinks.js'
 export * from './conversationDesign.js'
 export * from './directory.js'
+export * from './flag.js'
+export * from './homeDesign.js'
 export * from './profileClient.js'
+export * from './proofOfTrustDesign.js'
 export * from './reducer.js'
 export * from './sse.js'
 export * from './store.js'
@@ -85,13 +88,6 @@ export function controllerOf(agent: {
     }
   }
   return { did: agent.did, kind: 'unverified', name: agent.name, logoRef: agent.logoRef }
-}
-
-/** The flag emoji of an ISO 3166-1 alpha-2 code, or an empty string when the code is not one. */
-export function flagOf(countryCode?: string): string {
-  const code = (countryCode ?? '').trim().toUpperCase()
-  if (!/^[A-Z]{2}$/.test(code)) return ''
-  return String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
 }
 
 /** Rail order for controllers (UI-SHELL-011): pinned in the person's order, then by activity, then unverified. */
