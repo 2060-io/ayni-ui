@@ -20,7 +20,7 @@ export function emptyTranscript(sessionId: string): Transcript {
 const now = () => new Date().toISOString()
 
 /**
- * The agent's signal that the person's list of conversations changed (PROF-CONV-008): a title, an archive, a
+ * The agent's signal that the person's list of conversations changed (PROF-CONV-007): a title, an archive, a
  * closure, made from any device. Named here until the profile package that lists it is the one every client has.
  */
 export const CONVERSATION_CHANGED = 'ayni.conversation.changed'
@@ -220,7 +220,7 @@ export function reduce(
         }
         case CONVERSATION_CHANGED:
           // a conversation of the person was renamed, archived or closed, here or on another device: the client
-          // reads the agent's list again (PROF-CONV-008)
+          // reads the agent's list again (PROF-CONV-007)
           signals.push('conversations')
           break
         case CUSTOM_EVENT.sessionBound:

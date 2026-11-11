@@ -155,7 +155,7 @@
       missed than four pages, it starts over from what was read, so it never shows a hole.
     - **A replayed message keeps its place.** A stream replays its events after a reconnect; a message
       already held keeps its time and so its position.
-26. **The column follows a rename made elsewhere** (2026-11-11; UI-SESS-013, PROF-CONV-008). A conversation
+26. **The column follows a rename made elsewhere** (2026-11-11; UI-SESS-015, PROF-CONV-007). A conversation
     renamed, archived or closed from the phone kept its old line here until the next reconnect: nothing told
     the browser. The agent now sends `ayni.conversation.changed` on the person's session streams; the reducer
     turns it into the `conversations` signal and the hub reads the agent's list again.

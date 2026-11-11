@@ -129,7 +129,7 @@ describe('a message from another device (PROF-STREAM-005)', () => {
   })
 })
 
-describe('the list of conversations changed elsewhere (PROF-CONV-008)', () => {
+describe('the list of conversations changed elsewhere (PROF-CONV-007)', () => {
   it('tells the client to read the list again, and leaves the transcript alone', () => {
     const t = held(1, 2)
     const out = reduce(
