@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.0](https://github.com/2060-io/ayni-ui/compare/v0.6.1...v0.7.0) (2026-11-11)
+
+
+### Features
+
+* **conversation:** a button returns to the latest message when scrolled up ([bb23b4b](https://github.com/2060-io/ayni-ui/commit/bb23b4bb753c3492bfe013b96bf53412627842fd))
+* **conversation:** a button returns to the latest message when the transcript is scrolled up ([3ea012b](https://github.com/2060-io/ayni-ui/commit/3ea012bf7587eeaf7d7e925396b5c1d0f4f85184))
+* **core:** share the conversation's design and presentation rules with the Ayni app (core 0.2.0) ([0f133bf](https://github.com/2060-io/ayni-ui/commit/0f133bf50fbb61717f3437661f598fb8ac447d92))
+* **core:** the conversation's design and what it shows, shared with the Ayni app (core 0.2.0) ([d0bd517](https://github.com/2060-io/ayni-ui/commit/d0bd517cc557ec920310afffc50a2e5c843f6daa))
+
 ## [0.6.1](https://github.com/2060-io/ayni-ui/compare/v0.6.0...v0.6.1) (2026-11-02)
 
 
