@@ -31,15 +31,7 @@ export function initI18n(offered: string[], preferred?: string, fallback?: strin
   return lng
 }
 
-export function formatTime(iso: string, locale: string): string {
-  const d = new Date(iso)
-  const today = new Date().toDateString() === d.toDateString()
-  return new Intl.DateTimeFormat(
-    locale,
-    today
-      ? { hour: '2-digit', minute: '2-digit' }
-      : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
-  ).format(d)
-}
+/** The time on a message and on a conversation row: the rule of the core, shared with the Ayni app. */
+export { formatTime } from '@ayni.org/ayni-ui-core'
 
 export default i18next

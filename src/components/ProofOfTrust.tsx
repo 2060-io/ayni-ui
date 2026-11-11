@@ -6,10 +6,20 @@
 import {
   type Accreditation,
   type AgentRecord,
+  accreditationLine,
   type CredentialCard,
-  flagOf,
+  claimRows,
+  PROOF_OF_TRUST_DESIGN as D,
+  didSearchUrl,
+  identityStepOf,
   loadTrustDetails,
+  otherCredentialLine,
+  type ProofOfTrustText,
+  schemaLabel,
+  shortDid,
   type TrustDetails,
+  VERDICT_MARK,
+  verdictOf,
 } from '@ayni.org/ayni-ui-core'
 import {
   Award,
@@ -33,16 +43,13 @@ import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 
-const shortDid = (did: string) => (did.length > 48 ? `${did.slice(0, 22)}…${did.slice(-20)}` : did)
+const VERDICT_ICON = { 'shield-check': ShieldCheck, 'shield-alert': ShieldAlert, 'shield-question': ShieldQuestion }
 
-/** ECS schema titles as people read them on the wallet cards. */
-const ECS_LABEL: Record<string, string> = {
-  ServiceCredential: 'ECS-Service',
-  OrganizationCredential: 'ECS-Organization',
-  PersonaCredential: 'ECS-Persona',
-  UserAgentCredential: 'ECS-UserAgent',
+/** The card's wording from the translation files, as the shared presentation functions ask for it. */
+function usePotText(): ProofOfTrustText {
+  const { t } = useTranslation()
+  return (key, values) => t(`pot.${key}`, values ?? {})
 }
-const schemaLabel = (title: string) => ECS_LABEL[title] ?? title
 
 export function ProofOfTrust({
   agent,
@@ -74,14 +81,9 @@ export function ProofOfTrust({
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const verdict = details
-    ? details.trusted === null
-      ? 'unverified'
-      : details.trusted
-        ? 'trusted'
-        : 'untrusted'
-    : agent.trust.result
-  const Icon = verdict === 'trusted' ? ShieldCheck : verdict === 'untrusted' ? ShieldAlert : ShieldQuestion
+  const pot = usePotText()
+  const verdict = verdictOf(details, agent.trust.result)
+  const Icon = VERDICT_ICON[VERDICT_MARK[verdict].icon]
   const when = (iso?: string) =>
     iso ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)) : ''
   const trusted = verdict === 'trusted'
@@ -103,26 +105,26 @@ export function ProofOfTrust({
               void navigator.clipboard.writeText(agent.did).then(() => hub.notify('info', t('conversation.copied')))
             }
           >
-            <Copy size={15} />
+            <Copy size={D.head.toolIconSize} />
           </button>
           <a
             className="tool"
             aria-label={t('pot.openInGraph')}
-            href={`${snap.config.veranaGraphUrl.replace(/graph\./, 'search.')}/?q=${encodeURIComponent(agent.did)}`}
+            href={didSearchUrl(snap.config.veranaGraphUrl, agent.did)}
             target="_blank"
             rel="noopener noreferrer"
           >
-            <ExternalLink size={15} />
+            <ExternalLink size={D.head.toolIconSize} />
           </a>
           <span className="spacer" />
           <button type="button" className="tool" aria-label={t('app.close')} onClick={onClose}>
-            <X size={18} />
+            <X size={D.head.closeIconSize} />
           </button>
         </header>
 
         <div className="pot-body">
           <div className={`pot-verdict ${verdict}`}>
-            <Icon size={22} aria-hidden="true" />
+            <Icon size={D.verdict.iconSize} aria-hidden="true" />
             <span className="pot-verdict-label">{t(`trust.${verdict}`)}</span>
             {details?.evaluatedAt ? (
               <span className="pot-verdict-sub">
@@ -141,7 +143,7 @@ export function ProofOfTrust({
           {error ? <div className="banner warning">{error}</div> : null}
           {!details && !error ? (
             <div className="pot-loading">
-              <Loader2 size={16} className="spin" aria-hidden="true" /> {t('pot.loading')}
+              <Loader2 size={D.loading.iconSize} className="spin" aria-hidden="true" /> {t('pot.loading')}
             </div>
           ) : null}
 
@@ -154,20 +156,17 @@ export function ProofOfTrust({
 
               {details.otherCredentials.length ? (
                 <Section
-                  icon={<Award size={16} />}
+                  icon={<Award size={D.section.iconSize} />}
                   title={t('pot.alsoPresents')}
                   count={details.otherCredentials.length}
                 >
                   {details.otherCredentials.map((c) => (
                     <div key={c.id} className="pot-row">
                       <span className="pot-row-title">{schemaLabel(c.schemaTitle)}</span>
-                      <span className="muted">
-                        {c.issuer.name ? t('pot.issuedBy', { name: c.issuer.name }) : null}
-                        {c.ecosystem.name ? ` · ${c.ecosystem.name}` : ''}
-                        {c.validUntil ? ` · ${t('pot.validUntil', { time: when(c.validUntil) })}` : ''}
-                      </span>
+                      <span className="muted">{otherCredentialLine(c, pot, when)}</span>
                       <span className={`pot-valid ${c.valid ? 'ok' : 'bad'}`}>
-                        {c.valid ? <Check size={14} /> : <X size={14} />} {t(c.valid ? 'pot.verified' : 'pot.invalid')}
+                        {c.valid ? <Check size={D.valid.iconSize} /> : <X size={D.valid.iconSize} />}{' '}
+                        {t(c.valid ? 'pot.verified' : 'pot.invalid')}
                       </span>
                       <Claims claims={c.claims} />
                     </div>
@@ -177,7 +176,7 @@ export function ProofOfTrust({
 
               {details.accreditations.length ? (
                 <Section
-                  icon={<BadgeCheck size={16} />}
+                  icon={<BadgeCheck size={D.section.iconSize} />}
                   title={t('pot.accreditations')}
                   count={details.accreditations.length}
                 >
@@ -188,7 +187,11 @@ export function ProofOfTrust({
               ) : null}
 
               {details.endpoints.length ? (
-                <Section icon={<Link2 size={16} />} title={t('pot.endpoints')} count={details.endpoints.length}>
+                <Section
+                  icon={<Link2 size={D.section.iconSize} />}
+                  title={t('pot.endpoints')}
+                  count={details.endpoints.length}
+                >
                   {details.endpoints.map((e) => (
                     <div key={e.id} className="pot-row pot-endpoint">
                       <span className="tag">{e.type}</span>
@@ -199,15 +202,16 @@ export function ProofOfTrust({
               ) : null}
 
               {details.governance.ecosystems.length || details.governance.corporation ? (
-                <Section icon={<FileText size={16} />} title={t('pot.governance')}>
+                <Section icon={<FileText size={D.section.iconSize} />} title={t('pot.governance')}>
                   {details.governance.ecosystems.map((e) => (
                     <div key={e.id} className="pot-row">
                       <span className="pot-row-title">
-                        <Globe size={14} aria-hidden="true" /> {e.name ?? `${t('pot.ecosystem')} ${e.id}`}
+                        <Globe size={D.row.titleIconSize} aria-hidden="true" />{' '}
+                        {e.name ?? `${t('pot.ecosystem')} ${e.id}`}
                       </span>
                       {e.documents.map((d) => (
                         <a key={d.url} href={d.url} target="_blank" rel="noopener noreferrer nofollow">
-                          {t('pot.egf')} <ExternalLink size={12} />
+                          {t('pot.egf')} <ExternalLink size={D.row.linkIconSize} />
                         </a>
                       ))}
                     </div>
@@ -215,12 +219,12 @@ export function ProofOfTrust({
                   {details.governance.corporation?.documents.length ? (
                     <div className="pot-row">
                       <span className="pot-row-title">
-                        <Building2 size={14} aria-hidden="true" />{' '}
+                        <Building2 size={D.row.titleIconSize} aria-hidden="true" />{' '}
                         {t('pot.corporation', { id: details.governance.corporation.id })}
                       </span>
                       {details.governance.corporation.documents.map((d) => (
                         <a key={d.url} href={d.url} target="_blank" rel="noopener noreferrer nofollow">
-                          {t('pot.cgf')} <ExternalLink size={12} />
+                          {t('pot.cgf')} <ExternalLink size={D.row.linkIconSize} />
                         </a>
                       ))}
                     </div>
@@ -290,91 +294,55 @@ function Section({
 
 function IdentityStep({ kind, card, did }: { kind: 'service' | 'operator'; card: CredentialCard; did: string }) {
   const { t, i18n } = useTranslation()
-  const c = card.claims
-  const name = String(c.name ?? '')
-  const persona = card.ecsSchema === 'PersonaCredential'
-  const when = (iso?: string) =>
-    iso ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(iso)) : ''
-  const flag = flagOf(c.countryCode as string | undefined)
+  const pot = usePotText()
+  const day = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(iso))
+  const step = identityStepOf(kind, card, pot, day)
   return (
     <li className="pot-step">
-      <span className={`pot-node ${card.valid ? 'ok' : 'bad'}`} aria-hidden="true">
-        {card.valid ? <Check size={16} /> : <X size={16} />}
+      <span className={`pot-node ${step.valid ? 'ok' : 'bad'}`} aria-hidden="true">
+        {step.valid ? <Check size={D.node.iconSize} /> : <X size={D.node.iconSize} />}
       </span>
       <div className="pot-step-body">
-        <div className="pot-kicker">
-          {t(kind === 'service' ? 'pot.service' : 'pot.operatedBy')} · {schemaLabel(card.schemaTitle)}
-        </div>
+        <div className="pot-kicker">{step.kicker}</div>
         <div className="pot-identity">
-          <Avatar name={name || did} src={String(c.logoUri ?? c.avatarUri ?? '') || undefined} size={56} />
+          <Avatar name={step.name || did} src={step.logo} size={D.identity.avatarSize} />
           <div className="pot-identity-text">
             <div className="pot-name">
-              {kind === 'operator' ? (
-                persona ? (
-                  <User size={18} aria-hidden="true" />
-                ) : (
-                  <Building2 size={18} aria-hidden="true" />
-                )
+              {step.nameIcon === 'user' ? (
+                <User size={D.name.iconSize} aria-hidden="true" />
+              ) : step.nameIcon === 'building' ? (
+                <Building2 size={D.name.iconSize} aria-hidden="true" />
               ) : null}
-              {name}
-              {flag ? (
-                <span className="flag" role="img" aria-label={String(c.countryCode)}>
-                  {flag}
+              {step.name}
+              {step.flag ? (
+                <span className="flag" role="img" aria-label={step.countryCode}>
+                  {step.flag}
                 </span>
               ) : null}
             </div>
-            {kind === 'service' ? (
-              <>
-                {c.type ? <span className="tag">{String(c.type)}</span> : null}
-                {c.description ? <p className="pot-desc">{String(c.description)}</p> : null}
-                <div className="pot-facts">
-                  {typeof c.minimumAgeRequired === 'number' && c.minimumAgeRequired > 0 ? (
-                    <span>{t('pot.minimumAge', { age: c.minimumAgeRequired })}</span>
-                  ) : null}
-                  {typeof c.termsAndConditionsUri === 'string' ? (
-                    <a href={c.termsAndConditionsUri} target="_blank" rel="noopener noreferrer nofollow">
-                      {t('column.terms')} <ExternalLink size={11} />
-                    </a>
-                  ) : null}
-                  {typeof c.privacyPolicyUri === 'string' ? (
-                    <a href={c.privacyPolicyUri} target="_blank" rel="noopener noreferrer nofollow">
-                      {t('column.privacy')} <ExternalLink size={11} />
-                    </a>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <div className="pot-facts column">
-                {c.address ? <span>{String(c.address)}</span> : null}
-                {c.registryId ? (
-                  <span>
-                    {t('pot.registryId')}: <strong>{String(c.registryId)}</strong>
-                  </span>
-                ) : null}
-                {c.lei ? (
-                  <span>
-                    LEI: <strong>{String(c.lei)}</strong>
-                  </span>
-                ) : null}
-                {c.legalJurisdiction ? (
-                  <span>
-                    {t('pot.jurisdiction')}: <strong>{String(c.legalJurisdiction)}</strong>
-                  </span>
-                ) : null}
-              </div>
-            )}
+            {step.tag ? <span className="tag">{step.tag}</span> : null}
+            {step.description ? <p className="pot-desc">{step.description}</p> : null}
+            <div className={step.factsLayout === 'column' ? 'pot-facts column' : 'pot-facts'}>
+              {step.facts.map((f) => (
+                <span key={`${f.label ?? ''}${f.value}`}>
+                  {f.label ? (
+                    <>
+                      {f.label}: <strong>{f.value}</strong>
+                    </>
+                  ) : (
+                    f.value
+                  )}
+                </span>
+              ))}
+              {step.links.map((l) => (
+                <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer nofollow">
+                  {t(`column.${l.label}`)} <ExternalLink size={D.facts.linkIconSize} />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
-        <div className="pot-provenance">
-          {card.selfIssued
-            ? t('pot.selfIssued')
-            : card.issuer.name
-              ? t('pot.issuedBy', { name: card.issuer.name })
-              : t('pot.issuedByUnknown')}
-          {card.ecosystem.name ? ` · ${card.ecosystem.name}` : ''}
-          {card.issuedAt ? ` · ${t('pot.since', { time: when(card.issuedAt) })}` : ''}
-          {card.validUntil ? ` · ${t('pot.validUntil', { time: when(card.validUntil) })}` : ''}
-        </div>
+        <div className="pot-provenance">{step.provenance}</div>
       </div>
     </li>
   )
@@ -382,41 +350,32 @@ function IdentityStep({ kind, card, did }: { kind: 'service' | 'operator'; card:
 
 function AccreditationRow({ a }: { a: Accreditation }) {
   const { t } = useTranslation()
-  // the grantors between the ecosystem root and this participant; none means the ecosystem accredited it directly
-  const grantors = a.chain.filter((c) => c.participantId !== a.participantId && c.role !== 'ECOSYSTEM')
+  const pot = usePotText()
   return (
     <div className="pot-row">
       <span className={`role role-${a.role.toLowerCase()}`}>{t(`pot.role.${a.role}`)}</span>
       <span className="pot-row-title">{schemaLabel(a.schemaTitle)}</span>
-      <span className="muted">
-        {a.ecosystem.name ?? `${t('pot.ecosystem')} ${a.ecosystem.id}`}
-        {grantors.length
-          ? ` · ${t('pot.via', { chain: grantors.map((c) => c.who.name ?? t(`pot.role.${c.role}`)).join(' → ') })}`
-          : ` · ${t('pot.root')}`}
-        {a.state !== 'ACTIVE' ? ` · ${a.state.toLowerCase()}` : ''}
-      </span>
+      <span className="muted">{accreditationLine(a, pot)}</span>
     </div>
   )
 }
 
 /** The claims of a non-identity credential, flat key/value, strings and numbers only. */
 function Claims({ claims }: { claims: Record<string, unknown> }) {
-  const rows = Object.entries(claims).filter(
-    ([k, v]) => k !== 'id' && !/Sri$/.test(k) && (typeof v === 'string' || typeof v === 'number')
-  )
+  const rows = claimRows(claims)
   if (!rows.length) return null
   return (
     <dl className="pot-claims">
-      {rows.map(([k, v]) => (
-        <div key={k}>
-          <dt>{k}</dt>
+      {rows.map((r) => (
+        <div key={r.key}>
+          <dt>{r.key}</dt>
           <dd>
-            {/^https?:\/\//.test(String(v)) ? (
-              <a href={String(v)} target="_blank" rel="noopener noreferrer nofollow">
-                {String(v)}
+            {r.link ? (
+              <a href={r.value} target="_blank" rel="noopener noreferrer nofollow">
+                {r.value}
               </a>
             ) : (
-              String(v)
+              r.value
             )}
           </dd>
         </div>

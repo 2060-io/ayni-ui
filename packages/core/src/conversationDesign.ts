@@ -64,7 +64,17 @@ export const CONVERSATION_DESIGN = {
 export type ConversationDesign = typeof CONVERSATION_DESIGN
 
 /** The colour roles both palettes define, in the browser as custom properties and in the app as theme colours. */
-export type ColorRole = 'bg' | 'surface' | 'text' | 'muted' | 'border' | 'accent' | 'accentContrast' | 'warning'
+export type ColorRole =
+  | 'bg'
+  | 'surface'
+  | 'text'
+  | 'muted'
+  | 'border'
+  | 'accent'
+  | 'accentContrast'
+  | 'warning'
+  | 'ok'
+  | 'danger'
 
 /** Which colour role paints what in a conversation. */
 export const CONVERSATION_COLORS = {

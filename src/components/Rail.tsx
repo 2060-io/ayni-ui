@@ -7,7 +7,7 @@
  * (right-click, long press, the keyboard's context-menu key) offers Pin or Unpin for touch and keyboard.
  * The rail ends with the settings tile and, below it, the brand mark from the brand configuration (UI-THEME-004), which opens the About page (UI-SHELL-017).
  */
-import { orderControllers } from '@ayni.org/ayni-ui-core'
+import { HOME_DESIGN, orderControllers } from '@ayni.org/ayni-ui-core'
 import { Pin, PinOff, Plus, Settings as SettingsIcon } from 'lucide-react'
 import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +16,7 @@ import { Avatar } from './Avatar.js'
 import { useDismiss } from './useDismiss.js'
 
 const MIME = 'application/x-ayni-controller'
+const D = HOME_DESIGN.rail
 
 /** Where a drop would land: among the pinned, before a tile (last when `before` is null), or among the rest. */
 interface DropTarget {
@@ -126,7 +127,7 @@ export function Rail() {
           setMenu({ did: c.did, top: r.top, left: r.right + 6 })
         }}
       >
-        <Avatar name={c.name} src={c.logoRef} size={48} />
+        <Avatar name={c.name} src={c.logoRef} size={D.tile.size} />
         {unread ? <span className="badge">{unread}</span> : null}
         {waiting ? <span className="dot" aria-hidden="true" /> : null}
       </button>
@@ -153,7 +154,7 @@ export function Rail() {
           className={['rail-separator', target?.zone === 'pinned' ? 'target' : ''].join(' ')}
           title={t('rail.pinnedHint')}
         />
-        <Pin size={11} className="rail-pin" />
+        <Pin size={D.separator.pinSize} className="rail-pin" />
       </div>
       <fieldset className={['rail-zone', 'rail-rest', zoneClass('rest')].join(' ')} aria-label={t('rail.recent')}>
         {rest.map(tile)}
@@ -166,7 +167,7 @@ export function Rail() {
           aria-label={t('app.addAgent')}
           onClick={() => hub.setView(snap.view === 'add' || snap.view === 'directory' ? 'list' : 'add')}
         >
-          <Plus size={22} />
+          <Plus size={D.ghost.iconSize} />
         </button>
       </fieldset>
       <div className="spacer" />
@@ -178,7 +179,7 @@ export function Rail() {
         aria-pressed={snap.view === 'settings'}
         onClick={() => hub.setView(snap.view === 'settings' ? 'list' : 'settings')}
       >
-        <SettingsIcon size={22} />
+        <SettingsIcon size={D.ghost.iconSize} />
       </button>
       {(snap.brand.mark ?? snap.brand.logo) ? (
         <button
