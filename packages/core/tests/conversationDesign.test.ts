@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   bubbleSide,
   plainText,
+  progressOf,
   QUICK_REACTIONS,
   REPLY_QUOTE_LENGTH,
   reactionPillOf,
@@ -56,5 +57,22 @@ describe('what a conversation shows, the same in the browser and in the app', ()
 
   it('the quick row offers six reactions', () => {
     expect(QUICK_REACTIONS.map((r) => r.e)).toEqual(['❤️', '👍', '👎', '😂', '😮', '😢'])
+  })
+  it('says the agent is working from the start of a run until its reply streams, and names the steps it reports', () => {
+    const none = { run: null, messages: [] }
+    expect(progressOf(none)).toBeNull()
+    expect(progressOf(undefined)).toBeNull()
+    const started = { run: { steps: [] }, messages: [{ role: 'user' }] }
+    expect(progressOf(started)).toEqual({ kind: 'thinking' })
+    // an activity that streams nothing does not end the wait
+    expect(progressOf({ run: { steps: [] }, messages: [{ role: 'activity', streaming: true }] })).toEqual({
+      kind: 'thinking',
+    })
+    expect(progressOf({ run: { steps: ['Searching the registry'] }, messages: [] })).toEqual({
+      kind: 'steps',
+      steps: ['Searching the registry'],
+    })
+    // the reply is arriving: nothing more to say
+    expect(progressOf({ run: { steps: [] }, messages: [{ role: 'assistant', streaming: true }] })).toBeNull()
   })
 })

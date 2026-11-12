@@ -59,6 +59,17 @@ export const CONVERSATION_DESIGN = {
   },
   /** the button that returns to the latest message */
   latestButton: { size: 36, right: 20, bottom: 12, awayBeyond: 320 },
+  /**
+   * The agent is working (UI-CONV-016): a bubble on the agent's side with three bouncing dots, then the steps of
+   * the run in progress or "Thinking…".
+   */
+  progress: { fontSize: 13, gap: 10, paddingY: 10, paddingX: 14, radius: 16, tailRadius: 4 },
+  /**
+   * The three dots: each rises and brightens, one after the other. Over one period a dot is at rest until it
+   * starts, at its peak at `peakAt` of the period and back at rest from `restFrom`; the second and third dots
+   * start `delayMs` and twice `delayMs` later.
+   */
+  dots: { size: 7, gap: 4, periodMs: 1200, delayMs: 150, lift: 4, restOpacity: 0.35, peakAt: 0.4, restFrom: 0.8 },
 } as const
 
 export type ConversationDesign = typeof CONVERSATION_DESIGN
@@ -86,6 +97,8 @@ export const CONVERSATION_COLORS = {
   quote: { border: 'accent', who: 'accent' },
   reactionPill: { background: 'bg', border: 'border', text: 'text', mineBorder: 'accent' },
   latestButton: { background: 'bg', border: 'border', icon: 'text' },
+  progress: { background: 'surface', text: 'muted' },
+  dots: { color: 'accent' },
 } as const satisfies Record<string, Record<string, ColorRole>>
 
 /** The side a message sits on, and the corner its bubble tightens. */
@@ -150,4 +163,30 @@ export function reactionPillOf(
     emojis: [...(own ? [{ ...own, own: true }] : []), ...others.map((r) => ({ ...r, own: false }))],
     mine: own?.emoji,
   }
+}
+
+/** The wording of a conversation the two renderers share, in English (the browser's `conversation.*` keys). */
+export const CONVERSATION_COPY = {
+  thinking: 'Thinking…',
+} as const
+
+/**
+ * What the transcript shows while the agent works (UI-CONV-016): the steps of the run in progress when it reports
+ * some; else "thinking", from the start of a run until its reply begins to stream; nothing when no run is in
+ * progress or the reply is already arriving. A run started from another device of the person counts the same.
+ */
+export function progressOf(
+  transcript:
+    | {
+        run: { steps: readonly string[] } | null
+        messages: readonly { role: string; streaming?: boolean }[]
+      }
+    | null
+    | undefined
+): { kind: 'steps'; steps: readonly string[] } | { kind: 'thinking' } | null {
+  const run = transcript?.run
+  if (!run) return null
+  if (run.steps.length) return { kind: 'steps', steps: run.steps }
+  const replying = transcript.messages.some((m) => m.role !== 'activity' && m.streaming)
+  return replying ? null : { kind: 'thinking' }
 }

@@ -4,8 +4,9 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { CONVERSATION_COLORS, CONVERSATION_DESIGN as D } from '@ayni.org/ayni-ui-core'
+import { CONVERSATION_COLORS, CONVERSATION_COPY, CONVERSATION_DESIGN as D } from '@ayni.org/ayni-ui-core'
 import { describe, expect, it } from 'vitest'
+import en from '../src/i18n/en.json'
 
 // the tests run from the repository root (the test environment gives no file URL for this module)
 const css = readFileSync(join(process.cwd(), 'src/styles/app.css'), 'utf8')
@@ -106,6 +107,32 @@ describe('the stylesheet follows the shared conversation design', () => {
     expect(mine.background).toBe(`color-mix(in srgb, var(--accent) ${pct(p.mineTint)}, var(--bg))`)
   })
 
+  it('the agent is working: the bubble, the three dots and their bounce', () => {
+    const p = D.progress
+    const progress = rule('.progress')
+    expect(progress['font-size']).toBe(px(p.fontSize))
+    expect(progress.gap).toBe(px(p.gap))
+    expect(progress.padding).toBe(`${px(p.paddingY)} ${px(p.paddingX)}`)
+    expect(progress['border-radius']).toBe(px(p.radius))
+    expect(progress['border-top-left-radius']).toBe(px(p.tailRadius))
+    expect(progress.background).toBe(role(CONVERSATION_COLORS.progress.background))
+    expect(progress.color).toBe(role(CONVERSATION_COLORS.progress.text))
+    const d = D.dots
+    expect(rule('.dots').gap).toBe(px(d.gap))
+    const dot = rule('.dots span')
+    expect(dot.width).toBe(px(d.size))
+    expect(dot.height).toBe(px(d.size))
+    expect(dot.background).toBe(role(CONVERSATION_COLORS.dots.color))
+    expect(dot.animation).toBe(`bounce ${d.periodMs / 1000}s infinite ease-in-out`)
+    expect(rule('.dots span:nth-child(2)')['animation-delay']).toBe(`${d.delayMs / 1000}s`)
+    expect(rule('.dots span:nth-child(3)')['animation-delay']).toBe(`${(2 * d.delayMs) / 1000}s`)
+    // the keyframes: at rest at the start, from `restFrom` and at the end; at the peak at `peakAt`
+    const frames = /@keyframes bounce \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? ''
+    const squeezed = frames.replace(/\s+/g, ' ')
+    expect(squeezed).toContain(`0%, ${pct(d.restFrom)}, 100% { transform: translateY(0); opacity: ${d.restOpacity}; }`)
+    expect(squeezed).toContain(`${pct(d.peakAt)} { transform: translateY(${px(-d.lift)}); opacity: 1; }`)
+  })
+
   it('the button back to the latest message', () => {
     const l = D.latestButton
     const latest = rule('.latest')
@@ -116,5 +143,10 @@ describe('the stylesheet follows the shared conversation design', () => {
     expect(latest.background).toBe(role(CONVERSATION_COLORS.latestButton.background))
     expect(latest.border).toBe(`1px solid ${role(CONVERSATION_COLORS.latestButton.border)}`)
     expect(latest.color).toBe(role(CONVERSATION_COLORS.latestButton.icon))
+  })
+
+  it('the English wording is the shared one', () => {
+    for (const [key, text] of Object.entries(CONVERSATION_COPY))
+      expect((en.conversation as Record<string, unknown>)[key], key).toBe(text)
   })
 })
