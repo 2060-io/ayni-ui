@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/2060-io/ayni-ui/compare/v0.10.2...v0.11.0) (2026-11-12)
+
+
+### Features
+
+* **read-state:** the unread count is the agent's, the same on every device ([f2c381d](https://github.com/2060-io/ayni-ui/commit/f2c381d67eaaa1b8de8f21849853f089d59bb6fd))
+* **read-state:** the unread count is the agent's, the same on every device ([10b653a](https://github.com/2060-io/ayni-ui/commit/10b653a1a5cc8ce62d5da0df8f423ae565cbd366))
+
 ## [0.10.2](https://github.com/2060-io/ayni-ui/compare/v0.10.1...v0.10.2) (2026-11-12)
 
 
