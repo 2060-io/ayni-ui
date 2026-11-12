@@ -187,5 +187,18 @@
     - **A session on a known conversation** keeps the conversation's preview and time as well as its title;
       it used to read as written in just now.
     - Idle sessions still close: nothing is reopened while the tab stays in the background.
-30. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+30. **The unread count is the agent's** (2026-11-12, decided by Fabrice: a marker per conversation, the
+    viewing entries kept for audit; UI-SESS-017, UI-CONV-010, PROF-CONV-008, D62). Each device counted unread
+    by itself, so a conversation read on the phone stayed unread in the browser until it was opened there.
+    - **The count.** For an agent that keeps the read state, a conversation's count is the one the agent
+      lists and announces. The list gives it at every reading; `ayni.conversation.changed` gives it when it
+      changes, and when the count is all that changed it is taken from the event with no reading of the list.
+      The conversation in front of the person shows none. Against an agent without the read state the
+      browser counts by itself as before.
+    - **Reporting.** The browser already sent `viewed` receipts; they now also go out for an agent that
+      declares the read state without receipts, and name the agent's attachments (by their entry) as well as
+      its texts, so an image the agent made does not stay unread.
+    - **Shared rules.** `unreadFrom`, `viewedIds`, `sendsViewed` and the reading of the event are in the core
+      (0.3.6) for the app to apply the same ones.
+31. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

@@ -7,7 +7,9 @@ import {
   parseAppLink,
   progressOf,
   replyQuoteOf,
+  sendsViewed,
   type TranscriptMessage,
+  viewedIds,
 } from '@ayni.org/ayni-ui-core'
 import {
   ArrowDown,
@@ -148,14 +150,13 @@ export function Conversation() {
     }
   }
 
-  // viewed receipts for agent messages on screen in a visible tab (UI-CONV-010)
+  // viewed receipts for agent messages on screen in a visible tab (UI-CONV-010): the audit trail of what the
+  // person saw, and what moves the conversation's read marker for all their devices (PROF-CONV-008). A message
+  // shown while no session was bound is reported when one is
   const receipted = useRef(new Set<string>())
   useEffect(() => {
-    if (session?.state !== 'bound' || !agent?.descriptor.features.receipts || document.visibilityState !== 'visible')
-      return
-    const ids = messages
-      .filter((m) => m.role === 'assistant' && !m.streaming && !receipted.current.has(m.id))
-      .map((m) => m.id)
+    if (session?.state !== 'bound' || !sendsViewed(agent?.descriptor) || document.visibilityState !== 'visible') return
+    const ids = viewedIds(messages, receipted.current)
     if (!ids.length) return
     for (const id of ids) receipted.current.add(id)
     void hub.act(session.sessionId, { kind: 'receipt', messageIds: ids, state: 'viewed' }).catch(() => undefined)
