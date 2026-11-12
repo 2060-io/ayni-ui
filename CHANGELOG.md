@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/2060-io/ayni-ui/compare/v0.10.0...v0.10.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **column:** a browser that holds the pairing is linked, with no session open ([614ae68](https://github.com/2060-io/ayni-ui/commit/614ae68e6c1ca956b759bd0bb87b25515c9dc5c7))
+* **column:** a browser that holds the pairing is linked, with no session open ([9592d80](https://github.com/2060-io/ayni-ui/commit/9592d80bc1f29170d59114925ec0e53624a6c74a))
+
 ## [0.10.0](https://github.com/2060-io/ayni-ui/compare/v0.9.0...v0.10.0) (2026-11-12)
 
 
