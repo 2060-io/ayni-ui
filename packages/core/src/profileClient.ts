@@ -78,7 +78,9 @@ export class ProfileClient {
     resumeSessionId?: string,
     deviceProof?: string,
     conversationId?: string,
-    newConversation = false
+    newConversation = false,
+    /** a bound session or none (PROF-SESS-015): 409 when the device proof does not bind, nothing asked on the phone */
+    silent = false
   ): Promise<CreateSessionResponse> {
     const response = await this.fetchFn(this.url(), {
       method: 'POST',
@@ -90,6 +92,7 @@ export class ProfileClient {
         ...(deviceHandle && deviceProof && !siblingOfToken ? { deviceProof } : {}),
         ...(conversationId ? { conversationId } : resumeSessionId ? { resumeSessionId } : {}),
         ...(newConversation ? { newConversation: true } : {}),
+        ...(silent && !siblingOfToken ? { silent: true } : {}),
       }),
     })
     if (!response.ok) throw await parseError(response)

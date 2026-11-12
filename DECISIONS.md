@@ -170,5 +170,22 @@
     The time shown is when the pairing was made (`linkedAt` on the agent record, core 0.3.4), kept across
     the rotations of the secret; a pairing made before this shows "Linked via your phone" with no time
     until a session is bound.
-29. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+29. **A linked browser stays level with the agent** (2026-11-12, Fabrice: "the latest message is not the
+    same in all devices"; UI-SESS-016, PROF-SESS-015). The browser showed "Oups, désolé" as the last message
+    of a conversation continued on the phone that morning. Its sessions had closed while idle, and the list
+    is only read through a bound session: nothing refreshed it until the person wrote in a conversation, and
+    a closed conversation that was selected showed the transcript the browser last held.
+    - **Refresh.** At load, when the tab comes back in front and when a closed conversation is selected, a
+      linked browser reads the agent's list; the conversation on screen, when its session closed, gets a
+      session again, and with it what other devices added (the catch-up at stream attach). With no session
+      bound it opens one silently (`Hub.refresh`); a browser that is not linked does nothing.
+    - **Never the phone.** That opening asks for a bound session or none (`silent`, core 0.3.5): a pairing the
+      agent ended is refused with no provisional session and no question on the phone, and the browser then
+      reads as not linked. An agent that does not know `silent` and leaves a session waiting has it withdrawn.
+    - **Its turn.** An opening reads the store when its turn comes, so a tab that waited for another tab's
+      opening presents the secret that one left, not the one it started with.
+    - **A session on a known conversation** keeps the conversation's preview and time as well as its title;
+      it used to read as written in just now.
+    - Idle sessions still close: nothing is reopened while the tab stays in the background.
+30. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

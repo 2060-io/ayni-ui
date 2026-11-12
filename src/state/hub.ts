@@ -176,6 +176,8 @@ export class Hub {
     document.addEventListener('visibilitychange', () => {
       this.visible = document.visibilityState === 'visible'
       if (this.visible && this.snapshot.selectedSessionId) void this.markRead(this.snapshot.selectedSessionId)
+      // back in front of the person: what other devices did meanwhile shows (UI-SESS-016)
+      if (this.visible) this.refreshAll()
     })
     await this.reload()
     this.set({ ready: true, prefs: await this.store.getPreferences() })
@@ -194,6 +196,7 @@ export class Hub {
     // the most recent conversations stream first; the budget parks the rest (UI-SHELL-016)
     for (const s of [...this.snapshot.sessions].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt)))
       if (s.state !== 'closed' && s.sessionToken) void this.lead(s.sessionId)
+    this.refreshAll()
     // descriptors can change on the agent side (features such as voice notes): refresh them at start
     void Promise.all(
       this.snapshot.agents.map((a) =>
@@ -331,6 +334,8 @@ export class Hub {
       // a conversation listed by the agent but never opened here: open it now (UI-SESS-013)
       if (session && !session.sessionToken && session.conversationId && session.sessionId === session.conversationId)
         void this.resume(id).catch((e) => this.notify('error', String((e as Error).message)))
+      // a conversation whose session closed while idle: a linked browser reads it again as it is now (UI-SESS-016)
+      else if (session?.state === 'closed') void this.refresh(session.agentDid).catch(() => undefined)
     }
   }
 
@@ -617,13 +622,24 @@ export class Hub {
   }
 
   /** Opens a session for the agent, then streams it, loads what it continues and sends the text it carries. */
-  private async open(agentDid: string, resume?: ResumeTarget, fresh = false): Promise<SessionRecord> {
+  private async open(agentDid: string, resume?: ResumeTarget, fresh = false, quiet = false): Promise<SessionRecord> {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent) throw new Error('agent not found')
     if (!this.canConnect(agent)) throw new Error('agent is not trusted')
-    const { session, reused } = await this.withOpening(agentDid, () => this.openNow(agentDid, resume, fresh))
-    this.selectSession(session.sessionId)
-    if (!reused) void this.lead(session.sessionId)
+    const shownId = this.snapshot.selectedSessionId
+    const shown = this.snapshot.sessions.find((s) => s.sessionId === shownId)
+    const { session, reused } = await this.withOpening(agentDid, () => this.openNow(agentDid, resume, fresh, quiet))
+    // a quiet opening changes nothing the person sees: what was on screen stays on screen. When it is that very
+    // conversation that got its session back, the screen follows it to the new session and nothing else moves
+    const sameConversation =
+      !!shown?.conversationId && shown.agentDid === agentDid && shown.conversationId === session.conversationId
+    if (!quiet) this.selectSession(session.sessionId)
+    else if (sameConversation && this.snapshot.selectedSessionId === shownId) {
+      this.set({ selectedSessionId: session.sessionId })
+      void this.loadTranscript(session.sessionId)
+    }
+    const onScreen = this.snapshot.selectedSessionId === session.sessionId
+    if (!reused) void this.lead(session.sessionId, onScreen || undefined)
     if (session.state === 'bound') {
       if (!reused) {
         await this.loadHistory(session.sessionId).catch(() => undefined)
@@ -643,8 +659,11 @@ export class Hub {
   private async openNow(
     agentDid: string,
     resume: ResumeTarget | undefined,
-    fresh: boolean
+    fresh: boolean,
+    quiet = false
   ): Promise<{ session: SessionRecord; reused: boolean }> {
+    // its turn has come, perhaps after another tab's opening: the secret and the sessions are read as they are now
+    await this.reload()
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent) throw new Error('agent not found')
     const live = resume?.conversationId
@@ -697,16 +716,32 @@ export class Hub {
       await recheckTrust(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
       await refreshDescriptor(this.store, agent, this.snapshot.config.veranaIndexerUrl).catch(() => undefined)
       // a paired device binds silently with its proof (UI-BIND-011); a rejected proof is dropped
-      const created = await this.client(agent).create(
-        clientDescription(agent.descriptor.profileVersion, platformDescription()),
-        locale,
-        undefined,
-        agent.deviceHandle,
-        resume?.sessionId,
-        agent.deviceSecret,
-        resume?.conversationId,
-        fresh
-      )
+      const created = await this.client(agent)
+        .create(
+          clientDescription(agent.descriptor.profileVersion, platformDescription()),
+          locale,
+          undefined,
+          agent.deviceHandle,
+          resume?.sessionId,
+          agent.deviceSecret,
+          resume?.conversationId,
+          fresh,
+          // a refresh the person did not ask for binds with the proof or not at all: the phone is asked nothing
+          quiet
+        )
+        .catch(async (e) => {
+          // refused silently: the pairing this browser held is over, and it reads as not linked from here on
+          if (quiet && e instanceof ProfileError && e.status === 409 && e.code.startsWith('pairing-')) {
+            await this.store.putAgent({
+              ...agent,
+              deviceSecret: undefined,
+              deviceHandle: e.code === 'pairing-invalid' ? undefined : agent.deviceHandle,
+              linkedAt: undefined,
+            })
+            await this.reload()
+          }
+          throw e
+        })
       if (created.pairing) {
         await this.store.putAgent({
           ...agent,
@@ -720,6 +755,13 @@ export class Hub {
           deviceHandle: created.deviceHandle ?? agent.deviceHandle,
           deviceSecret: created.deviceSecret,
         })
+      }
+      if (quiet && created.state !== 'bound') {
+        // an agent that does not know `silent` left a session waiting for the phone: it is withdrawn
+        await this.client(agent)
+          .close(created.sessionId, created.sessionToken)
+          .catch(() => undefined)
+        throw new Error('not linked')
       }
       session = {
         sessionId: created.sessionId,
@@ -745,8 +787,12 @@ export class Hub {
       }
     }
     if (old) {
+      // the session continues a conversation the list already shows: it keeps its title, its preview and its
+      // place, where a new record read as written in just now (UI-SESS-016)
       session.title = old.title
       session.archived = old.archived
+      session.lastPreview = old.lastPreview
+      session.lastMessageAt = old.lastMessageAt
     }
     await this.store.putSession(session)
     await this.serial(async () => this.store.putTranscript(await this.inheritTranscript(session, old)))
@@ -765,6 +811,76 @@ export class Hub {
   }
 
   private syncing = Promise.resolve()
+
+  private readonly refreshing = new Map<string, Promise<void>>()
+
+  private refreshAll(): void {
+    for (const agent of this.snapshot.agents) void this.refresh(agent.did).catch(() => undefined)
+  }
+
+  /**
+   * Brings a linked browser level with the agent without the phone (UI-SESS-016): the agent's list is read, and
+   * the conversation on screen, when its session closed while idle, gets a session again and with it what other
+   * devices added. With no session bound a paired browser opens one silently (PROF-SESS-015); a browser that is
+   * not linked does nothing here. Asked again while it runs, it is the same refresh.
+   */
+  public refresh(agentDid: string): Promise<void> {
+    const running = this.refreshing.get(agentDid)
+    if (running) return running
+    const next = this.refreshNow(agentDid).finally(() => {
+      if (this.refreshing.get(agentDid) === next) this.refreshing.delete(agentDid)
+    })
+    this.refreshing.set(agentDid, next)
+    return next
+  }
+
+  private async refreshNow(agentDid: string): Promise<void> {
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    if (!agent || !this.canConnect(agent)) return
+    // a session the agent closed while this tab was away still reads as bound here: asking through it says so
+    for (const s of this.snapshot.sessions.filter(
+      (x) => x.agentDid === agentDid && x.state === 'bound' && x.sessionToken
+    )) {
+      try {
+        await this.syncConversations(agentDid)
+        break
+      } catch (e) {
+        if (!(e instanceof ProfileError && e.status === 410)) throw e
+        const current = await this.store.getSession(s.sessionId)
+        if (current)
+          await this.saveSession({
+            ...current,
+            state: 'closed',
+            closedReason: (e.reason as SessionRecord['closedReason']) ?? current.closedReason ?? 'agent',
+            sessionToken: null,
+            binding: undefined,
+          })
+      }
+    }
+    const mine = this.snapshot.sessions.filter((s) => s.agentDid === agentDid)
+    const bound = mine.some((s) => s.state === 'bound' && s.sessionToken)
+    const paired = !!agent.deviceHandle && !!agent.deviceSecret
+    if (!bound && !paired) return
+    const selected = mine.find((s) => s.sessionId === this.snapshot.selectedSessionId)
+    const open = (s: SessionRecord | undefined) =>
+      s && s.state === 'closed' && s.conversationId && !s.archived ? s : undefined
+    // the conversation on screen first; with nothing bound and none on screen, the most recent one carries the list
+    const target =
+      open(selected) ??
+      (bound ? undefined : [...mine].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt)).find(open))
+    if (!target && bound) return
+    await this.open(
+      agentDid,
+      target
+        ? {
+            sessionId: target.sessionId !== target.conversationId ? target.sessionId : undefined,
+            conversationId: target.conversationId,
+          }
+        : undefined,
+      false,
+      true
+    )
+  }
 
   /**
    * The agent's list of the person's conversations (UI-SESS-011): titles and archived state come
