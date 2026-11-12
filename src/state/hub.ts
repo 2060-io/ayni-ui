@@ -712,6 +712,7 @@ export class Hub {
           ...agent,
           deviceSecret: undefined,
           deviceHandle: created.pairing === 'invalid' ? undefined : agent.deviceHandle,
+          linkedAt: undefined,
         })
       } else if (created.deviceSecret) {
         await this.store.putAgent({
@@ -981,7 +982,8 @@ export class Hub {
         .catch(() => undefined)
     await this.endAllConversations(did)
     const current = this.snapshot.agents.find((a) => a.did === did)
-    if (current) await this.store.putAgent({ ...current, deviceHandle: undefined, deviceSecret: undefined })
+    if (current)
+      await this.store.putAgent({ ...current, deviceHandle: undefined, deviceSecret: undefined, linkedAt: undefined })
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'agents' })
   }
@@ -1234,7 +1236,13 @@ export class Hub {
     const handle = session.deviceHandle ?? agent.deviceHandle
     const secret = session.deviceSecret ?? agent.deviceSecret
     if (handle !== agent.deviceHandle || secret !== agent.deviceSecret)
-      await this.store.putAgent({ ...agent, deviceHandle: handle, deviceSecret: secret })
+      await this.store.putAgent({
+        ...agent,
+        deviceHandle: handle,
+        deviceSecret: secret,
+        // a new handle is a new link, made now; a rotated secret keeps the time of the link it continues
+        linkedAt: handle === agent.deviceHandle ? agent.linkedAt : new Date().toISOString(),
+      })
     if (session.deviceSecret) await this.saveSession({ ...session, deviceSecret: undefined }, false)
   }
 

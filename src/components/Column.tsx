@@ -26,6 +26,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
+import { linkOf } from '../state/link.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 import { DevicesDialog } from './Devices.js'
@@ -113,7 +114,8 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
     .filter((s) => s.agentDid === agent.did && (!matches || matches[s.sessionId] !== undefined))
     .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
   const shown = sessions.filter((s) => !!s.archived === archivedView)
-  const bound = snap.sessions.find((s) => s.agentDid === agent.did && s.state === 'bound')
+  // linked is the device pairing, not a session open at this moment (UI-AGENTS-007)
+  const link = linkOf(agent, snap.sessions)
   const unread = snap.sessions.filter((s) => s.agentDid === agent.did).reduce((n, s) => n + s.unreadCount, 0)
   const selected = snap.selectedAgentDid === agent.did
   const run = (fn: () => Promise<unknown>) => {
@@ -179,7 +181,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
         </button>
         {menuOpen ? (
           <div className="menu-popover" role="menu" style={{ top: 40 }}>
-            {bound ? (
+            {link.linked ? (
               <button
                 type="button"
                 role="menuitem"
@@ -226,10 +228,12 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
         <div className="agent-body">
           <div className="agent-meta">
             <span className="state">
-              {bound?.principal ? (
+              {link.linked ? (
                 <>
                   <Link2 size={D.meta.iconSize} aria-hidden="true" />{' '}
-                  {t('column.linkedSince', { time: formatTime(bound.createdAt, i18n.language) })}
+                  {link.since
+                    ? t('column.linkedSince', { time: formatTime(link.since, i18n.language) })
+                    : t('column.linked')}
                 </>
               ) : (
                 t('column.notLinked')

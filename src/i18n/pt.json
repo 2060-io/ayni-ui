@@ -34,6 +34,7 @@
   "column": {
     "newConversation": "Nova conversa",
     "linkedSince": "Ligado pelo seu telemóvel desde {{time}}",
+    "linked": "Ligado pelo seu telemóvel",
     "notLinked": "Não ligado",
     "search": "Procurar conversas",
     "open": "Abertas",

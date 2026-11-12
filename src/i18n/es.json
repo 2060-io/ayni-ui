@@ -34,6 +34,7 @@
   "column": {
     "newConversation": "Nueva conversación",
     "linkedSince": "Vinculado con tu teléfono desde {{time}}",
+    "linked": "Vinculado con tu teléfono",
     "notLinked": "Sin vincular",
     "search": "Buscar conversaciones",
     "open": "Abiertas",
