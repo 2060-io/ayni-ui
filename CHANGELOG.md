@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.2](https://github.com/2060-io/ayni-ui/compare/v0.10.1...v0.10.2) (2026-11-12)
+
+
+### Bug Fixes
+
+* **hub:** a linked browser reads the list and the conversation on screen again without the phone ([a650e1e](https://github.com/2060-io/ayni-ui/commit/a650e1ee1872131a4fefe64845e144e4138776cb))
+* **hub:** a linked browser reads the list and the conversation on screen again without the phone ([51c306f](https://github.com/2060-io/ayni-ui/commit/51c306f7e189a41e99ef922a677f3e4b16bc37eb))
+
 ## [0.10.1](https://github.com/2060-io/ayni-ui/compare/v0.10.0...v0.10.1) (2026-11-12)
 
 
