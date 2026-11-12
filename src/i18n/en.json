@@ -34,6 +34,7 @@
   "column": {
     "newConversation": "New conversation",
     "linkedSince": "Linked via your phone since {{time}}",
+    "linked": "Linked via your phone",
     "notLinked": "Not linked",
     "search": "Search conversations",
     "open": "Open",

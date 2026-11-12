@@ -67,6 +67,8 @@ export interface AgentRecord {
   deviceHandle?: string
   /** pairing secret from the agent (D30): sent as deviceProof, replaced by every rotation, never leaves the device store */
   deviceSecret?: string
+  /** when this device was paired with the agent through the phone; kept across the rotations of the secret */
+  linkedAt?: string
 }
 
 export interface SessionRecord {

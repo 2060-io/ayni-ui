@@ -162,5 +162,13 @@
 27. **The agent-is-working indicator is in the shared design** (2026-11-11; UI-CONV-016). Its bubble, its
     three dots with their bounce, its wording and the rule of when it shows (`progressOf`) moved to the core
     (0.3.3) so that the Ayni app shows the same; nothing changes in the browser.
-28. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+28. **Linked means paired** (2026-11-12, Fabrice: "it looks like my device is linked as I can use the
+    conversations, but it says Not linked"; UI-AGENTS-007). The agent card read "linked" from a session
+    bound at that moment. A linked browser's sessions close when idle and the next click opens one silently
+    with the device pairing, so the card said "Not linked", and its menu offered "Link again", while every
+    conversation worked. Linked is now the pairing the browser holds, or a bound session (`state/link.ts`).
+    The time shown is when the pairing was made (`linkedAt` on the agent record, core 0.3.4), kept across
+    the rotations of the secret; a pairing made before this shows "Linked via your phone" with no time
+    until a session is bound.
+29. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
