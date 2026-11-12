@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/2060-io/ayni-ui/compare/v0.9.0...v0.10.0) (2026-11-12)
+
+
+### Features
+
+* **core:** the agent-is-working indicator in the shared design; the column follows a rename made elsewhere (core 0.3.3) ([a1ddfe1](https://github.com/2060-io/ayni-ui/commit/a1ddfe104b85ecb5c6b9a81506d8f52887082af6))
+* **core:** the agent-is-working indicator in the shared design; the column follows a rename made elsewhere (core 0.3.3) ([e90b5c7](https://github.com/2060-io/ayni-ui/commit/e90b5c72521b23b43025827972ae9af23c69add3))
+
 ## [0.9.0](https://github.com/2060-io/ayni-ui/compare/v0.8.0...v0.9.0) (2026-11-11)
 
 
