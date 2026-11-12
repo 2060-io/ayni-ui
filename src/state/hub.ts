@@ -11,6 +11,7 @@ import {
   type BrandConfig,
   BroadcastSyncBus,
   type ControllerRecord,
+  changedConversation,
   clientDescription,
   addAgent as coreAddAgent,
   countOccurrences,
@@ -36,6 +37,7 @@ import {
   type SyncBus,
   type SyncMessage,
   type Transcript,
+  unreadFrom,
 } from '@ayni.org/ayni-ui-core'
 import i18next from '../i18n/index.js'
 import { loadConfig } from './config.js'
@@ -928,6 +930,8 @@ export class Hub {
         archived: c.state === 'archived',
         lastPreview: c.lastPreview ?? s.lastPreview,
         lastMessageAt: c.lastActivityAt > s.lastMessageAt ? c.lastActivityAt : s.lastMessageAt,
+        // the count is the agent's, the same on every device (UI-SESS-017)
+        unreadCount: unreadFrom((c as { unread?: number }).unread, s.unreadCount, this.isOnScreen(s.sessionId)),
       }
       if (JSON.stringify(next) !== JSON.stringify(s)) await this.store.putSession(next)
     }
@@ -940,7 +944,7 @@ export class Hub {
         createdAt: c.createdAt,
         state: 'closed',
         lastEventId: 0,
-        unreadCount: 0,
+        unreadCount: unreadFrom((c as { unread?: number }).unread, 0, false),
         lastPreview: c.lastPreview ?? '',
         lastMessageAt: c.lastActivityAt,
         draft: '',
@@ -1203,6 +1207,30 @@ export class Hub {
     if (session && session.draft !== draft) await this.saveSession({ ...session, draft }, false)
   }
 
+  /** Whether the person has this session's conversation in front of them. */
+  private isOnScreen(sessionId: string): boolean {
+    return this.visible && this.snapshot.selectedSessionId === sessionId && this.snapshot.view !== 'list'
+  }
+
+  /**
+   * Takes the unread count an `ayni.conversation.changed` carries for a conversation this browser lists as the
+   * agent does. False when the event says more than that (a title, a state, a conversation not listed here): the
+   * list is then read again.
+   */
+  private async applyUnread(agentDid: string, event: AgUiEvent): Promise<boolean> {
+    const change = changedConversation(event)
+    if (change?.unread === undefined) return false
+    const record = this.snapshot.sessions.find(
+      (s) => s.agentDid === agentDid && s.conversationId === change.conversationId
+    )
+    if (!record || change.state === 'final') return false
+    if (change.title !== undefined && change.title !== record.title) return false
+    if (change.state !== undefined && (change.state === 'archived') !== !!record.archived) return false
+    const unreadCount = unreadFrom(change.unread, record.unreadCount, this.isOnScreen(record.sessionId))
+    if (unreadCount !== record.unreadCount) await this.saveSession({ ...record, unreadCount })
+    return true
+  }
+
   public async markRead(sessionId: string): Promise<void> {
     const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
     if (session && session.unreadCount > 0 && this.visible) await this.saveSession({ ...session, unreadCount: 0 })
@@ -1436,7 +1464,7 @@ export class Hub {
       const session = await this.store.getSession(sessionId)
       if (!session) return
       const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
-      const onScreen = this.visible && this.snapshot.selectedSessionId === sessionId && this.snapshot.view !== 'list'
+      const onScreen = this.isOnScreen(sessionId)
       const { transcript: t, session: s, signals } = reduce(transcript, session, event, fromRun, onScreen)
       const next = { ...s, lastEventId: id !== undefined ? Math.max(s.lastEventId, id) : s.lastEventId }
       if (signals.includes('message') && !next.title) {
@@ -1462,8 +1490,11 @@ export class Hub {
         void this.syncConversations(next.agentDid).catch(() => undefined)
       }
       if (signals.includes('closed')) this.stopLeading(sessionId)
-      // a conversation was renamed, archived or closed from another device: the column follows (UI-SESS-015)
-      if (signals.includes('conversations')) void this.syncConversations(next.agentDid).catch(() => undefined)
+      // a conversation was renamed, archived or closed from another device: the column follows (UI-SESS-015).
+      // When only what is unread in it changed (read on another device, a reply landed), the count is taken from
+      // the event and the list is not read again (UI-SESS-017)
+      if (signals.includes('conversations') && !(await this.applyUnread(next.agentDid, event)))
+        void this.syncConversations(next.agentDid).catch(() => undefined)
       if (signals.includes('identified')) await this.markIdentified(next.agentDid)
       this.set({})
       this.updateTitle()
