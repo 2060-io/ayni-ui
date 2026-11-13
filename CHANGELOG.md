@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0](https://github.com/2060-io/ayni-ui/compare/v0.11.0...v0.12.0) (2026-11-13)
+
+
+### Features
+
+* **media:** reactions and replies on media messages ([dc5224c](https://github.com/2060-io/ayni-ui/commit/dc5224cea6e8d086bd5dd472bc0d9b0b3974668a))
+* **media:** reactions and replies on media messages ([b2452dd](https://github.com/2060-io/ayni-ui/commit/b2452dd7609facf3b654cbe6b9c9952e1f1230ff))
+
 ## [0.11.0](https://github.com/2060-io/ayni-ui/compare/v0.10.2...v0.11.0) (2026-11-12)
 
 
