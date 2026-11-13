@@ -4,7 +4,7 @@
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import type { AgUiEvent } from './profileClient.js'
-import type { SessionRecord, Transcript, TranscriptMessage } from './types.js'
+import type { ReplyQuote, SessionRecord, Transcript, TranscriptMessage } from './types.js'
 
 export interface Reduction {
   transcript: Transcript
@@ -286,7 +286,7 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     createdAt?: string
     completion?: string
     entryId?: string
-    replyTo?: { id: string; text: string; role: 'user' | 'assistant' }
+    replyTo?: ReplyQuote
   }
   const at = meta.createdAt ?? now()
   if (m.role === 'activity') {
@@ -314,8 +314,11 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
 export function reactionsOf(page: Record<string, unknown>[]): Record<string, { emoji: string; by: string }[]> {
   const out: Record<string, { emoji: string; by: string }[]> = {}
   for (const m of page) {
-    const meta = (m.metadata ?? {}) as { reactions?: { emoji: string; by: string }[] }
-    if (meta.reactions?.length) out[String(m.id)] = meta.reactions.map((r) => ({ emoji: r.emoji, by: r.by }))
+    const meta = (m.metadata ?? {}) as { reactions?: { emoji: string; by: string }[]; entryId?: string }
+    // the reactions of a media message are those of its entry, which each of its attachments carries: they are
+    // kept under the entry, where a live `ayni.reaction` names it too (UI-CONV-024)
+    const key = m.role === 'activity' && meta.entryId ? meta.entryId : String(m.id)
+    if (meta.reactions?.length) out[key] = meta.reactions.map((r) => ({ emoji: r.emoji, by: r.by }))
   }
   return out
 }

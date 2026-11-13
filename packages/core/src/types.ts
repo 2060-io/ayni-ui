@@ -106,8 +106,12 @@ export interface SessionRecord {
 
 export interface ReplyQuote {
   id: string
+  /** the words of the quoted message; empty for a media message that has none of its own */
   text: string
   role: 'user' | 'assistant'
+  /** what the quoted message is, when it is a media message (PROF-RUN-009) */
+  media?: 'image' | 'voice' | 'video' | 'file'
+  filename?: string
 }
 
 export type TranscriptMessage =

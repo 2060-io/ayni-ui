@@ -1,4 +1,5 @@
 /** The composer (UI-CONV-003/013/014/015/018, UI-MEDIA-003..007): one line that grows to six, Enter rules, Stop, reply quote, attachments, voice notes. */
+import { quoteLabel } from '@ayni.org/ayni-ui-core'
 import { ArrowUp, Mic, Plus, Reply, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -174,7 +175,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
                 name: replyTo.role === 'user' ? t('conversation.you') : (agent?.name ?? ''),
               })}
             </span>
-            <span className="reply-text">{replyTo.text}</span>
+            <span className="reply-text">{quoteLabel(replyTo, (kind) => t(`conversation.media.${kind}`))}</span>
           </span>
           <button
             type="button"

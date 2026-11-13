@@ -4,11 +4,16 @@ import {
   CLOSURE_REASON_KEYS,
   CONVERSATION_DESIGN,
   destinationKey,
+  isAttachment,
+  lastAttachments,
   parseAppLink,
   progressOf,
+  quoteLabel,
+  quoteOf,
   replyQuoteOf,
   sendsViewed,
   type TranscriptMessage,
+  targetIdOf,
   viewedIds,
 } from '@ayni.org/ayni-ui-core'
 import {
@@ -55,6 +60,8 @@ export function Conversation() {
   const agent = snap.agents.find((a) => a.did === session?.agentDid)
   const transcript = session ? snap.transcripts[session.sessionId] : undefined
   const messages = transcript?.messages ?? []
+  // the attachment of each media message that shows the message's reactions (UI-CONV-024)
+  const lastOfMedia = useMemo(() => lastAttachments(messages), [messages])
   // transcript links on the app-link domain open their web route in place (UI-LINK-001); delegated on the list
   useEffect(() => {
     const list = listRef.current
@@ -383,7 +390,12 @@ export function Conversation() {
                 key={m.id}
                 m={m}
                 sessionId={session.sessionId}
-                reactions={transcript?.reactions[m.id] ?? []}
+                // a media message's reactions are its entry's, shown on its last attachment (UI-CONV-024)
+                reactions={
+                  isAttachment(m) && lastOfMedia.get(targetIdOf(m)) !== m.id
+                    ? NO_REACTIONS
+                    : (transcript?.reactions[targetIdOf(m)] ?? NO_REACTIONS)
+                }
                 me={me}
                 canReact={!!agent.descriptor.features.reactions && session.state === 'bound'}
                 hl={query ? { query } : undefined}
@@ -462,6 +474,9 @@ function useAppLinkSpec(): AppLinkSpec {
   )
 }
 
+/** No reaction: one value, so a row without any is not drawn again for a new empty list. */
+const NO_REACTIONS: { emoji: string; by: string }[] = []
+
 function Message({
   m,
   sessionId,
@@ -500,11 +515,34 @@ function Message({
       case ACTIVITY.menu:
         return <MenuCard sessionId={sessionId} menu={m.content as never} />
       case ACTIVITY.attachment: {
+        // a media message takes reactions and replies as a text does (UI-CONV-024)
         const mine = (m.content as { role?: string }).role === 'user'
         return (
-          <div className={['row', mine ? 'mine' : 'theirs'].join(' ')}>
-            <AttachmentView sessionId={sessionId} attachment={m.content as never} mine={mine} />
-          </div>
+          <article
+            className={['row', mine ? 'mine' : 'theirs', open ? 'open' : ''].join(' ')}
+            aria-label={mine ? t('conversation.you') : t('conversation.agent')}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setOpen('menu')
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            {...longPress}
+          >
+            <div className={`bubble-wrap ${reactions.length ? 'reacted' : ''}`}>
+              <AttachmentView sessionId={sessionId} attachment={m.content as never} mine={mine} />
+              <ReactionPill reactions={reactions} me={me} onOwn={canReact ? () => setOpen('quick') : undefined} />
+            </div>
+            <MessageTools
+              sessionId={sessionId}
+              targetId={targetIdOf(m)}
+              reactions={reactions}
+              me={me}
+              canReact={canReact}
+              open={open}
+              setOpen={setOpen}
+              onReply={() => hub.setReply(sessionId, quoteOf(m))}
+            />
+          </article>
         )
       }
       case ACTIVITY.approval:
@@ -551,7 +589,7 @@ function Message({
               <span className="quote-who">
                 {m.replyTo.role === 'user' ? t('conversation.you') : t('conversation.agent')}
               </span>
-              <span className="quote-text">{m.replyTo.text}</span>
+              <span className="quote-text">{quoteLabel(m.replyTo, (kind) => t(`conversation.media.${kind}`))}</span>
             </a>
           ) : null}
           <span id={`msg-${m.id}`} className="body">
@@ -572,6 +610,7 @@ function Message({
         <MessageTools
           sessionId={sessionId}
           message={m}
+          targetId={m.id}
           reactions={reactions}
           me={me}
           canReact={canReact}
