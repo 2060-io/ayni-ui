@@ -200,5 +200,17 @@
       its texts, so an image the agent made does not stay unread.
     - **Shared rules.** `unreadFrom`, `viewedIds`, `sendsViewed` and the reading of the event are in the core
       (0.3.6) for the app to apply the same ones.
-31. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+31. **Reactions and replies on media messages** (2026-11-13, decided by Fabrice for the app: "Add them now";
+    UI-CONV-024, PROF-RUN-009/010). A picture, a video, a file or a voice note could not be reacted to or
+    replied to, and a reaction or a reply made to one elsewhere would not have shown here.
+    - **One id.** The agent knows a media message by its entry, which each attachment carries. A reaction and
+      a reply name that entry (`targetIdOf`), and the message's reactions are kept under it, from history as
+      from a live event: history used to file them under the attachment's own id.
+    - **In the transcript.** An attachment has the tools of a message, reduced to React and Reply. The
+      reactions of a message that carries several attachments show once, on the last one.
+    - **The quote.** A reply to a media message is quoted by what it is: its own words when it has some (a
+      caption, a transcription), else "Photo", "Voice note", "Video", or the name of a file, in the four
+      languages. The same in the composer's reply strip and in the details.
+    - The rules are the core's (`mediaMessages.ts`, 0.3.7), for the app to apply the same ones.
+32. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

@@ -148,6 +148,12 @@
     "approvals": "Aprobaciones",
     "requestElevation": "Solicitar acceso",
     "thinking": "Pensando…",
+    "media": {
+      "image": "Foto",
+      "voice": "Nota de voz",
+      "video": "Vídeo",
+      "file": "Archivo"
+    },
     "react": "Reaccionar",
     "reply": "Responder",
     "more": "Más acciones",

@@ -1,4 +1,5 @@
 /** The side sheet (UI-SHELL-014): message info (UI-CONV-019). */
+import { quoteLabel } from '@ayni.org/ayni-ui-core'
 import { Copy, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { nameOf } from '../emoji.js'
@@ -51,7 +52,7 @@ export function MessageInfo() {
           {m.role !== 'activity' && m.replyTo ? (
             <>
               <dt>{t('conversation.reply')}</dt>
-              <dd className="muted">{m.replyTo.text}</dd>
+              <dd className="muted">{quoteLabel(m.replyTo, (kind) => t(`conversation.media.${kind}`))}</dd>
             </>
           ) : null}
           {reactions.length ? (

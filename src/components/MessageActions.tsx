@@ -22,7 +22,10 @@ type TextMessage = Extract<TranscriptMessage, { role: 'user' | 'assistant' | 'sy
 
 interface Props {
   sessionId: string
-  message: TextMessage
+  /** the text the tools act on; absent for a media message, which is reacted to and replied to only */
+  message?: TextMessage
+  /** the id the agent knows the message under: a media message is named by its entry (UI-CONV-024) */
+  targetId: string
   reactions: Reaction[]
   /** the viewer's display name, to tell their own reaction apart */
   me: string | undefined
@@ -34,7 +37,7 @@ interface Props {
 }
 
 /** The toolbar at the edge of a message and the popovers it opens; `open` is owned by the message. */
-export function MessageTools({ sessionId, message, reactions, me, canReact, open, setOpen, onReply }: Props) {
+export function MessageTools({ sessionId, message, targetId, reactions, me, canReact, open, setOpen, onReply }: Props) {
   const { t } = useTranslation()
   const hub = useHub()
   const mine = reactions.find((r) => r.by === me)?.emoji
@@ -43,7 +46,7 @@ export function MessageTools({ sessionId, message, reactions, me, canReact, open
     const remove = mine === emoji
     if (!remove) void hub.rememberEmoji(emoji)
     await hub
-      .act(sessionId, { kind: 'reaction', messageId: message.id, emoji, action: remove ? 'remove' : 'add' })
+      .act(sessionId, { kind: 'reaction', messageId: targetId, emoji, action: remove ? 'remove' : 'add' })
       .catch((e) => hub.notify('error', String((e as Error).message)))
   }
   const copy = async (text: string) => {
@@ -57,7 +60,7 @@ export function MessageTools({ sessionId, message, reactions, me, canReact, open
   }
   const info = () => {
     setOpen(null)
-    hub.inspect(sessionId, message.id)
+    if (message) hub.inspect(sessionId, message.id)
   }
   const reply = () => {
     setOpen(null)
@@ -75,15 +78,17 @@ export function MessageTools({ sessionId, message, reactions, me, canReact, open
           <SmilePlus size={16} aria-hidden="true" /> {t('conversation.react')}
         </button>
       ) : null}
-      <button type="button" role="menuitem" onClick={() => void copy(plainText(message.content))}>
-        <Copy size={16} aria-hidden="true" /> {t('conversation.copyText')}
-      </button>
-      {message.role === 'assistant' ? (
+      {message ? (
+        <button type="button" role="menuitem" onClick={() => void copy(plainText(message.content))}>
+          <Copy size={16} aria-hidden="true" /> {t('conversation.copyText')}
+        </button>
+      ) : null}
+      {message?.role === 'assistant' ? (
         <button type="button" role="menuitem" onClick={() => void copy(message.content)}>
           <FileText size={16} aria-hidden="true" /> {t('conversation.copyMarkdown')}
         </button>
       ) : null}
-      {message.role === 'user' ? (
+      {message?.role === 'user' ? (
         <button
           type="button"
           role="menuitem"
@@ -95,10 +100,14 @@ export function MessageTools({ sessionId, message, reactions, me, canReact, open
           <PenLine size={16} aria-hidden="true" /> {t('conversation.editResend')}
         </button>
       ) : null}
-      <span className="separator" aria-hidden="true" />
-      <button type="button" role="menuitem" onClick={info}>
-        <Info size={16} aria-hidden="true" /> {t('conversation.info')}
-      </button>
+      {message ? (
+        <>
+          <span className="separator" aria-hidden="true" />
+          <button type="button" role="menuitem" onClick={info}>
+            <Info size={16} aria-hidden="true" /> {t('conversation.info')}
+          </button>
+        </>
+      ) : null}
     </div>
   )
   return (
