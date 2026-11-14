@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.15.0](https://github.com/2060-io/ayni-ui/compare/v0.14.0...v0.15.0) (2026-11-14)
+
+
+### Features
+
+* **voice:** a voice note shows its length and its waveform; the recorder measures them (core 0.3.11) ([dee1d36](https://github.com/2060-io/ayni-ui/commit/dee1d367df6998c7c65e9fd54fee926b99cd5d97))
+* **voice:** a voice note shows its length and its waveform; the recorder measures them (core 0.3.11) ([d3e54e7](https://github.com/2060-io/ayni-ui/commit/d3e54e7eaecb6cf07398c33a4d858bcf2b97b594))
+
+
+### Bug Fixes
+
+* **voice:** a voice note shows once, not beside a text that repeats its transcription (core 0.3.10) ([a7bc9ae](https://github.com/2060-io/ayni-ui/commit/a7bc9aef80355d62bcfe7932c58d3c499fb2eb01))
+* **voice:** a voice note shows once, not beside a text that repeats its transcription (core 0.3.12) ([fdce80d](https://github.com/2060-io/ayni-ui/commit/fdce80db0633857195bbeb246ccc503478319031))
+
 ## [0.14.0](https://github.com/2060-io/ayni-ui/compare/v0.13.0...v0.14.0) (2026-11-14)
 
 
