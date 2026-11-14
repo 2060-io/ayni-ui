@@ -140,6 +140,9 @@
   },
   "conversation": {
     "interrupted": "interrumpido",
+    "waiting": "En espera",
+    "withdraw": "Retirar este mensaje",
+    "waitingRefused": "Hay demasiados mensajes en espera. Envía este de nuevo en un momento.",
     "working": "Trabajando",
     "today": "Hoy",
     "transcription": "Transcripción",

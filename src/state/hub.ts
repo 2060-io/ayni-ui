@@ -37,7 +37,10 @@ import {
   type SyncBus,
   type SyncMessage,
   type Transcript,
+  taken,
+  takesQueue,
   unreadFrom,
+  withoutOrphans,
 } from '@ayni.org/ayni-ui-core'
 import i18next from '../i18n/index.js'
 import { loadConfig } from './config.js'
@@ -109,7 +112,10 @@ export class Hub {
   private store: DeviceStore = new IndexedDbStore()
   private bus: SyncBus | null = null
   private readonly streams = new Map<string, AbortController>()
-  private readonly runs = new Map<string, { runId: string; controller: AbortController }>()
+  /** the runs this tab drives, by session: the one in progress, and those that wait for it to end (UI-CONV-025) */
+  private readonly runs = new Map<string, Map<string, AbortController>>()
+  /** waiting runs the person withdrew: what their response still says is not for the transcript */
+  private readonly withdrawn = new Set<string>()
   private readonly clients = new Map<string, ProfileClient>()
   private readonly pendingActions = new Map<string, { resolve: () => void; reject: (e: Error) => void }>()
   private visible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
@@ -1302,7 +1308,7 @@ export class Hub {
   private stopLeading(sessionId: string): void {
     this.streams.get(sessionId)?.abort()
     this.streams.delete(sessionId)
-    this.runs.get(sessionId)?.controller.abort()
+    for (const controller of this.runs.get(sessionId)?.values() ?? []) controller.abort()
     this.runs.delete(sessionId)
   }
 
@@ -1327,6 +1333,8 @@ export class Hub {
         if (status.state === 'closed') return
         // the leader runs the runs: a run shown on the transcript that it does not hold is a leftover
         if (!this.runs.has(sessionId)) await this.clearStaleRun(sessionId)
+        // and so is a message that waited for a run of a page that is gone
+        await this.dropOrphans(sessionId)
         // every time the stream attaches: what another device added to the conversation meanwhile, and what the
         // agent's stream can no longer replay (UI-CONV-022, PROF-HIST-007)
         if (status.state === 'bound') await this.catchUp(sessionId).catch(() => undefined)
@@ -1607,6 +1615,54 @@ export class Hub {
     await this.dispatch(sessionId, { type: 'cancel' })
   }
 
+  /** Withdraws a message that waits for the agent to finish answering: it is never recorded (PROF-RUN-013). */
+  public async withdraw(sessionId: string, runId: string): Promise<void> {
+    await this.dispatch(sessionId, { type: 'withdraw', runId })
+  }
+
+  /** Whether the agent of a session takes a message sent while it answers (PROF-DESC-006). */
+  public takesQueue(sessionId: string): boolean {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    return takesQueue(this.snapshot.agents.find((a) => a.did === session?.agentDid)?.descriptor.features)
+  }
+
+  /** Takes a message out of a transcript: one that waited and was withdrawn, or that the agent did not take. */
+  private dropMessage(sessionId: string, messageId: string): Promise<void> {
+    return this.serial(async () => {
+      const t = await this.store.getTranscript(sessionId)
+      if (!t?.messages.some((m) => m.id === messageId)) return
+      const next = { ...t, messages: t.messages.filter((m) => m.id !== messageId) }
+      await this.store.putTranscript(next)
+      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+      this.bus?.post({ kind: 'transcript', sessionId })
+    })
+  }
+
+  /** A waiting message was taken by the agent: it is recorded there, and stays here whatever happens to its run. */
+  private markTaken(sessionId: string, messageId: string): Promise<void> {
+    return this.serial(async () => {
+      const t = await this.store.getTranscript(sessionId)
+      if (!t?.messages.some((m) => m.id === messageId && m.role !== 'activity' && m.queued)) return
+      const next = { ...t, messages: taken(t.messages, messageId) }
+      await this.store.putTranscript(next)
+      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+    })
+  }
+
+  /** Drops the messages that waited for a run this tab no longer drives: nothing will answer them. */
+  private dropOrphans(sessionId: string): Promise<void> {
+    return this.serial(async () => {
+      const t = await this.store.getTranscript(sessionId)
+      if (!t) return
+      const messages = withoutOrphans(t.messages, (runId) => !!this.runs.get(sessionId)?.has(runId))
+      if (messages.length === t.messages.length) return
+      const next = { ...t, messages }
+      await this.store.putTranscript(next)
+      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+      this.bus?.post({ kind: 'transcript', sessionId })
+    })
+  }
+
   /** Drops a run indicator no tab is driving (a tab closed mid-run): streaming messages end interrupted. */
   private clearStaleRun(sessionId: string): Promise<void> {
     return this.serial(() => this.clearStaleRunNow(sessionId))
@@ -1658,12 +1714,25 @@ export class Hub {
     const session = await this.store.getSession(sessionId)
     if (!session) throw new Error('session not found')
     if (action.type === 'cancel') {
-      const run = this.runs.get(sessionId)
+      // Stop ends the run in progress, never one that waits: what waits is answered next (PROF-RUN-013)
+      const current = this.snapshot.transcripts[sessionId]?.run?.runId
+      const controller = current ? this.runs.get(sessionId)?.get(current) : undefined
       // no run of ours behind the indicator: a run left over from a closed tab, cleared here (UI-CONV-003)
-      if (!run) return this.clearStaleRun(sessionId)
+      if (!current || !controller) return this.clearStaleRun(sessionId)
       const { client, token } = this.clientOf(session)
-      await client.cancel(sessionId, token, run.runId).catch(() => undefined)
-      run.controller.abort()
+      await client.cancel(sessionId, token, current).catch(() => undefined)
+      controller.abort()
+      return
+    }
+    if (action.type === 'withdraw') {
+      const controller = this.runs.get(sessionId)?.get(action.runId)
+      // taken meanwhile: it is the run in progress now, and Stop is what ends it
+      if (!controller || this.snapshot.transcripts[sessionId]?.run?.runId === action.runId) return
+      this.withdrawn.add(action.runId)
+      const { client, token } = this.clientOf(session)
+      await client.cancel(sessionId, token, action.runId).catch(() => undefined)
+      controller.abort()
+      await this.dropMessage(sessionId, `u_${action.runId}`)
       return
     }
     if (session.state !== 'bound') throw new Error('session is not bound')
@@ -1677,14 +1746,21 @@ export class Hub {
       await client.run(sessionId, token, { runId, action: action.action }, () => undefined, controller.signal)
       return
     }
-    // a lock left by a run stream that never closed must not block the person once its finish event landed
-    const stale = this.runs.get(sessionId)
-    if (stale && !this.snapshot.transcripts[sessionId]?.run) {
-      stale.controller.abort()
-      this.runs.delete(sessionId)
+    // against an agent that takes it, a message sent while a run is in progress waits (UI-CONV-025); against any
+    // other, one run at a time (UI-CONV-003)
+    const queues = takesQueue(this.snapshot.agents.find((a) => a.did === session.agentDid)?.descriptor.features)
+    if (!queues) {
+      // a lock left by a run stream that never closed must not block the person once its finish event landed
+      const stale = this.runs.get(sessionId)
+      if (stale && !this.snapshot.transcripts[sessionId]?.run) {
+        for (const each of stale.values()) each.abort()
+        this.runs.delete(sessionId)
+      }
+      if (this.runs.has(sessionId)) throw new Error('a run is in progress')
     }
-    if (this.runs.has(sessionId)) throw new Error('a run is in progress')
-    this.runs.set(sessionId, { runId, controller })
+    const mine = this.runs.get(sessionId) ?? new Map<string, AbortController>()
+    mine.set(runId, controller)
+    this.runs.set(sessionId, mine)
     if (action.text) {
       const text = action.text
       await this.serial(async () => {
@@ -1695,11 +1771,14 @@ export class Hub {
           content: text,
           at: new Date().toISOString(),
           replyTo: action.replyTo,
+          // sent while a run is in progress: it waits, and the agent has not recorded it yet
+          ...(transcript.run ? { queued: true } : {}),
         }
         const next = {
           ...transcript,
           messages: [...transcript.messages, userMessage],
-          run: { runId, steps: [], log: [] },
+          // a run in progress stays the one shown: this message waits for it to end
+          run: transcript.run ?? { runId, steps: [], log: [] },
         }
         await this.store.putTranscript(next)
         const current = (await this.store.getSession(sessionId)) ?? session
@@ -1716,13 +1795,26 @@ export class Hub {
       this.bus?.post({ kind: 'transcript', sessionId })
     }
     try {
-      await client.run(
+      const end = await client.run(
         sessionId,
         token,
         { runId, text: action.text, action: action.action },
-        (event) => void this.onEvent(sessionId, event, undefined, true),
+        (event) => {
+          if (this.withdrawn.has(runId)) return
+          // the first event of a run that waited: the agent took its message
+          if (event.type === 'RUN_STARTED') void this.markTaken(sessionId, `u_${runId}`)
+          void this.onEvent(sessionId, event, undefined, true)
+        },
         controller.signal
       )
+      // answered by another run's turn: taken all the same
+      if (end.noTurn === 'merged') await this.markTaken(sessionId, `u_${runId}`)
+      // the agent lets no more wait: the message was not taken, and the person is told
+      if (end.noTurn === 'refused') {
+        await this.dropMessage(sessionId, `u_${runId}`)
+        throw new Error(i18next.t('conversation.waitingRefused'))
+      }
+      if (end.noTurn === 'withdrawn') await this.dropMessage(sessionId, `u_${runId}`)
     } catch (e) {
       if (e instanceof ProfileError && e.status === 410) {
         await this.saveSession({
@@ -1733,7 +1825,13 @@ export class Hub {
         })
       } else if (!controller.signal.aborted) throw e
     } finally {
-      this.runs.delete(sessionId)
+      this.withdrawn.delete(runId)
+      const left = this.runs.get(sessionId)
+      left?.delete(runId)
+      if (left && left.size === 0) this.runs.delete(sessionId)
+      // a message that waited and was never taken (withdrawn, refused, or its response was lost) is not recorded
+      // by the agent: it leaves the transcript rather than stand there unanswered
+      await this.dropOrphans(sessionId)
       // after the run's own RunFinished, which may still be queued
       await this.serial(async () => {
         const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
@@ -1793,7 +1891,10 @@ export interface ResumeTarget {
   text?: string
 }
 
-type LocalAction = { type: 'run'; text?: string; action?: AyniAction; replyTo?: ReplyQuote } | { type: 'cancel' }
+type LocalAction =
+  | { type: 'run'; text?: string; action?: AyniAction; replyTo?: ReplyQuote }
+  | { type: 'cancel' }
+  | { type: 'withdraw'; runId: string }
 
 export function platformDescription(): string {
   const ua = navigator.userAgent

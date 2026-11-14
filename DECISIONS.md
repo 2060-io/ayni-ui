@@ -219,5 +219,29 @@
     nothing was wrong with what this UI sent; it sends the field as well, so that every client names a file
     the same way and the agent never has to read the part's own name (`ProfileClient.upload`, core 0.3.8).
     A file already stored under an encoded name still shows so here.
-33. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+33. **Sending while the agent answers** (2026-11-14, Fabrice: "when I use for example, claude, I still can type
+    and send information while it is thinking", then "ok go" on the proposal: a queue on the agent;
+    UI-CONV-003 amended, UI-CONV-025, PROF-RUN-011/012/013, PROF-DESC-006). The composer stayed editable during a
+    reply but Send was closed until it ended.
+    - **Against an agent that takes it** (`features.queue`) Send works during a reply and shows beside Stop
+      once there is something to send. The message goes out at once and waits on the agent; the run in
+      progress stays the one shown, and Stop ends that one, never a message that waits. Against any other
+      agent, one run at a time, as before.
+    - **What waits** is read from the agent's state (`state.ayni.waiting`), so it is the same on every
+      device: the message this browser sent is marked "Waiting" and can be withdrawn (the small cross beside
+      its time); one sent from another device shows here as waiting too, after the messages held, with
+      nothing to withdraw it. A waiting message has no tools: the agent has not recorded it yet.
+    - **A run that gets no turn of its own** (answered by another's, withdrawn, refused) says so in its first
+      event; the core's client gives the transcript none of its events and returns how it ended
+      (`ProfileClient.run`, `runEvents`), so the reducer and the run shown are untouched. Refused, the message
+      leaves the transcript and the person is told.
+    - **A waiting message whose run is gone** (the page was reloaded, the response was lost) was withdrawn by
+      the agent when its response closed: nothing will answer it. The message is marked when it is sent during
+      a run (`queued`), loses the mark when the agent takes it, and one found still marked with no run of this
+      tab behind it leaves the transcript.
+    - The hub drives several runs per conversation where it drove one. The rules (`takesQueue`, `waitingOf`,
+      `waitingViews`, `noTurnOf`) are the core's (0.3.9), for the app to apply the same ones.
+    - My choices, proposed to Fabrice and not confirmed: what waits is answered together, in one reply; a
+      waiting message can be withdrawn.
+34. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

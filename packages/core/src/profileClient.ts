@@ -11,6 +11,7 @@ import type {
   SessionStatus,
   UploadResponse,
 } from '@ayni.org/ayni-agui-profile'
+import { type RunEnd, runEvents } from './queue.js'
 import { readSse } from './sse.js'
 
 export class ProfileError extends Error {
@@ -191,14 +192,18 @@ export class ProfileClient {
     )
   }
 
-  /** One run (profile section 6): only the new user message and the structured action of the turn. */
+  /**
+   * One run (profile section 6): only the new user message and the structured action of the turn. Against an
+   * agent that takes it, a run sent during a turn waits: its response stays open, and its events come when its
+   * turn does (PROF-RUN-011). Resolves with how the run ended: empty for a run that had its turn.
+   */
   public async run(
     sessionId: string,
     token: string,
     input: RunInput,
     onEvent: (event: AgUiEvent) => void,
     signal: AbortSignal
-  ): Promise<void> {
+  ): Promise<RunEnd> {
     const body = {
       threadId: sessionId,
       runId: input.runId,
@@ -215,8 +220,12 @@ export class ProfileClient {
       signal,
     })
     if (!response.ok) throw await parseError(response)
-    if (!response.body) return
-    await readSse(response.body, (m) => onEvent(JSON.parse(m.data) as AgUiEvent), signal)
+    if (!response.body) return {}
+    // a run that gets no turn of its own (answered by another's, withdrawn, refused) gives the caller no event:
+    // its end is returned instead (PROF-RUN-012/013)
+    const events = runEvents(onEvent)
+    await readSse(response.body, (m) => events.onEvent(JSON.parse(m.data) as AgUiEvent), signal)
+    return events.end()
   }
 
   public async cancel(sessionId: string, token: string, runId: string): Promise<boolean> {
