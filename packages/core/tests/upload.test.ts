@@ -29,3 +29,23 @@ describe('an upload', () => {
     expect((form.get('file') as File).name).toBe('Terms of service 100%.pdf')
   })
 })
+
+describe('the upload of a voice note (PROF-HIST-009)', () => {
+  it('gives what the recorder measured in fields before the file', async () => {
+    let body: FormData | undefined
+    const fetchFn = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      body = init?.body as FormData
+      return new Response(JSON.stringify({ attachmentId: 'att_2', type: 'voice', mimeType: 'audio/webm', size: 9 }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+    }) as typeof fetch
+    const client = new ProfileClient('https://agent.test/agui/v3/sessions', fetchFn)
+    const note = new Blob(['audio'], { type: 'audio/webm' })
+    await client.upload('ses_1', 'tok', note, 'voice-note.webm', { durationMs: 3240, waveform: [0, 50, 100] })
+
+    expect([...(body as FormData).keys()]).toEqual(['filename', 'duration', 'waveform', 'file'])
+    expect(body?.get('duration')).toBe('3.2')
+    expect(body?.get('waveform')).toBe('[0,50,100]')
+  })
+})

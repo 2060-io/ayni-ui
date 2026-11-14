@@ -1976,7 +1976,63 @@ mark.hit.current {
   padding: 8px 12px;
 }
 .attachment.voice-note audio {
-  min-width: 240px;
+  display: none;
+}
+/* the player of a voice note: play, the shape of its sound, its length (UI-MEDIA-008) */
+.voice-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 260px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.voice-play {
+  flex: none;
+  color: var(--accent);
+}
+.voice-wave {
+  flex: 1;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.voice-wave:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.voice-bar {
+  flex: 1;
+  min-width: 2px;
+  border-radius: 2px;
+  /* what is still to play: seen, and quieter than what was played */
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+.voice-bar.played {
+  background: var(--accent);
+}
+.voice-line {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.voice-line > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.voice-time {
+  flex: none;
+  min-width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .img-thumb {
   border-radius: 12px;
