@@ -754,6 +754,28 @@ fieldset.quick {
 .msg.user .interrupted {
   color: inherit;
 }
+/* a message that waits for the agent to finish answering (UI-CONV-025): quieter until it is taken */
+.msg.user:has(.waiting) {
+  opacity: 0.72;
+}
+.msg .meta .waiting {
+  font-style: italic;
+}
+.msg .meta .withdraw {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: -3px -2px -3px 0;
+  padding: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  color: inherit;
+}
+.msg .meta .withdraw:hover,
+.msg .meta .withdraw:focus-visible {
+  background: color-mix(in srgb, currentColor 34%, transparent);
+}
 .quote {
   display: flex;
   flex-direction: column;
