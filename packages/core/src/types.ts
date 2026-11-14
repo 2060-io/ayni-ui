@@ -125,6 +125,11 @@ export type TranscriptMessage =
       entryId?: string
       /** the message this one answers (UI-CONV-018) */
       replyTo?: ReplyQuote
+      /**
+       * sent while a run was in progress, and the agent has not said yet that it recorded it (UI-CONV-025). Cleared
+       * when it does; a device that finds one whose sending it no longer drives drops it: the sending failed.
+       */
+      queued?: boolean
       /** step labels the agent reported while producing this reply (UI-CONV-019) */
       steps?: string[]
     }

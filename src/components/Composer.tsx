@@ -31,6 +31,8 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   const areaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const running = hub.isRunning(sessionId)
+  // against an agent that takes it, a message sent while it answers waits and is answered next (UI-CONV-025)
+  const queues = hub.takesQueue(sessionId)
   const replyTo = snap.replyTo[sessionId]
   const prefill = snap.prefill[sessionId]
 
@@ -64,7 +66,8 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   }, [recording])
 
   const closed = session?.state === 'closed'
-  const canSend = !disabled && !running && snap.online && (text.trim().length > 0 || pending.length > 0 || !!review)
+  const hasContent = text.trim().length > 0 || pending.length > 0 || !!review
+  const canSend = !disabled && (!running || queues) && snap.online && hasContent
 
   const send = async () => {
     if (!canSend) return
@@ -258,7 +261,9 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
           >
             <Square size={14} />
           </button>
-        ) : (
+        ) : null}
+        {/* while the agent answers, Send shows beside Stop once there is something to send */}
+        {!running || (queues && hasContent) ? (
           <button
             type="button"
             className="send"
@@ -268,7 +273,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
           >
             <ArrowUp size={18} />
           </button>
-        )}
+        ) : null}
         {agent?.descriptor.features.voiceNotes !== false && uploads ? (
           recording ? (
             <button

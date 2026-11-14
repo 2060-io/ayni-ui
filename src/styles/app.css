@@ -754,6 +754,13 @@ fieldset.quick {
 .msg.user .interrupted {
   color: inherit;
 }
+/* a message that waits for the agent to finish answering (UI-CONV-025): quieter until it is taken */
+.msg.user:has(.waiting) {
+  opacity: 0.72;
+}
+.msg .meta .waiting {
+  font-style: italic;
+}
 .quote {
   display: flex;
   flex-direction: column;

@@ -219,5 +219,30 @@
     nothing was wrong with what this UI sent; it sends the field as well, so that every client names a file
     the same way and the agent never has to read the part's own name (`ProfileClient.upload`, core 0.3.8).
     A file already stored under an encoded name still shows so here.
-33. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+33. **Sending while the agent answers** (2026-11-14, Fabrice: "when I use for example, claude, I still can type
+    and send information while it is thinking"; then "ok go" on: a queue on the agent, kept in its store, no
+    withdraw, what waits answered together; UI-CONV-003 amended, UI-CONV-025, PROF-RUN-011/012/013,
+    PROF-DESC-006). The composer stayed editable during a reply but Send was closed until it ended.
+    - **Against an agent that takes it** (`features.queue`) Send works during a reply and shows beside Stop
+      once there is something to send. Against any other agent, one run at a time, as before.
+    - **The message is the agent's at once.** The agent records it and ends its run with no turn; the reply
+      to what waited comes later on the session stream, in a run the agent starts, as a reply to a message
+      sent from another device does. Reloading the page changes nothing: the message is recorded, and
+      answered.
+    - **What waits** is read from the agent's state (`state.ayni.waiting`), so it is the same on every
+      device: the message this browser sent is marked "Waiting" where it stands, and one sent from another
+      device shows here as waiting too, after the messages held. A waiting message has no tools yet.
+    - **A run that gets no turn** says so in its first event; the core's client gives the transcript none of
+      its events and returns how it ended (`ProfileClient.run`, `runEvents`), so the reducer and the run shown
+      are untouched. Refused (too many wait), the message leaves the transcript and the person is told.
+    - **Stop** ends the run shown, whoever started it: a run of this tab, or the one the agent started for
+      what waited, which any device may stop. A run the agent no longer knows (left by a closed tab) is
+      cleared here, as before. Stop names the run the person saw when they pressed it.
+    - **A sending that failed.** A message sent during a run is marked (`queued`) until the agent says it
+      recorded it; one whose sending ended without that leaves the transcript rather than stand as if it
+      waited.
+    - No withdraw (his decision): a message sent is sent.
+    - The rules (`takesQueue`, `waitingOf`, `waitingViews`, `noTurnOf`) are the core's (0.3.9), for the app to
+      apply the same ones.
+34. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

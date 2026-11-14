@@ -140,6 +140,8 @@
   },
   "conversation": {
     "interrupted": "interrupted",
+    "waiting": "Waiting",
+    "waitingRefused": "Too many messages are waiting. Send this one again in a moment.",
     "working": "Working",
     "today": "Today",
     "transcription": "Transcription",
