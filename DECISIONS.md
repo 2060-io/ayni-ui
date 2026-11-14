@@ -212,5 +212,12 @@
       caption, a transcription), else "Photo", "Voice note", "Video", or the name of a file, in the four
       languages. The same in the composer's reply strip and in the details.
     - The rules are the core's (`mediaMessages.ts`, 0.3.7), for the app to apply the same ones.
-32. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+32. **An upload carries the file's name in a field of its own** (2026-11-14, decided by Fabrice on my proposal:
+    "go"; UI-MEDIA-003, PROF-HIST-008). A file sent from the phone showed here as `Terms%20of%20service.pdf`:
+    React Native percent-encodes the name it writes on an uploaded file, and the agent kept it. The agent now
+    takes the name from a text field `filename` sent before the file. A browser writes the name as it is, so
+    nothing was wrong with what this UI sent; it sends the field as well, so that every client names a file
+    the same way and the agent never has to read the part's own name (`ProfileClient.upload`, core 0.3.8).
+    A file already stored under an encoded name still shows so here.
+33. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
