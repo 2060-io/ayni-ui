@@ -1,7 +1,7 @@
 /**
  * What waits for the agent to finish answering, in the transcript and in the composer (UI-CONV-025): a message this
- * device sent is marked and can be withdrawn; one sent from another device shows here as waiting too; Send stays
- * beside Stop while the agent answers, against an agent that takes it.
+ * device sent is marked; one sent from another device shows here as waiting too; Send stays beside Stop while the
+ * agent answers, against an agent that takes it.
  */
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -71,8 +71,8 @@ function hubWith(queue: boolean, draft = ''): Hub {
       principal: null,
       waiting: queue
         ? [
-            { runId: 'r2', sessionId: 's1', messageId: 'u_r2', text: 'and one more thing', attachments: 0, at },
-            { runId: 'r3', sessionId: 's9', messageId: 'u_r3', text: 'typed on the phone', attachments: 0, at },
+            { id: 'msg_2', sessionId: 's1', messageId: 'u_r2', text: 'and one more thing', attachments: 0, at },
+            { id: 'msg_3', sessionId: 's9', messageId: 'u_r3', text: 'typed on the phone', attachments: 0, at },
           ]
         : [],
     } as never,
@@ -136,33 +136,25 @@ async function render(hub: Hub): Promise<HTMLDivElement> {
 const rows = (el: HTMLElement) => [...el.querySelectorAll('article.row')] as HTMLElement[]
 
 describe('what waits, in the transcript', () => {
-  it('marks the message this device sent and lets it be withdrawn', async () => {
-    const hub = hubWith(true)
-    const withdraw = vi.spyOn(hub, 'withdraw').mockResolvedValue()
-    const el = await render(hub)
+  it('marks the message this device sent, and nothing withdraws it', async () => {
+    const el = await render(hubWith(true))
     const mine = rows(el).find((r) => r.textContent?.includes('and one more thing'))
     expect(mine?.querySelector('.waiting')?.textContent).toBe('Waiting')
+    expect(mine?.querySelector('.meta button')).toBeNull()
     // the first message was taken long ago: no mark on it
     expect(
       rows(el)
         .find((r) => r.textContent?.includes('First question'))
         ?.querySelector('.waiting')
     ).toBeNull()
-
-    const button = mine?.querySelector('button[aria-label="Withdraw this message"]') as HTMLButtonElement
-    expect(button).toBeTruthy()
-    await act(async () => button.click())
-    expect(withdraw).toHaveBeenCalledWith('s1', 'r2')
   })
 
-  it('shows a message sent from another device as waiting too, with nothing to withdraw it', async () => {
+  it('shows a message sent from another device as waiting too, after what this device holds', async () => {
     const el = await render(hubWith(true))
     const all = rows(el)
     const theirs = all.find((r) => r.textContent?.includes('typed on the phone'))
     expect(theirs?.classList.contains('mine')).toBe(true)
     expect(theirs?.querySelector('.waiting')?.textContent).toBe('Waiting')
-    expect(theirs?.querySelector('button[aria-label="Withdraw this message"]')).toBeNull()
-    // after everything this device holds
     expect(all.indexOf(theirs as HTMLElement)).toBe(all.length - 1)
   })
 })

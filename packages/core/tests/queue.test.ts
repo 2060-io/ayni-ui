@@ -1,23 +1,22 @@
 /**
  * Sending while the agent answers (UI-CONV-025, PROF-RUN-011/012/013): what the shared rules read of the queue,
- * and how a run that gets no turn of its own is kept away from the transcript.
+ * and how a run that gets no turn is kept away from the transcript.
  */
 import { describe, expect, it } from 'vitest'
 import { ProfileClient } from '../src/profileClient.js'
-import {
-  noTurnOf,
-  runEvents,
-  taken,
-  takesQueue,
-  waitingMessageId,
-  waitingOf,
-  waitingViews,
-  withoutOrphans,
-} from '../src/queue.js'
+import { noTurnOf, runEvents, taken, takesQueue, waitingOf, waitingViews, withoutOrphans } from '../src/queue.js'
 import type { AgUiEvent, TranscriptMessage } from '../src/types.js'
 
 const at = '2026-11-14T10:00:00.000Z'
 const user = (id: string, content: string): TranscriptMessage => ({ id, role: 'user', content, at })
+const waits = (id: string, messageId: string, text: string, sessionId = 's1') => ({
+  id,
+  sessionId,
+  messageId,
+  text,
+  attachments: 0,
+  at,
+})
 
 describe('what an agent says of its queue', () => {
   it('takes a message during a run only when it declares so', () => {
@@ -28,54 +27,48 @@ describe('what an agent says of its queue', () => {
   })
 
   it('reads what waits from the state, and nothing from a state without it', () => {
-    const waiting = [{ runId: 'r2', sessionId: 's1', messageId: 'u_r2', text: 'second', attachments: 0, at }]
+    const waiting = [waits('msg_2', 'u_r2', 'second')]
     expect(waitingOf({ waiting })).toEqual(waiting)
     expect(waitingOf({})).toEqual([])
     expect(waitingOf(null)).toEqual([])
-    expect(waitingOf({ waiting: [null, 'x', { text: 'no session' }] })).toEqual([])
-  })
-
-  it('names a waiting message as the device that sent it does', () => {
-    expect(waitingMessageId({ messageId: 'u_abc', runId: 'abc' })).toBe('u_abc')
-    expect(waitingMessageId({ runId: 'abc' })).toBe('u_abc')
-    expect(waitingMessageId({})).toBeUndefined()
+    expect(waitingOf({ waiting: [null, 'x', { text: 'no id' }] })).toEqual([])
   })
 })
 
 describe('what waits, in the transcript', () => {
-  const messages = [
-    user('u_r1', 'first'),
-    { id: 'm1', role: 'assistant', content: 'answering', at } as TranscriptMessage,
-    user('u_r2', 'second'),
-  ]
+  const answering = { id: 'm1', role: 'assistant', content: 'answering', at } as TranscriptMessage
 
-  it('marks the message this device sent, and may withdraw it', () => {
+  it('marks the message this device sent, under the id it gave it', () => {
     const views = waitingViews(
-      messages,
-      [{ runId: 'r2', sessionId: 's1', messageId: 'u_r2', text: 'second', attachments: 0, at }],
-      's1'
+      [user('u_r1', 'first'), answering, user('u_r2', 'second')],
+      [waits('msg_2', 'u_r2', 'second')]
     )
-    expect([...views.marked.keys()]).toEqual(['u_r2'])
-    expect(views.marked.get('u_r2')).toMatchObject({ runId: 'r2', own: true })
+    expect([...views.marked]).toEqual(['u_r2'])
     expect(views.added).toEqual([])
   })
 
-  it('adds a bubble for a message sent from another device, which it cannot withdraw', () => {
+  it('marks a message read from history, under the id of the agent', () => {
+    // after a reload the device holds the message as history gives it
     const views = waitingViews(
-      messages.slice(0, 2),
-      [
-        { runId: 'r7', sessionId: 's2', messageId: 'u_r7', text: 'from the phone', attachments: 0, at },
-        { runId: 'r8', sessionId: 's2', messageId: 'u_r8', text: '', attachments: 1, at },
-      ],
-      's1'
+      [user('msg_1', 'first'), answering, user('msg_2', 'second')],
+      [waits('msg_2', 'u_r2', 'second')]
+    )
+    expect([...views.marked]).toEqual(['msg_2'])
+    expect(views.added).toEqual([])
+  })
+
+  it('adds a bubble for a message sent from another device and not held yet', () => {
+    const views = waitingViews(
+      [user('u_r1', 'first'), answering],
+      [waits('msg_7', 'u_r7', 'from the phone', 's2'), { ...waits('msg_8', 'u_r8', '', 's2'), attachments: 1 }]
     )
     expect(views.marked.size).toBe(0)
     // the one with words shows; attachments alone, which this device does not hold, do not
-    expect(views.added).toEqual([{ message: user('u_r7', 'from the phone'), runId: 'r7', own: false }])
+    expect(views.added).toEqual([user('msg_7', 'from the phone')])
   })
 })
 
-describe('a run that gets no turn of its own', () => {
+describe('a run that gets no turn', () => {
   const started = (extra: Record<string, unknown> = {}): AgUiEvent => ({
     type: 'RUN_STARTED',
     threadId: 's1',
@@ -84,21 +77,26 @@ describe('a run that gets no turn of its own', () => {
   })
 
   it('is known by its first event', () => {
-    expect(noTurnOf(started({ noTurn: 'merged', mergedInto: 'r3' }))).toBe('merged')
-    expect(noTurnOf(started({ noTurn: 'withdrawn' }))).toBe('withdrawn')
+    expect(noTurnOf(started({ noTurn: 'waiting' }))).toBe('waiting')
     expect(noTurnOf(started({ noTurn: 'refused' }))).toBe('refused')
+    expect(noTurnOf(started({ noTurn: 'withdrawn' }))).toBe('withdrawn')
     expect(noTurnOf(started())).toBeUndefined()
     expect(noTurnOf(started({ noTurn: 'something else' }))).toBeUndefined()
-    expect(noTurnOf({ type: 'RUN_FINISHED', noTurn: 'merged' })).toBeUndefined()
+    expect(noTurnOf({ type: 'RUN_FINISHED', noTurn: 'waiting' })).toBeUndefined()
   })
 
   it('gives the transcript none of its events, and says how it ended', () => {
     const seen: AgUiEvent[] = []
-    const merged = runEvents<AgUiEvent>((e) => seen.push(e))
-    merged.onEvent(started({ noTurn: 'merged', mergedInto: 'r3' }))
-    merged.onEvent({ type: 'RUN_FINISHED', threadId: 's1', runId: 'r2', outcome: { type: 'merged', runId: 'r3' } })
+    const waiting = runEvents<AgUiEvent>((e) => seen.push(e))
+    waiting.onEvent(started({ noTurn: 'waiting' }))
+    waiting.onEvent({
+      type: 'RUN_FINISHED',
+      threadId: 's1',
+      runId: 'r2',
+      outcome: { type: 'waiting', messageId: 'msg_2' },
+    })
     expect(seen).toEqual([])
-    expect(merged.end()).toEqual({ noTurn: 'merged', mergedInto: 'r3' })
+    expect(waiting.end()).toEqual({ noTurn: 'waiting', messageId: 'msg_2' })
 
     const refused = runEvents<AgUiEvent>((e) => seen.push(e))
     refused.onEvent(started({ noTurn: 'refused' }))
@@ -125,8 +123,8 @@ describe('a run that gets no turn of its own', () => {
     const fetchFn = (async () =>
       new Response(
         sse([
-          started({ noTurn: 'merged', mergedInto: 'r3' }),
-          { type: 'RUN_FINISHED', threadId: 's1', runId: 'r2', outcome: { type: 'merged', runId: 'r3' } },
+          started({ noTurn: 'waiting' }),
+          { type: 'RUN_FINISHED', threadId: 's1', runId: 'r2', outcome: { type: 'waiting', messageId: 'msg_2' } },
         ]),
         { status: 200, headers: { 'content-type': 'text/event-stream' } }
       )) as typeof fetch
@@ -140,25 +138,25 @@ describe('a run that gets no turn of its own', () => {
       new AbortController().signal
     )
     expect(seen).toEqual([])
-    expect(end).toEqual({ noTurn: 'merged', mergedInto: 'r3' })
+    expect(end).toEqual({ noTurn: 'waiting', messageId: 'msg_2' })
   })
 })
 
-describe('a message that waited for a run that is gone', () => {
+describe('a message sent during a run whose sending failed', () => {
   const held: TranscriptMessage[] = [
     user('u_r1', 'first'),
-    { ...user('u_r2', 'waited, page reloaded'), queued: true },
-    { ...user('u_r3', 'still waiting'), queued: true },
+    { ...user('u_r2', 'sent, page reloaded before the agent answered'), queued: true },
+    { ...user('u_r3', 'being sent'), queued: true },
   ]
 
-  it('leaves the transcript, and one whose run is still driven stays', () => {
+  it('leaves the transcript, and one still being sent stays', () => {
     expect(withoutOrphans(held, (runId) => runId === 'r3').map((m) => m.id)).toEqual(['u_r1', 'u_r3'])
     expect(withoutOrphans(held, () => false).map((m) => m.id)).toEqual(['u_r1'])
   })
 
-  it('stays once the agent took it, whatever happens to its run', () => {
+  it('stays once the agent recorded it, whatever happens to the page', () => {
     const after = taken(held, 'u_r2')
-    expect(after[1]).toEqual(user('u_r2', 'waited, page reloaded'))
+    expect(after[1]).toEqual(user('u_r2', 'sent, page reloaded before the agent answered'))
     expect(withoutOrphans(after, () => false).map((m) => m.id)).toEqual(['u_r1', 'u_r2'])
   })
 })

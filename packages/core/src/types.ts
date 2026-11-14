@@ -126,8 +126,8 @@ export type TranscriptMessage =
       /** the message this one answers (UI-CONV-018) */
       replyTo?: ReplyQuote
       /**
-       * sent while a run was in progress and not taken by the agent yet (UI-CONV-025): the agent has not recorded
-       * it. A device that finds one whose run it no longer drives drops it: the run ended with the page or the app.
+       * sent while a run was in progress, and the agent has not said yet that it recorded it (UI-CONV-025). Cleared
+       * when it does; a device that finds one whose sending it no longer drives drops it: the sending failed.
        */
       queued?: boolean
       /** step labels the agent reported while producing this reply (UI-CONV-019) */

@@ -1,9 +1,8 @@
 /**
  * Sending while the agent answers (UI-CONV-025, PROF-RUN-011/012/013). Against an agent that declares
- * `features.queue` a message sent during a run goes out at once and waits on the agent: the run in progress stays
- * the one shown, Stop ends that one, a waiting message can be withdrawn, and a run that gets no turn of its own
- * changes nothing on screen. Against any other agent, one run at a time. A fake agent holds each run's response
- * open until the test ends it.
+ * `features.queue` a message sent during a run goes out at once: the agent records it and its run ends with no
+ * turn, which changes nothing of the run shown; Stop ends the run in progress, whoever started it. Against any
+ * other agent, one run at a time. A fake agent holds each run's response open until the test ends it.
  */
 import { MemoryDeviceStore } from '@ayni.org/ayni-ui-core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -121,110 +120,89 @@ afterEach(() => {
 })
 
 describe('sending while the agent answers', () => {
-  it('sends at once, keeps the run in progress as the one shown, and shows nothing of a run merged into another', async () => {
-    const { agent, hub, transcript, said } = await setup({ queue: true })
-    const first = hub.send('s1', 'first')
+  /** A conversation with a reply in progress. */
+  async function answering(features: Record<string, unknown> = { queue: true }) {
+    const ctx = await setup(features)
+    const first = ctx.hub.send('s1', 'first')
     await settle()
-    const one = agent.byText('first')
+    const one = ctx.agent.byText('first')
     one.write({ type: 'RUN_STARTED', threadId: 's1', runId: one.runId })
     one.write({ type: 'TEXT_MESSAGE_START', messageId: 'm1', role: 'assistant' })
     one.write({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: 'Answering the first' })
     await settle()
+    return { ...ctx, first, one }
+  }
+  /** What the agent answers to a message sent during a turn: recorded, waiting, no turn for this run. */
+  const waits = (run: { runId: string; write(event: object): void; close(): void }, messageId: string) => {
+    run.write({ type: 'RUN_STARTED', threadId: 's1', runId: run.runId, noTurn: 'waiting' })
+    run.write({ type: 'RUN_FINISHED', threadId: 's1', runId: run.runId, outcome: { type: 'waiting', messageId } })
+    run.close()
+  }
+
+  it('sends at once; the run that carried the message ends with no turn and changes nothing of the run shown', async () => {
+    const { agent, hub, transcript, said, one, first } = await answering()
     expect(hub.isRunning('s1')).toBe(true)
 
-    // two more while it answers: both go out, both show, and the run shown is still the first
     const second = hub.send('s1', 'second')
-    const third = hub.send('s1', 'third')
     await settle()
-    expect(agent.runs.size).toBe(3)
-    expect(said()).toEqual(['user:first', 'assistant:Answering the first', 'user:second', 'user:third'])
+    expect(agent.runs.size).toBe(2)
+    expect(said()).toEqual(['user:first', 'assistant:Answering the first', 'user:second'])
     expect(transcript()?.run?.runId).toBe(one.runId)
 
-    // the first reply ends
+    // the agent recorded it: its run ends at once, and the reply in progress is still the run shown
+    waits(agent.byText('second'), 'msg_2')
+    await second
+    await settle()
+    expect(transcript()?.run?.runId).toBe(one.runId)
+    expect(hub.isRunning('s1')).toBe(true)
+    expect(said()).toEqual(['user:first', 'assistant:Answering the first', 'user:second'])
+    // recorded on the agent: no longer a message whose sending may fail
+    expect(transcript()?.messages.some((m) => m.role !== 'activity' && m.queued)).toBe(false)
+
     one.write({ type: 'TEXT_MESSAGE_END', messageId: 'm1' })
     one.write({ type: 'RUN_FINISHED', threadId: 's1', runId: one.runId })
     one.close()
     await first
-    // the agent takes what waited together: the third's run carries the turn, the second's is merged into it
-    const two = agent.byText('second')
-    const three = agent.byText('third')
-    three.write({ type: 'RUN_STARTED', threadId: 's1', runId: three.runId })
-    three.write({ type: 'TEXT_MESSAGE_START', messageId: 'm2', role: 'assistant' })
-    three.write({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'm2', delta: 'Both' })
-    await settle()
-    expect(transcript()?.run?.runId).toBe(three.runId)
-    // the merged run's events arrive after: the run shown must not move nor end
-    two.write({ type: 'RUN_STARTED', threadId: 's1', runId: two.runId, noTurn: 'merged', mergedInto: three.runId })
-    two.write({
-      type: 'RUN_FINISHED',
-      threadId: 's1',
-      runId: two.runId,
-      outcome: { type: 'merged', runId: three.runId },
-    })
-    two.close()
-    await second
-    await settle()
-    expect(transcript()?.run?.runId).toBe(three.runId)
-    expect(hub.isRunning('s1')).toBe(true)
-
-    three.write({ type: 'TEXT_MESSAGE_END', messageId: 'm2' })
-    three.write({ type: 'RUN_FINISHED', threadId: 's1', runId: three.runId })
-    three.close()
-    await third
     await settle()
     expect(hub.isRunning('s1')).toBe(false)
-    expect(said()).toEqual([
-      'user:first',
-      'assistant:Answering the first',
-      'user:second',
-      'user:third',
-      'assistant:Both',
-    ])
+    expect(said()).toEqual(['user:first', 'assistant:Answering the first', 'user:second'])
   })
 
-  it('Stop ends the run in progress, not one that waits', async () => {
-    const { agent, hub } = await setup({ queue: true })
-    void hub.send('s1', 'first')
+  it('Stop ends the run in progress', async () => {
+    const { agent, hub, one } = await answering()
+    const second = hub.send('s1', 'second')
     await settle()
-    const one = agent.byText('first')
-    one.write({ type: 'RUN_STARTED', threadId: 's1', runId: one.runId })
-    void hub.send('s1', 'second')
-    await settle()
+    waits(agent.byText('second'), 'msg_2')
+    await second
     await hub.stop('s1')
     await settle()
     expect(agent.cancelled).toEqual([one.runId])
     expect(one.aborted).toBe(true)
-    expect(agent.byText('second').aborted).toBe(false)
   })
 
-  it('withdraws a waiting message: its run is cancelled and the message leaves the transcript', async () => {
-    const { agent, hub, said, transcript } = await setup({ queue: true })
-    void hub.send('s1', 'first')
+  it('Stop reaches a run this tab did not start: the one the agent started for what waited', async () => {
+    const { agent, hub, store } = await setup({ queue: true })
+    // the agent's own run, shown from the session stream: no run of this tab behind it
+    const shown = {
+      sessionId: 's1',
+      messages: [],
+      oldestLoadedId: null,
+      complete: true,
+      run: { runId: 'run_agent', steps: [], log: [] },
+      routed: {},
+      reactions: {},
+    }
+    await store.putTranscript(shown)
+    // @ts-expect-error private: the transcript on screen
+    hub.snapshot = { ...hub.getSnapshot(), transcripts: { s1: shown } }
+    expect(hub.isRunning('s1')).toBe(true)
+    await hub.stop('s1')
     await settle()
-    const one = agent.byText('first')
-    one.write({ type: 'RUN_STARTED', threadId: 's1', runId: one.runId })
-    const second = hub.send('s1', 'not this one')
-    await settle()
-    const two = agent.byText('not this one')
-    expect(said()).toEqual(['user:first', 'user:not this one'])
-
-    await hub.withdraw('s1', two.runId)
-    await second
-    await settle()
-    expect(agent.cancelled).toEqual([two.runId])
-    expect(two.aborted).toBe(true)
-    expect(said()).toEqual(['user:first'])
-    // the run in progress goes on
-    expect(transcript()?.run?.runId).toBe(one.runId)
-    expect(one.aborted).toBe(false)
+    expect(agent.cancelled).toEqual(['run_agent'])
   })
 
   it('takes a message the agent refused out of the transcript and says why', async () => {
-    const { agent, hub, said, transcript } = await setup({ queue: true })
-    void hub.send('s1', 'first')
-    await settle()
-    const one = agent.byText('first')
-    one.write({ type: 'RUN_STARTED', threadId: 's1', runId: one.runId })
+    const { agent, hub, said, transcript, one } = await answering()
     const second = hub.send('s1', 'one too many')
     await settle()
     const two = agent.byText('one too many')
@@ -233,37 +211,28 @@ describe('sending while the agent answers', () => {
     two.close()
     await expect(second).rejects.toThrow()
     await settle()
-    expect(said()).toEqual(['user:first'])
+    expect(said()).toEqual(['user:first', 'assistant:Answering the first'])
     expect(transcript()?.run?.runId).toBe(one.runId)
   })
 
-  it('takes a waiting message whose response was lost out of the transcript: nothing will answer it', async () => {
-    const { agent, hub, said, transcript } = await setup({ queue: true })
-    void hub.send('s1', 'first')
-    await settle()
-    const one = agent.byText('first')
-    one.write({ type: 'RUN_STARTED', threadId: 's1', runId: one.runId })
+  it('takes a message whose sending was lost out of the transcript: the agent never recorded it', async () => {
+    const { agent, hub, said, transcript, one } = await answering()
     const second = hub.send('s1', 'lost on the way')
     await settle()
-    expect(said()).toEqual(['user:first', 'user:lost on the way'])
-    // the response ends with no event: the agent withdrew the message when it closed
+    expect(said()).toEqual(['user:first', 'assistant:Answering the first', 'user:lost on the way'])
+    // the response ends with no event at all
     agent.byText('lost on the way').close()
     await second
     await settle()
-    expect(said()).toEqual(['user:first'])
+    expect(said()).toEqual(['user:first', 'assistant:Answering the first'])
     expect(transcript()?.run?.runId).toBe(one.runId)
   })
 
   it('against an agent that does not take it, allows one run at a time', async () => {
-    const { agent, hub, said } = await setup({})
-    void hub.send('s1', 'first')
-    await settle()
-    const one = agent.byText('first')
-    one.write({ type: 'RUN_STARTED', threadId: 's1', runId: one.runId })
-    await settle()
+    const { agent, hub, said } = await answering({})
     expect(hub.takesQueue('s1')).toBe(false)
     await expect(hub.send('s1', 'second')).rejects.toThrow('a run is in progress')
     expect(agent.runs.size).toBe(1)
-    expect(said()).toEqual(['user:first'])
+    expect(said()).toEqual(['user:first', 'assistant:Answering the first'])
   })
 })

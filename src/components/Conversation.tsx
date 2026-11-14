@@ -15,7 +15,6 @@ import {
   type TranscriptMessage,
   targetIdOf,
   viewedIds,
-  type WaitingView,
   waitingOf,
   waitingViews,
 } from '@ayni.org/ayni-ui-core'
@@ -64,10 +63,7 @@ export function Conversation() {
   const transcript = session ? snap.transcripts[session.sessionId] : undefined
   const messages = transcript?.messages ?? []
   // what waits for the agent to finish answering, the same on every device (UI-CONV-025)
-  const waiting = useMemo(
-    () => waitingViews(messages, waitingOf(session?.ayni), session?.sessionId ?? ''),
-    [messages, session?.ayni, session?.sessionId]
-  )
+  const waiting = useMemo(() => waitingViews(messages, waitingOf(session?.ayni)), [messages, session?.ayni])
   // the attachment of each media message that shows the message's reactions (UI-CONV-024)
   const lastOfMedia = useMemo(() => lastAttachments(messages), [messages])
   // transcript links on the app-link domain open their web route in place (UI-LINK-001); delegated on the list
@@ -405,20 +401,20 @@ export function Conversation() {
                     : (transcript?.reactions[targetIdOf(m)] ?? NO_REACTIONS)
                 }
                 me={me}
-                waiting={waiting.marked.get(m.id)}
+                waiting={waiting.marked.has(m.id)}
                 canReact={!!agent.descriptor.features.reactions && session.state === 'bound'}
                 hl={query ? { query } : undefined}
               />
             ))}
             {/* what the person sent from another device and waits: shown here too, on their side (UI-CONV-025) */}
-            {waiting.added.map((view) => (
+            {waiting.added.map((m) => (
               <Message
-                key={`waiting-${view.message.id}`}
-                m={view.message}
+                key={`waiting-${m.id}`}
+                m={m}
                 sessionId={session.sessionId}
                 reactions={NO_REACTIONS}
                 me={me}
-                waiting={view}
+                waiting
                 canReact={false}
               />
             ))}
@@ -514,7 +510,7 @@ function Message({
   canReact: boolean
   hl?: HighlightSpec
   /** the message waits for the agent to finish answering (UI-CONV-025) */
-  waiting?: WaitingView
+  waiting?: boolean
 }) {
   const { t, i18n } = useTranslation()
   const appLinks = useAppLinkSpec()
@@ -627,20 +623,6 @@ function Message({
             {m.interrupted ? <span className="interrupted">{t('conversation.interrupted')}</span> : null}
             {waiting ? <span className="waiting">{t('conversation.waiting')}</span> : null}
             {formatTime(m.at, i18n.language)}
-            {waiting?.own && waiting.runId ? (
-              <button
-                type="button"
-                className="withdraw"
-                aria-label={t('conversation.withdraw')}
-                title={t('conversation.withdraw')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void hub.withdraw(sessionId, waiting.runId as string)
-                }}
-              >
-                <X size={12} aria-hidden="true" />
-              </button>
-            ) : null}
           </span>
         </div>
         <ReactionPill reactions={reactions} me={me} onOwn={canReact ? () => setOpen('quick') : undefined} />

@@ -112,10 +112,8 @@ export class Hub {
   private store: DeviceStore = new IndexedDbStore()
   private bus: SyncBus | null = null
   private readonly streams = new Map<string, AbortController>()
-  /** the runs this tab drives, by session: the one in progress, and those that wait for it to end (UI-CONV-025) */
+  /** the runs this tab drives, by session: the one in progress, and the sending of a message during it (UI-CONV-025) */
   private readonly runs = new Map<string, Map<string, AbortController>>()
-  /** waiting runs the person withdrew: what their response still says is not for the transcript */
-  private readonly withdrawn = new Set<string>()
   private readonly clients = new Map<string, ProfileClient>()
   private readonly pendingActions = new Map<string, { resolve: () => void; reject: (e: Error) => void }>()
   private visible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
@@ -1333,7 +1331,7 @@ export class Hub {
         if (status.state === 'closed') return
         // the leader runs the runs: a run shown on the transcript that it does not hold is a leftover
         if (!this.runs.has(sessionId)) await this.clearStaleRun(sessionId)
-        // and so is a message that waited for a run of a page that is gone
+        // and so is a message whose sending a page that is gone never completed
         await this.dropOrphans(sessionId)
         // every time the stream attaches: what another device added to the conversation meanwhile, and what the
         // agent's stream can no longer replay (UI-CONV-022, PROF-HIST-007)
@@ -1610,14 +1608,11 @@ export class Hub {
   }
 
   public async stop(sessionId: string): Promise<void> {
+    // the run to stop is the one shown now: named before the indicator is cleared
+    const runId = this.snapshot.transcripts[sessionId]?.run?.runId
     // nothing of ours running here: clear the indicator at once rather than waiting for a leader to answer
     if (!this.runs.has(sessionId) && !this.snapshot.leaders[sessionId]) await this.clearStaleRun(sessionId)
-    await this.dispatch(sessionId, { type: 'cancel' })
-  }
-
-  /** Withdraws a message that waits for the agent to finish answering: it is never recorded (PROF-RUN-013). */
-  public async withdraw(sessionId: string, runId: string): Promise<void> {
-    await this.dispatch(sessionId, { type: 'withdraw', runId })
+    await this.dispatch(sessionId, { type: 'cancel', runId })
   }
 
   /** Whether the agent of a session takes a message sent while it answers (PROF-DESC-006). */
@@ -1626,7 +1621,7 @@ export class Hub {
     return takesQueue(this.snapshot.agents.find((a) => a.did === session?.agentDid)?.descriptor.features)
   }
 
-  /** Takes a message out of a transcript: one that waited and was withdrawn, or that the agent did not take. */
+  /** Takes a message out of a transcript: one the agent refused, and recorded nothing of. */
   private dropMessage(sessionId: string, messageId: string): Promise<void> {
     return this.serial(async () => {
       const t = await this.store.getTranscript(sessionId)
@@ -1638,7 +1633,7 @@ export class Hub {
     })
   }
 
-  /** A waiting message was taken by the agent: it is recorded there, and stays here whatever happens to its run. */
+  /** The agent recorded a message sent during a run: it stays here whatever happens to this page. */
   private markTaken(sessionId: string, messageId: string): Promise<void> {
     return this.serial(async () => {
       const t = await this.store.getTranscript(sessionId)
@@ -1649,7 +1644,7 @@ export class Hub {
     })
   }
 
-  /** Drops the messages that waited for a run this tab no longer drives: nothing will answer them. */
+  /** Drops the messages sent during a run whose sending this tab no longer drives and the agent never confirmed. */
   private dropOrphans(sessionId: string): Promise<void> {
     return this.serial(async () => {
       const t = await this.store.getTranscript(sessionId)
@@ -1714,25 +1709,20 @@ export class Hub {
     const session = await this.store.getSession(sessionId)
     if (!session) throw new Error('session not found')
     if (action.type === 'cancel') {
-      // Stop ends the run in progress, never one that waits: what waits is answered next (PROF-RUN-013)
-      const current = this.snapshot.transcripts[sessionId]?.run?.runId
-      const controller = current ? this.runs.get(sessionId)?.get(current) : undefined
-      // no run of ours behind the indicator: a run left over from a closed tab, cleared here (UI-CONV-003)
-      if (!current || !controller) return this.clearStaleRun(sessionId)
+      const current = action.runId ?? this.snapshot.transcripts[sessionId]?.run?.runId
+      if (!current) return this.clearStaleRun(sessionId)
       const { client, token } = this.clientOf(session)
-      await client.cancel(sessionId, token, current).catch(() => undefined)
-      controller.abort()
-      return
-    }
-    if (action.type === 'withdraw') {
-      const controller = this.runs.get(sessionId)?.get(action.runId)
-      // taken meanwhile: it is the run in progress now, and Stop is what ends it
-      if (!controller || this.snapshot.transcripts[sessionId]?.run?.runId === action.runId) return
-      this.withdrawn.add(action.runId)
-      const { client, token } = this.clientOf(session)
-      await client.cancel(sessionId, token, action.runId).catch(() => undefined)
-      controller.abort()
-      await this.dropMessage(sessionId, `u_${action.runId}`)
+      const controller = this.runs.get(sessionId)?.get(current)
+      if (controller) {
+        await client.cancel(sessionId, token, current).catch(() => undefined)
+        controller.abort()
+        return
+      }
+      // not a run of ours: the one the agent started for what waited, which any device may stop
+      // (PROF-RUN-012); or a run left over from a closed tab, which the agent no longer knows and is cleared
+      // here (UI-CONV-003)
+      const stopped = await client.cancel(sessionId, token, current).catch(() => false)
+      if (!stopped) await this.clearStaleRun(sessionId)
       return
     }
     if (session.state !== 'bound') throw new Error('session is not bound')
@@ -1800,21 +1790,20 @@ export class Hub {
         token,
         { runId, text: action.text, action: action.action },
         (event) => {
-          if (this.withdrawn.has(runId)) return
-          // the first event of a run that waited: the agent took its message
+          // the first event of a run that has its turn: the agent recorded its message
           if (event.type === 'RUN_STARTED') void this.markTaken(sessionId, `u_${runId}`)
           void this.onEvent(sessionId, event, undefined, true)
         },
         controller.signal
       )
-      // answered by another run's turn: taken all the same
-      if (end.noTurn === 'merged') await this.markTaken(sessionId, `u_${runId}`)
-      // the agent lets no more wait: the message was not taken, and the person is told
+      // recorded, and waiting for the reply in progress to end: the agent answers it next, whatever becomes of
+      // this page (PROF-RUN-011)
+      if (end.noTurn === 'waiting') await this.markTaken(sessionId, `u_${runId}`)
+      // the agent lets no more wait: nothing was recorded, and the person is told
       if (end.noTurn === 'refused') {
         await this.dropMessage(sessionId, `u_${runId}`)
         throw new Error(i18next.t('conversation.waitingRefused'))
       }
-      if (end.noTurn === 'withdrawn') await this.dropMessage(sessionId, `u_${runId}`)
     } catch (e) {
       if (e instanceof ProfileError && e.status === 410) {
         await this.saveSession({
@@ -1825,12 +1814,11 @@ export class Hub {
         })
       } else if (!controller.signal.aborted) throw e
     } finally {
-      this.withdrawn.delete(runId)
       const left = this.runs.get(sessionId)
       left?.delete(runId)
       if (left && left.size === 0) this.runs.delete(sessionId)
-      // a message that waited and was never taken (withdrawn, refused, or its response was lost) is not recorded
-      // by the agent: it leaves the transcript rather than stand there unanswered
+      // a message sent during a run whose sending failed before the agent recorded it: it leaves the transcript
+      // rather than stand there as if it waited
       await this.dropOrphans(sessionId)
       // after the run's own RunFinished, which may still be queued
       await this.serial(async () => {
@@ -1893,8 +1881,8 @@ export interface ResumeTarget {
 
 type LocalAction =
   | { type: 'run'; text?: string; action?: AyniAction; replyTo?: ReplyQuote }
-  | { type: 'cancel' }
-  | { type: 'withdraw'; runId: string }
+  /** `runId`: the run the person saw in progress when they pressed Stop */
+  | { type: 'cancel'; runId?: string }
 
 export function platformDescription(): string {
   const ua = navigator.userAgent

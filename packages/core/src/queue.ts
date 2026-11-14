@@ -1,28 +1,31 @@
 /**
  * Sending while the agent answers (UI-CONV-025, APP-CONV-023, PROF-RUN-011/012/013). An agent that declares
- * `features.queue` takes a message sent during a turn: it waits, is listed in `state.ayni.waiting` on every device
- * of the person, and is answered when the turn ends, together with whatever else waits. A run that gets no turn
- * of its own (answered by another's, withdrawn, refused) says so in its first event, and nothing of it reaches
- * the transcript's run.
+ * `features.queue` takes a message sent during a turn: it records it, lists it in `state.ayni.waiting` on every
+ * device of the person, and answers it when the turn ends, together with whatever else waits, in a run it starts
+ * itself on each device's stream. The run that carried the message gets no turn: it says so in its first event and
+ * ends at once, and nothing of it reaches the transcript's run.
  */
 import type { TranscriptMessage } from './types.js'
 
-/** Why a run gets no turn of its own: carried by its `RunStarted` as `noTurn`. */
-export type NoTurn = 'merged' | 'withdrawn' | 'refused'
+/**
+ * Why a run gets no turn: its message was recorded and waits, the agent refused it (too many wait), or its caller
+ * gave up while an action waited for its turn. Carried by the run's `RunStarted` as `noTurn`.
+ */
+export type NoTurn = 'waiting' | 'refused' | 'withdrawn'
 
 /** How a run ended, for the client that sent it. Empty for a run that had its turn. */
 export interface RunEnd {
   noTurn?: NoTurn
-  /** the run whose turn answers this one's message */
-  mergedInto?: string
+  /** the agent's id for the message that waits */
+  messageId?: string
   /** the code of the error that ended a run without a turn */
   code?: string
 }
 
 /** A message of the person that waits for the turn in progress of its conversation to end. */
 export interface WaitingMessage {
-  /** the run that carries it: cancelling that run withdraws the message */
-  runId?: string
+  /** the agent's id for the message: the one history gives it */
+  id: string
   /** the session it came through */
   sessionId: string
   /** the id the client gave the message */
@@ -32,17 +35,17 @@ export interface WaitingMessage {
   at: string
 }
 
-/** What a `RunStarted` says of a run that gets no turn of its own; undefined for any other event. */
+/** What a `RunStarted` says of a run that gets no turn; undefined for any other event. */
 export function noTurnOf(event: { type?: unknown; noTurn?: unknown }): NoTurn | undefined {
   if (event.type !== 'RUN_STARTED') return undefined
-  return event.noTurn === 'merged' || event.noTurn === 'withdrawn' || event.noTurn === 'refused'
+  return event.noTurn === 'waiting' || event.noTurn === 'refused' || event.noTurn === 'withdrawn'
     ? event.noTurn
     : undefined
 }
 
 /**
- * Keeps the events of a run that gets no turn of its own away from the transcript: they would end, on screen, the
- * run that is in progress, which is another one. Returns what to do with each event, and how the run ended.
+ * Keeps the events of a run that gets no turn away from the transcript: they would end, on screen, the run that
+ * is in progress, which is another one (PROF-RUN-013). Returns what to do with each event, and how the run ended.
  */
 export function runEvents<E extends { type?: unknown }>(
   forward: (event: E) => void
@@ -55,13 +58,14 @@ export function runEvents<E extends { type?: unknown }>(
     onEvent: (event) => {
       const noTurn = noTurnOf(event as { type?: unknown; noTurn?: unknown })
       if (noTurn) {
-        const into = (event as { mergedInto?: unknown }).mergedInto
-        ended = { noTurn, ...(typeof into === 'string' && into ? { mergedInto: into } : {}) }
+        ended = { noTurn }
         return
       }
       if (!ended) return forward(event)
-      const code = (event as { code?: unknown }).code
+      const { code, outcome } = event as { code?: unknown; outcome?: { messageId?: unknown } | null }
       if (event.type === 'RUN_ERROR' && typeof code === 'string') ended = { ...ended, code }
+      if (event.type === 'RUN_FINISHED' && typeof outcome?.messageId === 'string')
+        ended = { ...ended, messageId: outcome.messageId }
     },
     end: () => ended ?? {},
   }
@@ -81,53 +85,28 @@ export function waitingOf(state: object | null | undefined): WaitingMessage[] {
     (w): w is WaitingMessage =>
       !!w &&
       typeof w === 'object' &&
-      typeof (w as WaitingMessage).sessionId === 'string' &&
+      typeof (w as WaitingMessage).id === 'string' &&
       typeof (w as WaitingMessage).text === 'string'
   )
 }
 
-/** The id a waiting message has in the transcript of the device that sent it: the one the client gave it. */
-export function waitingMessageId(waiting: Pick<WaitingMessage, 'messageId' | 'runId'>): string | undefined {
-  return waiting.messageId ?? (waiting.runId ? `u_${waiting.runId}` : undefined)
-}
-
-/** A waiting message as the transcript shows it, with what is needed to withdraw it. */
-export interface WaitingView {
-  /** the transcript message it marks, or the bubble shown for one sent from another device */
-  message: TranscriptMessage
-  runId?: string
-  /** this device sent it: it may withdraw it */
-  own: boolean
-}
-
 /**
- * What waits, as the transcript shows it (UI-CONV-025): a message this device sent is already in the transcript
- * and is marked there; one sent from another device gets a bubble of its own, after the messages, in the order
- * they arrived. Keyed by the id of the transcript message.
+ * What waits, as the transcript shows it (UI-CONV-025). A message the device holds is marked where it stands: its
+ * own, under the id it gave it, or one it read from history, under the agent's. One sent from another device and
+ * not held yet gets a bubble of its own, after the messages, in the order they arrived.
  */
 export function waitingViews(
   messages: readonly TranscriptMessage[],
-  waiting: readonly WaitingMessage[],
-  sessionId: string
-): { marked: Map<string, WaitingView>; added: WaitingView[] } {
-  const held = new Map(messages.map((m) => [m.id, m]))
-  const marked = new Map<string, WaitingView>()
-  const added: WaitingView[] = []
+  waiting: readonly WaitingMessage[]
+): { marked: Set<string>; added: TranscriptMessage[] } {
+  const held = new Set(messages.map((m) => m.id))
+  const marked = new Set<string>()
+  const added: TranscriptMessage[] = []
   for (const w of waiting) {
-    const id = waitingMessageId(w)
-    const own = w.sessionId === sessionId
-    const message = id ? held.get(id) : undefined
-    if (id && message) {
-      marked.set(id, { message, runId: w.runId, own })
-      continue
-    }
+    if (held.has(w.id)) marked.add(w.id)
+    else if (w.messageId && held.has(w.messageId)) marked.add(w.messageId)
     // nothing to show for a message with no words (attachments alone) that this device does not hold
-    if (!w.text) continue
-    added.push({
-      message: { id: id ?? `waiting_${added.length}`, role: 'user', content: w.text, at: w.at },
-      runId: w.runId,
-      own,
-    })
+    else if (w.text) added.push({ id: w.id, role: 'user', content: w.text, at: w.at })
   }
   return { marked, added }
 }
@@ -135,14 +114,13 @@ export function waitingViews(
 /** The English copy of the queue; a UI with its own languages translates it. */
 export const QUEUE_COPY = {
   waiting: 'Waiting',
-  withdraw: 'Withdraw',
   refused: 'Too many messages are waiting. Send this one again in a moment.',
 } as const
 
 /**
- * The transcript without the messages that were sent while a run was in progress, were never taken, and whose run
- * the device no longer drives (`driven` says which runs it does): the run ended with the page or the app, the
- * agent withdrew the message, and nothing will answer it (PROF-RUN-013).
+ * The transcript without the messages that were sent while a run was in progress and that the agent never
+ * recorded, their sending having failed (`driven` says which runs the device still drives): nothing will answer
+ * them, and they must not stand there as if they waited.
  */
 export function withoutOrphans(
   messages: readonly TranscriptMessage[],
@@ -151,7 +129,7 @@ export function withoutOrphans(
   return messages.filter((m) => m.role === 'activity' || !m.queued || driven(m.id.replace(/^u_/, '')))
 }
 
-/** The transcript with a waiting message marked as taken by the agent. */
+/** The transcript with a message marked as taken by the agent: recorded there, whatever happens here. */
 export function taken(messages: readonly TranscriptMessage[], messageId: string): TranscriptMessage[] {
   return messages.map((m) => {
     if (m.id !== messageId || m.role === 'activity' || !m.queued) return m

@@ -194,8 +194,9 @@ export class ProfileClient {
 
   /**
    * One run (profile section 6): only the new user message and the structured action of the turn. Against an
-   * agent that takes it, a run sent during a turn waits: its response stays open, and its events come when its
-   * turn does (PROF-RUN-011). Resolves with how the run ended: empty for a run that had its turn.
+   * agent that takes it, a message sent during a turn is recorded and waits: its run ends at once with no turn,
+   * and the reply comes later on the session stream (PROF-RUN-011/012). Resolves with how the run ended: empty for
+   * a run that had its turn.
    */
   public async run(
     sessionId: string,
@@ -221,8 +222,8 @@ export class ProfileClient {
     })
     if (!response.ok) throw await parseError(response)
     if (!response.body) return {}
-    // a run that gets no turn of its own (answered by another's, withdrawn, refused) gives the caller no event:
-    // its end is returned instead (PROF-RUN-012/013)
+    // a run that gets no turn (its message waits, or was refused) gives the caller no event: its end is returned
+    // instead (PROF-RUN-013)
     const events = runEvents(onEvent)
     await readSse(response.body, (m) => events.onEvent(JSON.parse(m.data) as AgUiEvent), signal)
     return events.end()
