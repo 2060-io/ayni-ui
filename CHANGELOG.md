@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/2060-io/ayni-ui/compare/v0.12.0...v0.13.0) (2026-11-14)
+
+
+### Features
+
+* **uploads:** an upload carries the file's name in a field of its own ([b447da9](https://github.com/2060-io/ayni-ui/commit/b447da9461524dbdcd1d380e09a2cadef83ec737))
+* **uploads:** an upload carries the file's name in a field of its own ([63076d1](https://github.com/2060-io/ayni-ui/commit/63076d138f5f397ca4b1a0fab547771c95ae6ac6))
+
 ## [0.12.0](https://github.com/2060-io/ayni-ui/compare/v0.11.0...v0.12.0) (2026-11-13)
 
 
