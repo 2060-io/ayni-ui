@@ -3,6 +3,7 @@
  * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015, UI-CAP-001, UI-APPR-002).
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
+import { withoutVoiceEchoes } from './mediaMessages.js'
 import type { AgUiEvent } from './profileClient.js'
 import type { ReplyQuote, SessionRecord, Transcript, TranscriptMessage } from './types.js'
 
@@ -164,18 +165,17 @@ export function reduce(
             !(m.role === 'activity' && m.activityType === ACTIVITY.generating && m.content.entryId === content.entryId)
         )
       }
-      t = {
-        ...t,
-        routed,
-        messages: upsertMessage(messages, {
-          id,
-          role: 'activity',
-          activityType,
-          content,
-          at: flowAt,
-          entryId: content.entryId as string | undefined,
-        }),
-      }
+      messages = upsertMessage(messages, {
+        id,
+        role: 'activity',
+        activityType,
+        content,
+        at: flowAt,
+        entryId: content.entryId as string | undefined,
+      })
+      // a voice note shows once: not beside a text that only repeats its transcription (UI-MEDIA-007)
+      if (activityType === ACTIVITY.attachment) messages = withoutVoiceEchoes(messages)
+      t = { ...t, routed, messages }
       if (activityType === ACTIVITY.attachment && !fromRun) {
         signals.push('message')
         s = {
@@ -341,7 +341,8 @@ export function mergeHistory(
   const renamedIds = new Set(ownIdOf.values())
   const kept = transcript.messages.map((m) => (ownIdOf.has(m.id) ? { ...m, id: ownIdOf.get(m.id) as string } : m))
   const older = page.map(toTranscriptMessage).filter((m) => !known.has(m.id) && !renamedIds.has(m.id))
-  const messages = [...older, ...kept].sort((a, b) => a.at.localeCompare(b.at))
+  // a voice note shows once, whatever the agent's history and what this device kept say (UI-MEDIA-007)
+  const messages = withoutVoiceEchoes([...older, ...kept].sort((a, b) => a.at.localeCompare(b.at)))
   const reactions = { ...transcript.reactions, ...reactionsOf(page) }
   for (const [own, theirs] of ownIdOf) {
     if (reactions[own] && !reactions[theirs]) reactions[theirs] = reactions[own]

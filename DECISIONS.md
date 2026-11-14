@@ -260,5 +260,14 @@
     - **Mine, for him to confirm:** 48 levels; the waveform is scaled to the note's own loudest moment, so a
       quiet note does not look flat; the browser's audio control is gone, and with it its volume and speed
       menu.
-35. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+35. **A voice note shows once** (2026-11-14, Fabrice: "Voice notes show twice after reopening a conversation
+    … => fix it"; UI-MEDIA-007, PROF-MAP-006). The agent's history gave a voice note of the person as its
+    attachment and as a text with the same transcription: read again, a conversation showed the player and a
+    bubble with the same words. The agent now gives the attachment alone. The core (0.3.12) keeps to it
+    whatever the agent sends and whatever a device kept: `withoutVoiceEchoes` drops a text of the person that
+    stands under the id of a voice note's entry and only repeats its transcription, when history is merged
+    and when an attachment arrives on a stream. So the notes already kept in a browser or on a phone are put
+    right at the next reading of the conversation, and an agent of an earlier revision shows right too. Words
+    the person added to a note are not its transcription, and stay.
+36. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
