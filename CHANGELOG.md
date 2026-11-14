@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.14.0](https://github.com/2060-io/ayni-ui/compare/v0.13.0...v0.14.0) (2026-11-14)
+
+
+### Features
+
+* **conversation:** a waiting message whose run is gone leaves the transcript ([98fc2ac](https://github.com/2060-io/ayni-ui/commit/98fc2acd15a2343a715ffb176957c9221c15d6c2))
+* **conversation:** send while the agent answers; what waits is shown and can be withdrawn ([af49681](https://github.com/2060-io/ayni-ui/commit/af49681f2ed4d01ecf73174077cc8863ca460720))
+* **conversation:** send while the agent answers; what waits is shown on every device ([1f7f24b](https://github.com/2060-io/ayni-ui/commit/1f7f24b0adddcd657706ac9b9d2fab5fcfb21dc5))
+* **conversation:** what waits is the agent's at once; nothing withdraws a message ([1bdb920](https://github.com/2060-io/ayni-ui/commit/1bdb9203ff654944e5206a2856a208797c596170))
+
 ## [0.13.0](https://github.com/2060-io/ayni-ui/compare/v0.12.0...v0.13.0) (2026-11-14)
 
 
