@@ -37,8 +37,10 @@ import {
   type SyncBus,
   type SyncMessage,
   type Transcript,
+  taken,
   takesQueue,
   unreadFrom,
+  withoutOrphans,
 } from '@ayni.org/ayni-ui-core'
 import i18next from '../i18n/index.js'
 import { loadConfig } from './config.js'
@@ -1331,6 +1333,8 @@ export class Hub {
         if (status.state === 'closed') return
         // the leader runs the runs: a run shown on the transcript that it does not hold is a leftover
         if (!this.runs.has(sessionId)) await this.clearStaleRun(sessionId)
+        // and so is a message that waited for a run of a page that is gone
+        await this.dropOrphans(sessionId)
         // every time the stream attaches: what another device added to the conversation meanwhile, and what the
         // agent's stream can no longer replay (UI-CONV-022, PROF-HIST-007)
         if (status.state === 'bound') await this.catchUp(sessionId).catch(() => undefined)
@@ -1634,6 +1638,31 @@ export class Hub {
     })
   }
 
+  /** A waiting message was taken by the agent: it is recorded there, and stays here whatever happens to its run. */
+  private markTaken(sessionId: string, messageId: string): Promise<void> {
+    return this.serial(async () => {
+      const t = await this.store.getTranscript(sessionId)
+      if (!t?.messages.some((m) => m.id === messageId && m.role !== 'activity' && m.queued)) return
+      const next = { ...t, messages: taken(t.messages, messageId) }
+      await this.store.putTranscript(next)
+      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+    })
+  }
+
+  /** Drops the messages that waited for a run this tab no longer drives: nothing will answer them. */
+  private dropOrphans(sessionId: string): Promise<void> {
+    return this.serial(async () => {
+      const t = await this.store.getTranscript(sessionId)
+      if (!t) return
+      const messages = withoutOrphans(t.messages, (runId) => !!this.runs.get(sessionId)?.has(runId))
+      if (messages.length === t.messages.length) return
+      const next = { ...t, messages }
+      await this.store.putTranscript(next)
+      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+      this.bus?.post({ kind: 'transcript', sessionId })
+    })
+  }
+
   /** Drops a run indicator no tab is driving (a tab closed mid-run): streaming messages end interrupted. */
   private clearStaleRun(sessionId: string): Promise<void> {
     return this.serial(() => this.clearStaleRunNow(sessionId))
@@ -1742,6 +1771,8 @@ export class Hub {
           content: text,
           at: new Date().toISOString(),
           replyTo: action.replyTo,
+          // sent while a run is in progress: it waits, and the agent has not recorded it yet
+          ...(transcript.run ? { queued: true } : {}),
         }
         const next = {
           ...transcript,
@@ -1769,10 +1800,15 @@ export class Hub {
         token,
         { runId, text: action.text, action: action.action },
         (event) => {
-          if (!this.withdrawn.has(runId)) void this.onEvent(sessionId, event, undefined, true)
+          if (this.withdrawn.has(runId)) return
+          // the first event of a run that waited: the agent took its message
+          if (event.type === 'RUN_STARTED') void this.markTaken(sessionId, `u_${runId}`)
+          void this.onEvent(sessionId, event, undefined, true)
         },
         controller.signal
       )
+      // answered by another run's turn: taken all the same
+      if (end.noTurn === 'merged') await this.markTaken(sessionId, `u_${runId}`)
       // the agent lets no more wait: the message was not taken, and the person is told
       if (end.noTurn === 'refused') {
         await this.dropMessage(sessionId, `u_${runId}`)
@@ -1793,6 +1829,9 @@ export class Hub {
       const left = this.runs.get(sessionId)
       left?.delete(runId)
       if (left && left.size === 0) this.runs.delete(sessionId)
+      // a message that waited and was never taken (withdrawn, refused, or its response was lost) is not recorded
+      // by the agent: it leaves the transcript rather than stand there unanswered
+      await this.dropOrphans(sessionId)
       // after the run's own RunFinished, which may still be queued
       await this.serial(async () => {
         const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)

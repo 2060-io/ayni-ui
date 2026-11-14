@@ -138,3 +138,24 @@ export const QUEUE_COPY = {
   withdraw: 'Withdraw',
   refused: 'Too many messages are waiting. Send this one again in a moment.',
 } as const
+
+/**
+ * The transcript without the messages that were sent while a run was in progress, were never taken, and whose run
+ * the device no longer drives (`driven` says which runs it does): the run ended with the page or the app, the
+ * agent withdrew the message, and nothing will answer it (PROF-RUN-013).
+ */
+export function withoutOrphans(
+  messages: readonly TranscriptMessage[],
+  driven: (runId: string) => boolean
+): TranscriptMessage[] {
+  return messages.filter((m) => m.role === 'activity' || !m.queued || driven(m.id.replace(/^u_/, '')))
+}
+
+/** The transcript with a waiting message marked as taken by the agent. */
+export function taken(messages: readonly TranscriptMessage[], messageId: string): TranscriptMessage[] {
+  return messages.map((m) => {
+    if (m.id !== messageId || m.role === 'activity' || !m.queued) return m
+    const { queued: _queued, ...rest } = m
+    return rest
+  })
+}

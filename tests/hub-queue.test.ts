@@ -237,6 +237,23 @@ describe('sending while the agent answers', () => {
     expect(transcript()?.run?.runId).toBe(one.runId)
   })
 
+  it('takes a waiting message whose response was lost out of the transcript: nothing will answer it', async () => {
+    const { agent, hub, said, transcript } = await setup({ queue: true })
+    void hub.send('s1', 'first')
+    await settle()
+    const one = agent.byText('first')
+    one.write({ type: 'RUN_STARTED', threadId: 's1', runId: one.runId })
+    const second = hub.send('s1', 'lost on the way')
+    await settle()
+    expect(said()).toEqual(['user:first', 'user:lost on the way'])
+    // the response ends with no event: the agent withdrew the message when it closed
+    agent.byText('lost on the way').close()
+    await second
+    await settle()
+    expect(said()).toEqual(['user:first'])
+    expect(transcript()?.run?.runId).toBe(one.runId)
+  })
+
   it('against an agent that does not take it, allows one run at a time', async () => {
     const { agent, hub, said } = await setup({})
     void hub.send('s1', 'first')

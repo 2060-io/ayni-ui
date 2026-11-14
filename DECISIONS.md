@@ -235,6 +235,10 @@
       event; the core's client gives the transcript none of its events and returns how it ended
       (`ProfileClient.run`, `runEvents`), so the reducer and the run shown are untouched. Refused, the message
       leaves the transcript and the person is told.
+    - **A waiting message whose run is gone** (the page was reloaded, the response was lost) was withdrawn by
+      the agent when its response closed: nothing will answer it. The message is marked when it is sent during
+      a run (`queued`), loses the mark when the agent takes it, and one found still marked with no run of this
+      tab behind it leaves the transcript.
     - The hub drives several runs per conversation where it drove one. The rules (`takesQueue`, `waitingOf`,
       `waitingViews`, `noTurnOf`) are the core's (0.3.9), for the app to apply the same ones.
     - My choices, proposed to Fabrice and not confirmed: what waits is answered together, in one reply; a

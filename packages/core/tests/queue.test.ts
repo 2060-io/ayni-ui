@@ -4,7 +4,16 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ProfileClient } from '../src/profileClient.js'
-import { noTurnOf, runEvents, takesQueue, waitingMessageId, waitingOf, waitingViews } from '../src/queue.js'
+import {
+  noTurnOf,
+  runEvents,
+  taken,
+  takesQueue,
+  waitingMessageId,
+  waitingOf,
+  waitingViews,
+  withoutOrphans,
+} from '../src/queue.js'
 import type { AgUiEvent, TranscriptMessage } from '../src/types.js'
 
 const at = '2026-11-14T10:00:00.000Z'
@@ -132,5 +141,24 @@ describe('a run that gets no turn of its own', () => {
     )
     expect(seen).toEqual([])
     expect(end).toEqual({ noTurn: 'merged', mergedInto: 'r3' })
+  })
+})
+
+describe('a message that waited for a run that is gone', () => {
+  const held: TranscriptMessage[] = [
+    user('u_r1', 'first'),
+    { ...user('u_r2', 'waited, page reloaded'), queued: true },
+    { ...user('u_r3', 'still waiting'), queued: true },
+  ]
+
+  it('leaves the transcript, and one whose run is still driven stays', () => {
+    expect(withoutOrphans(held, (runId) => runId === 'r3').map((m) => m.id)).toEqual(['u_r1', 'u_r3'])
+    expect(withoutOrphans(held, () => false).map((m) => m.id)).toEqual(['u_r1'])
+  })
+
+  it('stays once the agent took it, whatever happens to its run', () => {
+    const after = taken(held, 'u_r2')
+    expect(after[1]).toEqual(user('u_r2', 'waited, page reloaded'))
+    expect(withoutOrphans(after, () => false).map((m) => m.id)).toEqual(['u_r1', 'u_r2'])
   })
 })
