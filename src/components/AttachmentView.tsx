@@ -1,7 +1,8 @@
 /** Attachments by reference through the agent (D13, UI-MEDIA-001/002/007): fetched with the token, shown as revocable object URLs. */
 import type { AttachmentActivity } from '@ayni.org/ayni-agui-profile'
-import { Download, FileText } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { noteLength, playedBars, WAVEFORM_LEVELS, waveformBars, waveformOf } from '@ayni.org/ayni-ui-core'
+import { Download, FileText, Pause, Play } from 'lucide-react'
+import { type KeyboardEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub } from '../state/useHub.js'
 
@@ -85,14 +86,7 @@ export function AttachmentView({
   if (attachment.type === 'voice') {
     return (
       <div className="attachment voice-note">
-        {fullUrl ? (
-          <audio controls src={fullUrl} aria-label={attachment.textRepr}>
-            <track kind="captions" />
-          </audio>
-        ) : (
-          <span className="muted">{t('app.loading')}</span>
-        )}
-        {attachment.duration ? <span className="meta">{Math.round(attachment.duration)} s</span> : null}
+        <VoicePlayer url={fullUrl} attachment={attachment} />
         <div className="transcription">
           {t('conversation.transcription')}: {attachment.textRepr}
         </div>
@@ -139,6 +133,112 @@ export function AttachmentView({
           <Download size={14} /> {t('conversation.download')}
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The player of a voice note (UI-MEDIA-007/008): play and pause, the length of the note before it is played, and
+ * the shape of its sound as bars, the played part marked; a touch on the bars moves to that moment. A note that
+ * carries no waveform shows a plain line, one that carries no length shows it once the audio is read.
+ */
+function VoicePlayer({ url, attachment }: { url?: string; attachment: AttachmentActivity }) {
+  const { t } = useTranslation()
+  const audio = useRef<HTMLAudioElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const [position, setPosition] = useState(0)
+  const [read, setRead] = useState<number>()
+  // what the recorder measured, else what the audio says of itself (a recording often gives no length there)
+  const length = attachment.duration ?? read ?? 0
+  const bars = useMemo(() => {
+    const waveform = waveformOf(attachment)
+    return waveform ? waveformBars(waveform, WAVEFORM_LEVELS) : undefined
+  }, [attachment])
+  const fraction = length > 0 ? Math.min(1, position / length) : 0
+  const played = bars ? playedBars(bars.length, fraction) : 0
+
+  const toggle = () => {
+    const el = audio.current
+    if (!el) return
+    if (el.paused) void el.play().catch(() => setPlaying(false))
+    else el.pause()
+  }
+  const moveTo = (share: number) => {
+    const el = audio.current
+    if (!el || !(length > 0)) return
+    el.currentTime = Math.min(length, Math.max(0, share * length))
+    setPosition(el.currentTime)
+  }
+  const onSeek = (event: MouseEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    if (box.width > 0) moveTo((event.clientX - box.left) / box.width)
+  }
+  const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    moveTo(fraction + (event.key === 'ArrowRight' ? 0.05 : -0.05))
+  }
+
+  return (
+    <div className="voice-player">
+      <button
+        type="button"
+        className="icon-btn round voice-play"
+        aria-label={playing ? t('conversation.pauseVoice') : t('conversation.playVoice')}
+        disabled={!url}
+        onClick={toggle}
+      >
+        {playing ? <Pause size={18} /> : <Play size={18} />}
+      </button>
+      <div
+        className="voice-wave"
+        role="slider"
+        tabIndex={0}
+        aria-label={t('conversation.voicePosition')}
+        aria-valuemin={0}
+        aria-valuemax={Math.round(length)}
+        aria-valuenow={Math.round(position)}
+        aria-valuetext={`${noteLength(position * 1000)} / ${noteLength(length * 1000)}`}
+        onClick={onSeek}
+        onKeyDown={onKey}
+      >
+        {bars ? (
+          bars.map((level, index) => (
+            <span
+              // a bar is its place in the note
+              key={index}
+              className={index < played ? 'voice-bar played' : 'voice-bar'}
+              style={{ height: `${Math.max(8, level)}%` }}
+            />
+          ))
+        ) : (
+          <span className="voice-line">
+            <span style={{ width: `${Math.round(fraction * 100)}%` }} />
+          </span>
+        )}
+      </div>
+      <span className="meta voice-time">{noteLength((playing || position > 0 ? position : length) * 1000)}</span>
+      {url ? (
+        <audio
+          ref={audio}
+          src={url}
+          preload="metadata"
+          aria-label={attachment.textRepr}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => {
+            setPlaying(false)
+            setPosition(0)
+          }}
+          onTimeUpdate={(event) => setPosition(event.currentTarget.currentTime)}
+          onLoadedMetadata={(event) => {
+            const seconds = event.currentTarget.duration
+            if (Number.isFinite(seconds) && seconds > 0) setRead(seconds)
+          }}
+        >
+          <track kind="captions" />
+        </audio>
+      ) : null}
     </div>
   )
 }

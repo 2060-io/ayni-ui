@@ -13,6 +13,7 @@ import type {
 } from '@ayni.org/ayni-agui-profile'
 import { type RunEnd, runEvents } from './queue.js'
 import { readSse } from './sse.js'
+import { type VoiceMeasures, voiceMeasureFields } from './voiceNote.js'
 
 export class ProfileError extends Error {
   public constructor(
@@ -249,9 +250,18 @@ export class ProfileClient {
    * the file (PROF-HIST-008): platforms do not write the name of a multipart file alike, and the agent takes the
    * field as the name when it is there.
    */
-  public async upload(sessionId: string, token: string, file: Blob, filename: string): Promise<UploadResponse> {
+  public async upload(
+    sessionId: string,
+    token: string,
+    file: Blob,
+    filename: string,
+    /** what the recorder measured of a voice note (PROF-HIST-009) */
+    measures?: VoiceMeasures
+  ): Promise<UploadResponse> {
     const form = new FormData()
     form.append('filename', filename)
+    // before the file, as the name is: an agent reads the fields it finds on its way to it
+    for (const [name, value] of Object.entries(voiceMeasureFields(measures))) form.append(name, value)
     form.append('file', file, filename)
     const response = await this.fetchFn(this.url(`/${sessionId}/attachments`), {
       method: 'POST',

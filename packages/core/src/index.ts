@@ -15,6 +15,7 @@ export * from './store.js'
 export * from './sync.js'
 export * from './trust.js'
 export * from './types.js'
+export * from './voiceNote.js'
 
 export const CLIENT = { name: 'ayni-ui', version: '3.1.0' } as const
 

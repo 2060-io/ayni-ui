@@ -40,6 +40,7 @@ import {
   taken,
   takesQueue,
   unreadFrom,
+  type VoiceMeasures,
   withoutOrphans,
 } from '@ayni.org/ayni-ui-core'
 import i18next from '../i18n/index.js'
@@ -1843,7 +1844,9 @@ export class Hub {
   public async upload(
     sessionId: string,
     file: Blob,
-    filename: string
+    filename: string,
+    /** what the recorder measured of a voice note (PROF-HIST-009) */
+    measures?: VoiceMeasures
   ): Promise<{ attachmentId: string; textRepr?: string }> {
     const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
     if (!session) throw new Error('session not found')
@@ -1851,7 +1854,7 @@ export class Hub {
     const uploads = agent?.descriptor.features.uploads
     if (uploads && file.size > uploads.maxBytes) throw new Error('too-large')
     const { client, token } = this.clientOf(session)
-    const result = await client.upload(sessionId, token, file, filename)
+    const result = await client.upload(sessionId, token, file, filename, measures)
     return { attachmentId: result.attachmentId, textRepr: (result as { textRepr?: string }).textRepr }
   }
 
