@@ -234,8 +234,14 @@ export class ProfileClient {
     return response.json()
   }
 
+  /**
+   * Uploads a file before the turn that references it (UI-MEDIA-003). Its name goes in a field of its own, before
+   * the file (PROF-HIST-008): platforms do not write the name of a multipart file alike, and the agent takes the
+   * field as the name when it is there.
+   */
   public async upload(sessionId: string, token: string, file: Blob, filename: string): Promise<UploadResponse> {
     const form = new FormData()
+    form.append('filename', filename)
     form.append('file', file, filename)
     const response = await this.fetchFn(this.url(`/${sessionId}/attachments`), {
       method: 'POST',
