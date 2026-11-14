@@ -244,5 +244,21 @@
     - No withdraw (his decision): a message sent is sent.
     - The rules (`takesQueue`, `waitingOf`, `waitingViews`, `noTurnOf`) are the core's (0.3.9), for the app to
       apply the same ones.
-34. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+34. **A voice note shows its length and its waveform** (2026-11-14, Fabrice: "how to show the duration? BTW I
+    want to see the waveform of the voicenote in the bubble, too", then "go" on my proposal; UI-MEDIA-008,
+    PROF-HIST-009). A voice note showed the browser's own audio control, and no length until it was read.
+    - **The recorder measures the note** while it records it: its length, and the level of its sound ten
+      times a second (an `AnalyserNode` on the microphone's stream). It sends both with the upload, in the
+      fields `duration` and `waveform`; a browser that cannot measure sends the note without a waveform.
+    - **The player** is the UI's own (`VoicePlayer` in `AttachmentView.tsx`): play and pause, the waveform as
+      48 bars with the played part in the accent, the length before the note is played and the position
+      while it plays. A click on the bars, or the arrow keys, moves in the note. A note with no waveform
+      shows a plain line; one with no length shows it once the audio is read.
+    - **The rules are the core's** (0.3.11, `voiceNote.ts`), for the app to share: `waveformFrom` (the
+      levels sampled, as 48 whole numbers from 0 to 100, each the loudest of its part, the loudest of the
+      note at 100), `voiceMeasureFields`, `waveformOf`, `waveformBars`, `playedBars`, `noteLength`.
+    - **Mine, for him to confirm:** 48 levels; the waveform is scaled to the note's own loudest moment, so a
+      quiet note does not look flat; the browser's audio control is gone, and with it its volume and speed
+      menu.
+35. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

@@ -1,5 +1,5 @@
 /** The composer (UI-CONV-003/013/014/015/018, UI-MEDIA-003..007): one line that grows to six, Enter rules, Stop, reply quote, attachments, voice notes. */
-import { quoteLabel } from '@ayni.org/ayni-ui-core'
+import { quoteLabel, type VoiceMeasures, waveformFrom } from '@ayni.org/ayni-ui-core'
 import { ArrowUp, Mic, Plus, Reply, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,36 @@ interface Pending {
   url?: string
 }
 
+/**
+ * The level of the sound of a stream, sampled ten times a second while it is recorded (UI-MEDIA-008): each from
+ * 0 to 1. A browser that cannot measure gives none, and the note is sent without a waveform.
+ */
+function soundMeter(stream: MediaStream): { stop: () => number[] } {
+  const levels: number[] = []
+  try {
+    const audio = new AudioContext()
+    const analyser = audio.createAnalyser()
+    analyser.fftSize = 512
+    audio.createMediaStreamSource(stream).connect(analyser)
+    const samples = new Uint8Array(analyser.fftSize)
+    const timer = setInterval(() => {
+      analyser.getByteTimeDomainData(samples)
+      let peak = 0
+      for (const sample of samples) peak = Math.max(peak, Math.abs(sample - 128) / 128)
+      levels.push(peak)
+    }, 100)
+    return {
+      stop: () => {
+        clearInterval(timer)
+        void audio.close().catch(() => undefined)
+        return levels
+      },
+    }
+  } catch {
+    return { stop: () => levels }
+  }
+}
+
 export function Composer({ sessionId, disabled }: { sessionId: string; disabled: boolean }) {
   const snap = useSnapshot()
   const hub = useHub()
@@ -25,7 +55,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   const [text, setText] = useState(session?.draft ?? '')
   const [pending, setPending] = useState<Pending[]>([])
   const [recording, setRecording] = useState<{ recorder: MediaRecorder; started: number; chunks: Blob[] } | null>(null)
-  const [review, setReview] = useState<{ blob: Blob; url: string; duration: number } | null>(null)
+  const [review, setReview] = useState<{ blob: Blob; url: string; measures: VoiceMeasures } | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState('')
   const areaRef = useRef<HTMLTextAreaElement>(null)
@@ -76,7 +106,8 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
       if (review) {
         const type = review.blob.type || 'audio/webm'
         const ext = type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : 'webm'
-        const up = await hub.upload(sessionId, review.blob, `voice-note.${ext}`)
+        // with what the recorder measured of it: its length and the shape of its sound (PROF-HIST-009)
+        const up = await hub.upload(sessionId, review.blob, `voice-note.${ext}`, review.measures)
         ids.push(up.attachmentId)
         URL.revokeObjectURL(review.url)
         setReview(null)
@@ -143,16 +174,20 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
       )
       const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
       const chunks: Blob[] = []
+      const started = Date.now()
+      // the note is measured while it records: its length, and the level of its sound ten times a second
+      const meter = soundMeter(stream)
       recorder.ondataavailable = (e) => chunks.push(e.data)
       recorder.onstop = () => {
         for (const track of stream.getTracks()) track.stop()
         const blob = new Blob(chunks, { type: recorder.mimeType })
-        setReview({ blob, url: URL.createObjectURL(blob), duration: elapsed })
+        const measures = { durationMs: Date.now() - started, waveform: waveformFrom(meter.stop()) }
+        setReview({ blob, url: URL.createObjectURL(blob), measures })
         setRecording(null)
       }
       recorder.start(250)
       setElapsed(0)
-      setRecording({ recorder, started: Date.now(), chunks })
+      setRecording({ recorder, started, chunks })
       setError('')
     } catch {
       setError(t('composer.micDenied'))
