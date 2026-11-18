@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.16.0](https://github.com/2060-io/ayni-ui/compare/v0.15.0...v0.16.0) (2026-11-18)
+
+
+### Features
+
+* **conversation:** a message this browser sent leaves the transcript when it is erased, named by its own id ([12f94fa](https://github.com/2060-io/ayni-ui/commit/12f94fa03c2e3381d07570ca4a65cdc66c6366c7))
+* **conversation:** the context of a conversation under the message form; erased messages leave the transcript ([fc937bc](https://github.com/2060-io/ayni-ui/commit/fc937bcdf250fd4ea95df12b74417ae85aa8bcb5))
+* **conversation:** the context of a conversation under the message form; erased messages leave the transcript ([cd0c296](https://github.com/2060-io/ayni-ui/commit/cd0c2968b648d31e27ff689ed7da3aeefc01f7a3))
+
 ## [0.15.0](https://github.com/2060-io/ayni-ui/compare/v0.14.0...v0.15.0) (2026-11-14)
 
 
