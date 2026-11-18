@@ -440,6 +440,25 @@ describe('erased messages (UI-CONV-027, PROF-STREAM-008)', () => {
     expect(signals).toEqual([])
   })
 
+  it('removes a message this browser sent, named by the id it gave it (clientIds)', () => {
+    const sent = {
+      ...held(),
+      messages: [...held().messages, { id: 'u_run-9', role: 'user' as const, content: 'sent from here', at: at(5) }],
+    }
+    const { transcript } = reduce(
+      sent,
+      { ...session(), conversationId: 'c1' },
+      {
+        type: 'CUSTOM',
+        name: 'ayni.messages.erased',
+        value: { conversationId: 'c1', messageIds: ['msg_9'], clientIds: ['u_run-9'] },
+      },
+      false,
+      true
+    )
+    expect(transcript.messages.map((m) => m.id)).toEqual(['msg_1', 'msg_2', 'att_1', 'msg_4'])
+  })
+
   it('removes a media message named by its entry', () => {
     const { transcript } = erased({ conversationId: 'c1', messageIds: ['msg_3', 'msg_4'] })
     expect(transcript.messages.map((m) => m.id)).toEqual(['msg_1', 'msg_2'])

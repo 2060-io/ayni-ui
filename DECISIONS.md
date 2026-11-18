@@ -287,9 +287,8 @@
     - **Erased.** On `ayni.messages.erased` the reducer removes the messages it names, and their reactions: a
       message by its id, a media message by its entry, as a reaction names it (31 above). An event for another
       conversation than the session's is ignored. A message this browser sent is held under its own id until
-      history names it under the agent's (`mergeHistory`); the event carries the agent's ids only, so such a
-      message, erased from another device before this browser read it back from history, stays here. Open: the
-      event would need the client's id as well.
+      history names it under the agent's (`mergeHistory`); the event names it by that id too (`clientIds`, which
+      the agent added to PROF-STREAM-008 for this), so it leaves the transcript even before history is read back.
     - The rules are the core's (0.3.13, `contextFigure.ts`: `contextFigureOf`, `formatTokens`, `contextLineOf`;
       `withoutErased`), with the English wording in `CONVERSATION_COPY`, for the app to apply the same ones.
 37. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),

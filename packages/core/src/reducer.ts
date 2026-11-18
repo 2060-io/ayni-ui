@@ -35,8 +35,8 @@ export const MESSAGES_ERASED = 'ayni.messages.erased'
 /**
  * The transcript without the messages the agent erased (UI-CONV-027). The agent names a message by its id, the one
  * history gives and the one under which another device's message arrives; a media message by its entry, which each
- * of its attachments carries (`entryId`). A message this device sent is held under the agent's id once history named
- * it (`mergeHistory`); until then it is held under the id this device gave it, which the event does not carry.
+ * of its attachments carries (`entryId`). A message this device sent is held under the id this device gave it until
+ * history names it (`mergeHistory`): the event names it by that id too (`clientIds`, PROF-STREAM-008).
  */
 export function withoutErased(transcript: Transcript, messageIds: readonly string[]): Transcript {
   const erased = new Set(messageIds)
@@ -250,9 +250,10 @@ export function reduce(
           // messages of this conversation erased for good, here or on another device: they leave the transcript
           // (UI-CONV-027, PROF-STREAM-008)
           const conversationId = typeof value.conversationId === 'string' ? value.conversationId : undefined
-          const ids = Array.isArray(value.messageIds)
-            ? value.messageIds.filter((id): id is string => typeof id === 'string')
-            : []
+          // by the agent's ids, and by the ids the clients gave the messages they sent (`clientIds`)
+          const ids = [value.messageIds, value.clientIds].flatMap((list) =>
+            Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []
+          )
           if (!conversationId || !s.conversationId || conversationId === s.conversationId) t = withoutErased(t, ids)
           break
         }
