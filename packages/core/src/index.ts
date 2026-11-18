@@ -1,5 +1,6 @@
 export * from './agents.js'
 export * from './appLinks.js'
+export * from './contextFigure.js'
 export * from './conversationDesign.js'
 export * from './directory.js'
 export * from './flag.js'

@@ -269,5 +269,28 @@
     and when an attachment arrives on a stream. So the notes already kept in a browser or on a phone are put
     right at the next reading of the conversation, and an agent of an earlier revision shows right too. Words
     the person added to a note are not its transcription, and stay.
-36. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+36. **The context of a conversation under the message form; erased messages leave the transcript** (2026-11-18,
+    Fabrice: the size of the context and its maximum just below the message form, in small characters; UI-CONV-026,
+    UI-CONV-027, PROF-STREAM-007/008, agent D74, D78).
+    - **The line.** Once the agent publishes the conversation's context figure (`state.ayni.context`: `used`,
+      `cached`, `max`, `at`), a muted line of 11 px, centred under the composer, reads `Context 6.2k / 100k`, with
+      ` · 4.1k cached` when part of it came from the provider's cache. Nothing shows before the first figure, from
+      an agent that publishes none, or when one of its numbers is not a finite number; the line does not wait for
+      `features.context`. The words are translated in the four languages; the numbers keep the `.` decimal in
+      every language, because the figure is technical.
+    - **The numbers.** Below a thousand as they are; from a thousand in thousands with at most one decimal; from
+      a million in millions (`950`, `6.2k`, `1k`, `100k`, `1M` for 999 950, `1.2M`); never `2.0k`.
+    - **Profile 3.2 not yet published.** The figure is read through a local type (`ContextFigure`); the
+      dependency on `@ayni.org/ayni-agui-profile` stays at 3.1.
+    - **The home indicator.** The composer and the line keep above the phone's home indicator: the composer's
+      area is padded by the safe-area inset (zero on a desktop).
+    - **Erased.** On `ayni.messages.erased` the reducer removes the messages it names, and their reactions: a
+      message by its id, a media message by its entry, as a reaction names it (31 above). An event for another
+      conversation than the session's is ignored. A message this browser sent is held under its own id until
+      history names it under the agent's (`mergeHistory`); the event carries the agent's ids only, so such a
+      message, erased from another device before this browser read it back from history, stays here. Open: the
+      event would need the client's id as well.
+    - The rules are the core's (0.3.13, `contextFigure.ts`: `contextFigureOf`, `formatTokens`, `contextLineOf`;
+      `withoutErased`), with the English wording in `CONVERSATION_COPY`, for the app to apply the same ones.
+37. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

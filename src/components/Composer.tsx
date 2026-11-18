@@ -1,5 +1,5 @@
-/** The composer (UI-CONV-003/013/014/015/018, UI-MEDIA-003..007): one line that grows to six, Enter rules, Stop, reply quote, attachments, voice notes. */
-import { quoteLabel, type VoiceMeasures, waveformFrom } from '@ayni.org/ayni-ui-core'
+/** The composer (UI-CONV-003/013/014/015/018/026, UI-MEDIA-003..007): one line that grows to six, Enter rules, Stop, reply quote, attachments, voice notes, the context line. */
+import { contextFigureOf, contextLineOf, quoteLabel, type VoiceMeasures, waveformFrom } from '@ayni.org/ayni-ui-core'
 import { ArrowUp, Mic, Plus, Reply, Square, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -65,6 +65,9 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   const queues = hub.takesQueue(sessionId)
   const replyTo = snap.replyTo[sessionId]
   const prefill = snap.prefill[sessionId]
+  // the context of the conversation, once the agent published a figure (UI-CONV-026)
+  const figure = contextFigureOf(session?.ayni)
+  const contextLine = figure ? contextLineOf(figure) : null
 
   // drafts per conversation (UI-SHELL-010)
   useEffect(() => {
@@ -195,7 +198,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   }
 
   return (
-    <div>
+    <div className="composer-area">
       {error ? (
         <div className="banner warning">
           {error}
@@ -254,7 +257,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
           ) : null}
         </div>
       ) : null}
-      <div className="composer">
+      <div className={contextLine ? 'composer with-context' : 'composer'}>
         <input
           ref={fileRef}
           type="file"
@@ -333,6 +336,11 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
           )
         ) : null}
       </div>
+      {contextLine ? (
+        <div className="context-line">
+          {contextLine.cached ? t('conversation.contextCached', contextLine) : t('conversation.context', contextLine)}
+        </div>
+      ) : null}
     </div>
   )
 }

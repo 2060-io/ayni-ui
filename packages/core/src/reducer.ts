@@ -1,6 +1,6 @@
 /**
  * AG-UI events (runs and the session stream) to the local transcript and session state
- * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015, UI-CAP-001, UI-APPR-002).
+ * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015/027, UI-CAP-001, UI-APPR-002).
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import { withoutVoiceEchoes } from './mediaMessages.js'
@@ -25,6 +25,29 @@ const now = () => new Date().toISOString()
  * closure, made from any device. Named here until the profile package that lists it is the one every client has.
  */
 export const CONVERSATION_CHANGED = 'ayni.conversation.changed'
+
+/**
+ * Messages of the conversation erased for good, from this device or another (PROF-STREAM-008): the transcript lets
+ * them go. Named here until the profile package that lists it is the one every client has.
+ */
+export const MESSAGES_ERASED = 'ayni.messages.erased'
+
+/**
+ * The transcript without the messages the agent erased (UI-CONV-027). The agent names a message by its id, the one
+ * history gives and the one under which another device's message arrives; a media message by its entry, which each
+ * of its attachments carries (`entryId`). A message this device sent is held under the agent's id once history named
+ * it (`mergeHistory`); until then it is held under the id this device gave it, which the event does not carry.
+ */
+export function withoutErased(transcript: Transcript, messageIds: readonly string[]): Transcript {
+  const erased = new Set(messageIds)
+  const named = (m: TranscriptMessage) => erased.has(m.id) || (!!m.entryId && erased.has(m.entryId))
+  const gone = transcript.messages.filter(named)
+  if (!gone.length) return transcript
+  // their reactions go with them
+  const keys = new Set(gone.flatMap((m) => (m.entryId ? [m.id, m.entryId] : [m.id])))
+  const reactions = Object.fromEntries(Object.entries(transcript.reactions).filter(([key]) => !keys.has(key)))
+  return { ...transcript, messages: transcript.messages.filter((m) => !named(m)), reactions }
+}
 
 /** The five closed states of a flow (flow profile §5.2). */
 export function isClosedFlow(state: unknown): boolean {
@@ -223,6 +246,16 @@ export function reduce(
           // reads the agent's list again (PROF-CONV-007)
           signals.push('conversations')
           break
+        case MESSAGES_ERASED: {
+          // messages of this conversation erased for good, here or on another device: they leave the transcript
+          // (UI-CONV-027, PROF-STREAM-008)
+          const conversationId = typeof value.conversationId === 'string' ? value.conversationId : undefined
+          const ids = Array.isArray(value.messageIds)
+            ? value.messageIds.filter((id): id is string => typeof id === 'string')
+            : []
+          if (!conversationId || !s.conversationId || conversationId === s.conversationId) t = withoutErased(t, ids)
+          break
+        }
         case CUSTOM_EVENT.sessionBound:
           s = {
             ...s,

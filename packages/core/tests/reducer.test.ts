@@ -407,3 +407,55 @@ describe('flow cards (UI-CONV-021, UI-CAP-005, PROF-MAP-007)', () => {
     expect(t.messages.map((m) => m.id)).toEqual(['e-flow', 'a2'])
   })
 })
+
+describe('erased messages (UI-CONV-027, PROF-STREAM-008)', () => {
+  const at = (s: number) => `2026-01-01T00:00:0${s}.000Z`
+  const held = () => ({
+    ...emptyTranscript('s1'),
+    messages: [
+      { id: 'msg_1', role: 'user' as const, content: 'My door code is 4412.', at: at(1) },
+      { id: 'msg_2', role: 'assistant' as const, content: 'Noted.', at: at(2) },
+      // a photo of the person: its attachment carries the entry the agent names it by
+      {
+        id: 'att_1',
+        role: 'activity' as const,
+        activityType: 'ayni.attachment',
+        content: { kind: 'image', entryId: 'msg_3' },
+        at: at(3),
+        entryId: 'msg_3',
+      },
+      { id: 'msg_4', role: 'user' as const, content: 'Thanks', at: at(4) },
+    ],
+    reactions: { msg_1: [{ emoji: '👍', by: 'Agent' }], msg_3: [{ emoji: '❤️', by: 'Agent' }] },
+  })
+  const erased = (value: unknown, s: SessionRecord = { ...session(), conversationId: 'c1' }) =>
+    reduce(held(), s, { type: 'CUSTOM', name: 'ayni.messages.erased', value }, false, true)
+
+  it('removes the named messages from the open transcript, with their reactions', () => {
+    const { transcript, session: s, signals } = erased({ conversationId: 'c1', messageIds: ['msg_1'] })
+    expect(transcript.messages.map((m) => m.id)).toEqual(['msg_2', 'att_1', 'msg_4'])
+    expect(transcript.reactions.msg_1).toBeUndefined()
+    expect(transcript.reactions.msg_3).toEqual([{ emoji: '❤️', by: 'Agent' }])
+    expect(s.conversationId).toBe('c1')
+    expect(signals).toEqual([])
+  })
+
+  it('removes a media message named by its entry', () => {
+    const { transcript } = erased({ conversationId: 'c1', messageIds: ['msg_3', 'msg_4'] })
+    expect(transcript.messages.map((m) => m.id)).toEqual(['msg_1', 'msg_2'])
+    expect(transcript.reactions.msg_3).toBeUndefined()
+  })
+
+  it('leaves the transcript as it is for ids it does not hold, and for another conversation', () => {
+    const unknown = erased({ conversationId: 'c1', messageIds: ['msg_9'] })
+    expect(unknown.transcript.messages).toHaveLength(4)
+    const other = erased({ conversationId: 'c2', messageIds: ['msg_1'] })
+    expect(other.transcript.messages).toHaveLength(4)
+    expect(erased({ conversationId: 'c1' }).transcript.messages).toHaveLength(4)
+  })
+
+  it('applies to a session that does not know its conversation yet', () => {
+    const { transcript } = erased({ conversationId: 'c1', messageIds: ['msg_2'] }, session())
+    expect(transcript.messages.map((m) => m.id)).toEqual(['msg_1', 'att_1', 'msg_4'])
+  })
+})

@@ -1158,6 +1158,22 @@ fieldset.quick {
   align-self: center;
   font-size: 13px;
 }
+/* the message form and what goes with it stay above the phone's home indicator */
+.composer-area {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* the context of the conversation, just below the message form (UI-CONV-026) */
+.composer.with-context {
+  padding-bottom: 4px;
+}
+.context-line {
+  padding: 0 12px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .icon-btn.round {
   width: 40px;
   height: 40px;

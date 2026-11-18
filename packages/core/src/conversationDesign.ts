@@ -168,6 +168,9 @@ export function reactionPillOf(
 /** The wording of a conversation the two renderers share, in English (the browser's `conversation.*` keys). */
 export const CONVERSATION_COPY = {
   thinking: 'Thinking…',
+  /** the context line under the message form (UI-CONV-026), with the numbers of `contextLineOf` */
+  context: 'Context {{used}} / {{max}}',
+  contextCached: 'Context {{used}} / {{max}} · {{cached}} cached',
 } as const
 
 /**

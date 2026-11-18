@@ -153,6 +153,8 @@
     "approvals": "Approbations",
     "requestElevation": "Demander un accès",
     "thinking": "Réflexion…",
+    "context": "Contexte {{used}} / {{max}}",
+    "contextCached": "Contexte {{used}} / {{max}} · {{cached}} en cache",
     "media": {
       "image": "Photo",
       "voice": "Note vocale",
