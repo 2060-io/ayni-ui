@@ -2,15 +2,20 @@ export * from './agents.js'
 export * from './appLinks.js'
 export * from './contextFigure.js'
 export * from './conversationDesign.js'
+export * from './deletion.js'
 export * from './directory.js'
 export * from './flag.js'
 export * from './homeDesign.js'
 export * from './mediaMessages.js'
+export * from './memories.js'
+export * from './people.js'
 export * from './profileClient.js'
 export * from './proofOfTrustDesign.js'
 export * from './queue.js'
 export * from './readState.js'
 export * from './reducer.js'
+export * from './spaces.js'
+export * from './spacesCopy.js'
 export * from './sse.js'
 export * from './store.js'
 export * from './sync.js'
@@ -18,7 +23,7 @@ export * from './trust.js'
 export * from './types.js'
 export * from './voiceNote.js'
 
-export const CLIENT = { name: 'ayni-ui', version: '3.1.0' } as const
+export const CLIENT = { name: 'ayni-ui', version: '3.3.0' } as const
 
 /**
  * The client description sent at session creation (PROF-SESS-014): a 3.1 agent gets `platform: web` and the
