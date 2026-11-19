@@ -159,6 +159,8 @@
     "thinking": "Thinking…",
     "context": "Context {{used}} / {{max}}",
     "contextCached": "Context {{used}} / {{max}} · {{cached}} cached",
+    "withheld": "Not shared with the AI",
+    "withheldInfo": "Only the service's code read this. It was not shared with the AI.",
     "media": {
       "image": "Photo",
       "voice": "Voice note",

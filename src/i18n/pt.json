@@ -159,6 +159,8 @@
     "thinking": "A pensar…",
     "context": "Contexto {{used}} / {{max}}",
     "contextCached": "Contexto {{used}} / {{max}} · {{cached}} em cache",
+    "withheld": "Não partilhado com a IA",
+    "withheldInfo": "Só o código do serviço leu isto. Não foi partilhado com a IA.",
     "media": {
       "image": "Fotografia",
       "voice": "Nota de voz",

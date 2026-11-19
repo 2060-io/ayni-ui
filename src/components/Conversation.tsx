@@ -8,6 +8,7 @@ import {
   deletableUntil,
   destinationKey,
   isAttachment,
+  isWithheld,
   lastAttachments,
   MEMORY_UPDATE,
   parseAppLink,
@@ -29,6 +30,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Lock,
   Menu as MenuIcon,
   Search,
   ShieldCheck,
@@ -633,6 +635,8 @@ function Message({
   }
   if (m.role === 'system') return <div className="msg system">{m.content}</div>
   const mine = m.role === 'user'
+  // the service's code took it: the AI never received it, and the bubble says so (UI-CONV-044, D95)
+  const withheld = isWithheld(m)
   const reply = () => hub.setReply(sessionId, replyQuoteOf(m))
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
@@ -648,7 +652,7 @@ function Message({
       {...longPress}
     >
       <div className={`bubble-wrap ${reactions.length ? 'reacted' : ''}`}>
-        <div className={`msg ${m.role}`}>
+        <div className={['msg', m.role, withheld ? 'withheld' : ''].filter(Boolean).join(' ')}>
           {m.replyTo ? (
             <a
               className="quote"
@@ -674,6 +678,7 @@ function Message({
             )}
           </span>
           <span className="meta">
+            {withheld ? <WithheldLabel /> : null}
             {m.interrupted ? <span className="interrupted">{t('conversation.interrupted')}</span> : null}
             {waiting ? <span className="waiting">{t('conversation.waiting')}</span> : null}
             {formatTime(m.at, i18n.language)}
@@ -697,5 +702,22 @@ function Message({
         />
       ) : null}
     </article>
+  )
+}
+
+/**
+ * The start of the meta line of a message the AI never received (UI-CONV-044): a lock, "Not shared with the AI", and
+ * the dot before the time. The words are text, so screen readers read them; the lock and the dot are hidden from them.
+ */
+export function WithheldLabel() {
+  const { t } = useTranslation()
+  return (
+    <>
+      <span className="withheld-label">
+        <Lock size={CONVERSATION_DESIGN.withheld.iconSize} aria-hidden="true" />
+        {t('conversation.withheld')}
+      </span>
+      <span aria-hidden="true">·</span>
+    </>
   )
 }

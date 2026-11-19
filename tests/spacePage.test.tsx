@@ -484,6 +484,13 @@ describe('a conversation shared with the space, read-only (UI-CONV-038)', () => 
                 content: 'Both front calipers.',
                 metadata: { createdAt: '2026-11-12T09:01:00Z' },
               },
+              // taken by the service's code: the AI never received it (UI-CONV-044)
+              {
+                id: 'm3',
+                role: 'user',
+                content: '482913',
+                metadata: { createdAt: '2026-11-12T09:02:00Z', modelVisible: false },
+              },
             ],
             nextBefore: null,
           }),
@@ -495,7 +502,13 @@ describe('a conversation shared with the space, read-only (UI-CONV-038)', () => 
       snapshot: { view: 'shared', sharedFor },
     })
     const el = await render(hub, <SharedConversationView />)
-    await until(() => el.querySelectorAll('.row').length === 2)
+    await until(() => el.querySelectorAll('.row').length === 3)
+    expect([...el.querySelectorAll('.msg')].map((m) => m.className)).toEqual([
+      'msg user',
+      'msg assistant',
+      'msg user withheld',
+    ])
+    expect(el.querySelector('.msg.withheld .meta')?.textContent).toMatch(/^Not shared with the AI·/)
     expect(el.querySelector('h1')?.textContent).toBe('Recall R-2291, first inspection')
     expect(el.querySelector('.conv-sub')?.textContent).toContain('Shared by Jonas Weber')
     expect(el.textContent).toContain('Read-only: you cannot write or react here.')
