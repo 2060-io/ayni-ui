@@ -102,6 +102,10 @@ export interface SessionRecord {
   archived?: boolean
   /** text to send as soon as the session binds (written on a closed conversation to wake it up) */
   pendingText?: string
+  /** the space of the conversation (profile 3.3, agent D82): from the agent's list and from `state.ayni.space` */
+  spaceId?: string
+  /** the person shares the conversation with its space (PROF-CONV-012) */
+  shared?: boolean
 }
 
 export interface ReplyQuote {
@@ -132,6 +136,10 @@ export type TranscriptMessage =
       queued?: boolean
       /** step labels the agent reported while producing this reply (UI-CONV-019) */
       steps?: string[]
+      /** the ids of the person's memories the turn that wrote this reply was given (PROF-HIST-011), from history */
+      usedMemories?: string[]
+      /** the names of the person's preferences the turn was given (PROF-HIST-011), from history */
+      usedPreferences?: string[]
     }
   | {
       id: string

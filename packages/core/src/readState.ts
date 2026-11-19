@@ -55,6 +55,10 @@ export interface ChangedConversation {
   state?: 'active' | 'archived' | 'final'
   unread?: number
   readUpTo?: string | null
+  /** its space, when it changed before its first message (profile 3.3, PROF-CONV-010) */
+  spaceId?: string
+  /** whether the person shares it with its space, when that changed (PROF-CONV-012) */
+  shared?: boolean
 }
 
 export function changedConversation(event: AgUiEvent): ChangedConversation | null {
@@ -67,5 +71,7 @@ export function changedConversation(event: AgUiEvent): ChangedConversation | nul
     state: value.state === 'active' || value.state === 'archived' || value.state === 'final' ? value.state : undefined,
     unread: typeof value.unread === 'number' ? value.unread : undefined,
     readUpTo: typeof value.readUpTo === 'string' || value.readUpTo === null ? value.readUpTo : undefined,
+    spaceId: typeof value.spaceId === 'string' ? value.spaceId : undefined,
+    shared: typeof value.shared === 'boolean' ? value.shared : undefined,
   }
 }

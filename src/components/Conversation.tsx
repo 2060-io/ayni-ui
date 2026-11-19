@@ -3,10 +3,15 @@ import { ACTIVITY, CLOSURE_REASONS } from '@ayni.org/ayni-agui-profile'
 import {
   CLOSURE_REASON_KEYS,
   CONVERSATION_DESIGN,
+  canDeleteMessage,
+  canWriteIn,
+  deletableUntil,
   destinationKey,
   isAttachment,
   lastAttachments,
+  MEMORY_UPDATE,
   parseAppLink,
+  placeMemoryLines,
   progressOf,
   quoteLabel,
   quoteOf,
@@ -39,7 +44,9 @@ import { ApprovalCard, CapabilityCard, ElevationForm, FlowCard, GeneratingCard, 
 import { Composer } from './Composer.js'
 import { type HighlightSpec, highlight } from './Highlight.js'
 import { type AppLinkSpec, Markdown } from './Markdown.js'
+import { MemoryLine } from './Memories.js'
 import { MessageTools, type Popover, ReactionPill, useLongPress } from './MessageActions.js'
+import { SpaceComposerChip, SpaceHeaderChip, spaceOfSession, spaceTitle } from './SpaceParts.js'
 import { useDismiss } from './useDismiss.js'
 
 /** Scrolled up beyond this distance from the latest message, the button that returns to it shows (shared with the app). */
@@ -61,7 +68,8 @@ export function Conversation() {
   const session = snap.sessions.find((s) => s.sessionId === snap.selectedSessionId)
   const agent = snap.agents.find((a) => a.did === session?.agentDid)
   const transcript = session ? snap.transcripts[session.sessionId] : undefined
-  const messages = transcript?.messages ?? []
+  // each "updated a memory" line after the reply of its turn (UI-CONV-035)
+  const messages = useMemo(() => placeMemoryLines(transcript?.messages ?? []), [transcript?.messages])
   // what waits for the agent to finish answering, the same on every device (UI-CONV-025)
   const waiting = useMemo(() => waitingViews(messages, waitingOf(session?.ayni)), [messages, session?.ayni])
   // the attachment of each media message that shows the message's reactions (UI-CONV-024)
@@ -199,6 +207,17 @@ export function Conversation() {
   const contextual = session.ayni?.contextualMenu.items ?? []
   const me = session.principal?.displayName
   const progress = progressOf(transcript)
+  // the conversation's space (UI-CONV-030): a space the person left takes no more messages (UI-CONV-043)
+  const spaces = snap.spaces[agent.did]?.spaces ?? []
+  const spaceRef = spaceOfSession(session, spaces)
+  const space = spaces.find((x) => x.id === spaceRef?.id)
+  const leftSpace = !!space && !canWriteIn(space)
+  // deleting a message of the person within the window (UI-CONV-036)
+  const deletion = {
+    windowSeconds: hub.deletionWindow(session.sessionId),
+    online: snap.online,
+    live: session.state === 'bound' && !!session.sessionToken,
+  }
   const step = (delta: number) => {
     if (!total) return
     hub.setSearch(session.sessionId, { current: (current + delta + total) % total })
@@ -222,6 +241,10 @@ export function Conversation() {
             ) : (
               <span className={`result ${agent.trust.result}`}>{t(`trust.${agent.trust.result}`)}</span>
             )}
+            <SpaceHeaderChip session={session} />
+            {session.shared && space && space.kind !== 'personal' ? (
+              <span className="shared-tag">{t('spaces.sharedTag', { space: spaceTitle(space, t) })}</span>
+            ) : null}
           </span>
         </div>
         {session.state !== 'provisional' ? (
@@ -404,6 +427,9 @@ export function Conversation() {
                 waiting={waiting.marked.has(m.id)}
                 canReact={!!agent.descriptor.features.reactions && session.state === 'bound'}
                 hl={query ? { query } : undefined}
+                agentDid={agent.did}
+                agentName={agent.name}
+                deletion={deletion}
               />
             ))}
             {/* what the person sent from another device and waits: shown here too, on their side (UI-CONV-025) */}
@@ -416,6 +442,8 @@ export function Conversation() {
                 me={me}
                 waiting
                 canReact={false}
+                agentDid={agent.did}
+                agentName={agent.name}
               />
             ))}
             {Object.entries(transcript?.routed ?? {})
@@ -455,8 +483,16 @@ export function Conversation() {
               </button>
             </div>
           ) : null}
-          {session.state === 'bound' || closed ? (
-            <Composer sessionId={session.sessionId} disabled={trustBlocked} />
+          {leftSpace ? (
+            // the person reads their conversations of a space they left, and writes no more (UI-CONV-043)
+            <div className="left-line" role="status">
+              {t('spaces.left', { space: spaceTitle(space, t) })}
+            </div>
+          ) : session.state === 'bound' || closed ? (
+            <>
+              <SpaceComposerChip session={session} agent={agent} />
+              <Composer sessionId={session.sessionId} disabled={trustBlocked} />
+            </>
           ) : null}
         </>
       )}
@@ -502,6 +538,9 @@ function Message({
   canReact,
   hl,
   waiting,
+  agentDid,
+  agentName,
+  deletion,
 }: {
   m: TranscriptMessage
   sessionId: string
@@ -511,6 +550,10 @@ function Message({
   hl?: HighlightSpec
   /** the message waits for the agent to finish answering (UI-CONV-025) */
   waiting?: boolean
+  agentDid: string
+  agentName: string
+  /** whether the person may delete their messages here (UI-CONV-036) */
+  deletion?: { windowSeconds: number | null; online: boolean; live: boolean }
 }) {
   const { t, i18n } = useTranslation()
   const appLinks = useAppLinkSpec()
@@ -530,8 +573,17 @@ function Message({
       document.removeEventListener('pointerdown', close)
     }
   }, [open])
+  // Delete, on a message of the person while the window lasts (UI-CONV-036): the menu drops it when the window ends
+  const deleteUntil =
+    deletion?.windowSeconds && !waiting && canDeleteMessage(m, { ...deletion, now: Date.now() })
+      ? deletableUntil(m, deletion.windowSeconds)
+      : undefined
+  const onDelete = () =>
+    void hub.deleteMessage(sessionId, m.id).catch((e) => hub.notify('error', String((e as Error).message)))
   if (m.role === 'activity') {
     switch (m.activityType) {
+      case MEMORY_UPDATE:
+        return <MemoryLine agentDid={agentDid} agentName={agentName} content={m.content} />
       case ACTIVITY.menu:
         return <MenuCard sessionId={sessionId} menu={m.content as never} />
       case ACTIVITY.attachment: {
@@ -561,6 +613,8 @@ function Message({
               open={open}
               setOpen={setOpen}
               onReply={() => hub.setReply(sessionId, quoteOf(m))}
+              deleteUntil={deleteUntil}
+              onDelete={onDelete}
             />
           </article>
         )
@@ -638,6 +692,8 @@ function Message({
           open={open}
           setOpen={setOpen}
           onReply={reply}
+          deleteUntil={deleteUntil}
+          onDelete={onDelete}
         />
       ) : null}
     </article>

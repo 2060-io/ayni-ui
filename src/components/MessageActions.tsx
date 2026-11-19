@@ -1,10 +1,11 @@
 /**
- * Per-message actions (UI-CONV-017/018): the hover toolbar (react, reply, more), the quick reaction
+ * Per-message actions (UI-CONV-017/018/036): the hover toolbar (react, reply, more), the quick reaction
  * bar, the full emoji picker, the context menu, and the touch sheet. One reaction per person per
- * message (UI-CONV-011): picking another replaces it, picking the current one removes it.
+ * message (UI-CONV-011): picking another replaces it, picking the current one removes it. The person's
+ * own message offers Delete, last, while its deletion window lasts; no other way to delete exists.
  */
 import { plainText, reactionPillOf, type TranscriptMessage } from '@ayni.org/ayni-ui-core'
-import { Copy, FileText, Info, MoreHorizontal, PenLine, Reply, SmilePlus, X } from 'lucide-react'
+import { Copy, FileText, Info, MoreHorizontal, PenLine, Reply, SmilePlus, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CATEGORIES, type EmojiEntry, nameOf, QUICK, searchEmoji } from '../emoji.js'
@@ -34,12 +35,45 @@ interface Props {
   setOpen: (p: Popover) => void
   /** the composer gets the message to quote */
   onReply: () => void
+  /** when the person's deletion window of this message closes (ms since the epoch); absent: no Delete */
+  deleteUntil?: number
+  /** deletes the message and the agent's reply to it, at once (UI-CONV-036) */
+  onDelete?: () => void
+}
+
+/** Whether a moment has passed: true from `until` on, re-rendering the caller then, also while a menu is open. */
+export function usePassed(until: number | undefined): boolean {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (until === undefined) return
+    const left = until - Date.now()
+    setNow(Date.now())
+    if (left <= 0) return
+    const timer = setTimeout(() => setNow(Date.now()), left + 20)
+    return () => clearTimeout(timer)
+  }, [until])
+  return until === undefined || now >= until
 }
 
 /** The toolbar at the edge of a message and the popovers it opens; `open` is owned by the message. */
-export function MessageTools({ sessionId, message, targetId, reactions, me, canReact, open, setOpen, onReply }: Props) {
+export function MessageTools({
+  sessionId,
+  message,
+  targetId,
+  reactions,
+  me,
+  canReact,
+  open,
+  setOpen,
+  onReply,
+  deleteUntil,
+  onDelete,
+}: Props) {
   const { t } = useTranslation()
   const hub = useHub()
+  // the item leaves the menu when the window passes, also while the menu is open (UI-CONV-036)
+  const windowPassed = usePassed(open === 'menu' ? deleteUntil : undefined)
+  const canDelete = deleteUntil !== undefined && !!onDelete && !windowPassed
   const mine = reactions.find((r) => r.by === me)?.emoji
   const react = async (emoji: string) => {
     setOpen(null)
@@ -105,6 +139,22 @@ export function MessageTools({ sessionId, message, targetId, reactions, me, canR
           <span className="separator" aria-hidden="true" />
           <button type="button" role="menuitem" onClick={info}>
             <Info size={16} aria-hidden="true" /> {t('conversation.info')}
+          </button>
+        </>
+      ) : null}
+      {canDelete ? (
+        <>
+          <span className="separator" aria-hidden="true" />
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={() => {
+              setOpen(null)
+              onDelete?.()
+            }}
+          >
+            <Trash2 size={16} aria-hidden="true" /> {t('conversation.delete')}
           </button>
         </>
       ) : null}

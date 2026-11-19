@@ -8,6 +8,8 @@ import {
   CONTROLLER_KIND_ICON,
   flagOf,
   HOME_DESIGN,
+  hasOtherSpace,
+  isPersonalConversation,
   type SessionRecord,
   TRUST_MARK,
 } from '@ayni.org/ayni-ui-core'
@@ -30,6 +32,7 @@ import { linkOf } from '../state/link.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 import { DevicesDialog } from './Devices.js'
+import { CreateSpaceDialog, SpaceRows, spaceTitle } from './SpaceParts.js'
 import { useDismiss } from './useDismiss.js'
 
 const D = HOME_DESIGN.column
@@ -81,6 +84,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
   const { t, i18n } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [devicesOpen, setDevicesOpen] = useState(false)
+  const [creatingSpace, setCreatingSpace] = useState(false)
   const [filter, setFilter] = useState('')
   const [matches, setMatches] = useState<Record<string, { snippet: string; count: number }> | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -113,7 +117,19 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
   const sessions = snap.sessions
     .filter((s) => s.agentDid === agent.did && (!matches || matches[s.sessionId] !== undefined))
     .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
-  const shown = sessions.filter((s) => !!s.archived === archivedView)
+  // with spaces, the card lists the conversations of Personal under the rows of the spaces (UI-CONV-028); a search
+  // and the archived view list every space's
+  const spaces = snap.spaces[agent.did]
+  const withSpaces = hasOtherSpace(spaces?.spaces ?? [])
+  const onlyPersonal = withSpaces && !archivedView && !matches
+  const shown = sessions.filter(
+    (s) => !!s.archived === archivedView && (!onlyPersonal || isPersonalConversation(s.spaceId, spaces?.spaces ?? []))
+  )
+  const spaceOf = (s: SessionRecord) => {
+    const space = spaces?.spaces.find((x) => x.id === s.spaceId)
+    return withSpaces && space && space.kind !== 'personal' ? space.title : undefined
+  }
+  const speaks33 = hub.speaks33(agent.did)
   // linked is the device pairing, not a session open at this moment (UI-AGENTS-007)
   const link = linkOf(agent, snap.sessions)
   const unread = snap.sessions.filter((s) => s.agentDid === agent.did).reduce((n, s) => n + s.unreadCount, 0)
@@ -213,6 +229,42 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
             >
               {archivedView ? t('column.showActive') : t('column.showArchived')}
             </button>
+            {spaces?.templates.length ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setCreatingSpace(true)
+                }}
+              >
+                {t('column.newSpace')}
+              </button>
+            ) : null}
+            {speaks33 && link.linked ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  hub.openKeeps(agent.did)
+                }}
+              >
+                {t('column.keeps', { agent: agent.name })}
+              </button>
+            ) : null}
+            {snap.admins[agent.did] ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  hub.openAdmin(agent.did)
+                }}
+              >
+                {t('column.roles')}
+              </button>
+            ) : null}
             <button
               type="button"
               role="menuitem"
@@ -274,9 +326,14 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
               onChange={(e) => setFilter(e.target.value)}
             />
           ) : null}
+          {!archivedView ? <SpaceRows agent={agent} query={searchOpen ? filter : ''} /> : null}
           {archivedView ? (
             <div className="section-label">
               <Archive size={D.sectionLabel.iconSize} aria-hidden="true" /> {t('column.archived')}
+            </div>
+          ) : onlyPersonal ? (
+            <div className="section-label">
+              <User size={D.sectionLabel.iconSize} aria-hidden="true" /> {t('spaces.personal')}
             </div>
           ) : null}
           {shown.length === 0 ? (
@@ -286,31 +343,45 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
             <ConversationRow
               key={s.sessionId}
               session={s}
-              selected={snap.selectedSessionId === s.sessionId}
+              selected={snap.selectedSessionId === s.sessionId && snap.view !== 'space'}
               match={matches?.[s.sessionId]}
               query={matches ? filter : undefined}
+              spaceLabel={spaceOf(s)}
             />
           ))}
         </div>
       ) : null}
       {devicesOpen ? <DevicesDialog agent={agent} onClose={() => setDevicesOpen(false)} /> : null}
+      {creatingSpace ? <CreateSpaceDialog agent={agent} onClose={() => setCreatingSpace(false)} /> : null}
     </section>
   )
 }
 
-function ConversationRow({
+/**
+ * A conversation's row and its menu (UI-SESS-004/012, UI-CONV-038, UI-CONV-033): Rename, Share with its space or Stop
+ * sharing, What the agent keeps about the person, Archive, Close for good. `spaceLabel` names a space other than
+ * Personal, where the row is listed outside it (a search, the archived view).
+ */
+export function ConversationRow({
   session: s,
   selected,
   match,
   query,
+  spaceLabel,
 }: {
   session: SessionRecord
   selected: boolean
   match?: { snippet: string; count: number }
   query?: string
+  spaceLabel?: string
 }) {
   const hub = useHub()
+  const snap = useSnapshot()
   const { t, i18n } = useTranslation()
+  const agent = snap.agents.find((a) => a.did === s.agentDid)
+  const space = snap.spaces[s.agentDid]?.spaces.find((x) => x.id === s.spaceId)
+  const ofSpace = !!space && space.kind !== 'personal'
+  const spaceName = space ? spaceTitle(space, t) : ''
   const [menu, setMenu] = useState(false)
   const rowRef = useRef<HTMLDivElement>(null)
   useDismiss(
@@ -341,12 +412,14 @@ function ConversationRow({
         <span className="title">{title}</span>
         <span className="time">{s.lastMessageAt ? formatTime(s.lastMessageAt, i18n.language) : ''}</span>
         <span className="preview">
+          {spaceLabel ? <span className="row-space">{spaceLabel} · </span> : null}
           {match?.snippet && match.snippet !== title
             ? match.snippet
             : s.state === 'provisional'
               ? t('column.notLinked')
               : s.lastPreview}
         </span>
+        {s.shared && ofSpace ? <span className="shared-tag">{t('spaces.sharedTag', { space: spaceName })}</span> : null}
         {match?.count ? (
           <span className="matches">{t('column.matches', { count: match.count })}</span>
         ) : s.unreadCount ? (
@@ -383,6 +456,23 @@ function ConversationRow({
           >
             {t('column.rename')}
           </button>
+          {s.conversationId && ofSpace && (s.shared || space.rules.handover) && space.state === 'active' ? (
+            <button type="button" role="menuitem" onClick={() => act(() => hub.setShared(s.sessionId, !s.shared))}>
+              {s.shared ? t('spaces.stopSharing') : t('spaces.share', { space: spaceName })}
+            </button>
+          ) : null}
+          {agent && hub.speaks33(agent.did) ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false)
+                hub.openKeeps(agent.did)
+              }}
+            >
+              {t('column.keeps', { agent: agent.name })}
+            </button>
+          ) : null}
           {s.conversationId ? (
             <button type="button" role="menuitem" onClick={() => act(() => hub.setArchived(s.sessionId, !s.archived))}>
               {s.archived ? t('column.unarchive') : t('column.archive')}

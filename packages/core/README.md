@@ -37,7 +37,28 @@ was away:
 | `catchUp(transcript, pages)` | The merge itself. The transcript keeps its own paging position; when more was missed than was read, it starts over from the pages, so it never shows a hole. |
 | `reachesTranscript(transcript, page)` | Whether a page of history holds a message the transcript already has. |
 
-A client calls `readCatchUp` every time a session's stream attaches.
+A client calls `readCatchUp` every time a session's stream attaches. Given a `purge` (with what the client still
+sends, to keep), the merge also lets go of every message of the period a page covers that the page no longer returns
+(UI-CONV-037): a message deleted or erased while the client was away leaves its cache too.
+
+## Profile 3.3: spaces, memories, people, deletion within a window
+
+The wire types of AG-UI profile 3.3 are written here (`SpaceInfo`, `SpaceTemplate`, `SpaceMember`, `MemoryInfo`,
+`PreferenceInfo`, `AboutMe`, `DirectoryPerson`, `OrganizationInfo`, `AdminRoleEntry`, `AdminChange`, `SpaceRef`) until
+the profile package of 3.3 is the one every client has, with tolerant readers for each answer (`spacesOf`,
+`spaceDetailOf`, `spaceActivityOf`, `sharedConversationsOf`, `memoriesOf`, `aboutMeOf`, `peopleOf`, `organizationsOf`,
+`adminRolesOf`, `adminChangesOf`). `ProfileClient` calls every endpoint of §3.6 to §3.9 and the deletion of §8, and a
+`ProfileError` carries the `field` a `422 out-of-bounds` names. The rules a screen follows:
+
+| Surface | Functions |
+| --- | --- |
+| The rows of the agent's card (UI-CONV-028) | `hasOtherSpace`, `spaceRowsOf` (three, then "N more", or the titles a search matches), `spacesWithLocal` and `spaceUnreadOf` (the unread and latest activity of the person's conversations here), `isPersonalConversation`, `membersLineOf` |
+| The chips of a conversation (UI-CONV-029, UI-CONV-030) | `showsSpaceChooser`, `chooserSpacesOf`, `showsHeaderChip`, `spaceRefOf` (`state.ayni.space`) |
+| The space's page (UI-CONV-031, UI-CONV-040, UI-CONV-041, UI-CONV-043) | `spaceSegmentsOf`, `lawfulBasisKeyOf`, `memberStateOf`, `ruleChoicesOf`, `canWriteIn`, `memberRefusalOf`, `looksLikeEmail` |
+| Memories (UI-CONV-032..035) | `memoryLineOf` (the reducer turns `ayni.memory.updated` into the `ayni.memory-update` line), `placeMemoryLines` (each line after its reply), `usageOf`, `usageSummaryOf`, `withUsageFrom` (what history says a reply used) |
+| Deleting a message (UI-CONV-036) | `deletionWindowOf`, `canDeleteMessage`, `deletableUntil`, `deletionIdOf`, `turnToDelete` (the message and the reply to it; the cards stay), `withRestored`, `deletionRefusalOf` |
+
+The English wording of these surfaces is `SPACES_COPY`, keyed by its path in the translation files.
 
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

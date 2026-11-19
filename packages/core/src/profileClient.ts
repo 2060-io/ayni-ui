@@ -11,7 +11,31 @@ import type {
   SessionStatus,
   UploadResponse,
 } from '@ayni.org/ayni-agui-profile'
+import { type AboutMe, aboutMeOf, type Memories, memoriesOf } from './memories.js'
+import {
+  type AdminChangesPage,
+  type AdminRoleEntry,
+  adminChangesOf,
+  adminRolesOf,
+  type DirectoryPerson,
+  type OrganizationInfo,
+  organizationsOf,
+  peopleOf,
+} from './people.js'
 import { type RunEnd, runEvents } from './queue.js'
+import {
+  type SharedConversation,
+  type SpaceActivityPage,
+  type SpaceDetail,
+  type SpaceInfo,
+  type SpacePatch,
+  type Spaces,
+  sharedConversationsOf,
+  spaceActivityOf,
+  spaceDetailOf,
+  spaceOf,
+  spacesOf,
+} from './spaces.js'
 import { readSse } from './sse.js'
 import { type VoiceMeasures, voiceMeasureFields } from './voiceNote.js'
 
@@ -21,7 +45,9 @@ export class ProfileError extends Error {
     public readonly code: string,
     public readonly reason?: string,
     public readonly binding?: BindingMaterial,
-    message?: string
+    message?: string,
+    /** the field a `400` or a `422 out-of-bounds` names (profile 3.3 §9) */
+    public readonly field?: string
   ) {
     super(message ?? `${status} ${code}`)
     this.name = 'ProfileError'
@@ -38,7 +64,7 @@ export interface RunInput {
 }
 
 async function parseError(response: Response): Promise<ProfileError> {
-  let body: { error?: string; reason?: string; message?: string; binding?: BindingMaterial } = {}
+  let body: { error?: string; reason?: string; message?: string; binding?: BindingMaterial; field?: string } = {}
   try {
     body = await response.json()
   } catch {
@@ -49,7 +75,8 @@ async function parseError(response: Response): Promise<ProfileError> {
     body.error ?? String(response.status),
     body.reason,
     body.binding,
-    body.message
+    body.message,
+    typeof body.field === 'string' ? body.field : undefined
   )
 }
 
@@ -82,7 +109,9 @@ export class ProfileClient {
     conversationId?: string,
     newConversation = false,
     /** a bound session or none (PROF-SESS-015): 409 when the device proof does not bind, nothing asked on the phone */
-    silent = false
+    silent = false,
+    /** the space a new conversation starts in (PROF-CONV-011); Personal without it */
+    spaceId?: string
   ): Promise<CreateSessionResponse> {
     const response = await this.fetchFn(this.url(), {
       method: 'POST',
@@ -94,6 +123,7 @@ export class ProfileClient {
         ...(deviceHandle && deviceProof && !siblingOfToken ? { deviceProof } : {}),
         ...(conversationId ? { conversationId } : resumeSessionId ? { resumeSessionId } : {}),
         ...(newConversation ? { newConversation: true } : {}),
+        ...(newConversation && spaceId ? { spaceId } : {}),
         ...(silent && !siblingOfToken ? { silent: true } : {}),
       }),
     })
@@ -101,15 +131,20 @@ export class ProfileClient {
     return response.json()
   }
 
-  /** The Principal's conversations with this agent (PROF-CONV-001). */
-  public async conversations(token: string): Promise<ConversationsResponse> {
-    const response = await this.fetchFn(this.url('/conversations'), { headers: this.headers(token) })
+  /** The Principal's conversations with this agent (PROF-CONV-001), of one space with `spaceId` (PROF-CONV-010). */
+  public async conversations(token: string, spaceId?: string): Promise<ConversationsResponse> {
+    const query = spaceId ? `?${new URLSearchParams({ spaceId })}` : ''
+    const response = await this.fetchFn(this.url(`/conversations${query}`), { headers: this.headers(token) })
     if (!response.ok) throw await parseError(response)
     return response.json()
   }
 
-  /** Rename, archive or unarchive (PROF-CONV-002/003). */
-  public async patchConversation(token: string, id: string, patch: ConversationPatch): Promise<void> {
+  /** Rename, archive, unarchive (PROF-CONV-002/003), or change its space before its first message (PROF-CONV-011). */
+  public async patchConversation(
+    token: string,
+    id: string,
+    patch: ConversationPatch & { spaceId?: string }
+  ): Promise<void> {
     const response = await this.fetchFn(this.url(`/conversations/${encodeURIComponent(id)}`), {
       method: 'PATCH',
       headers: this.headers(token, { 'content-type': 'application/json' }),
@@ -279,5 +314,179 @@ export class ProfileClient {
     })
     if (!response.ok) throw await parseError(response)
     return response.blob()
+  }
+
+  // ---- profile 3.3: deleting a message within the window (§8), spaces (§3.7), memories (§3.8), people (§3.9)
+
+  private async getJson(token: string, path: string): Promise<unknown> {
+    const response = await this.fetchFn(this.url(path), { headers: this.headers(token) })
+    if (!response.ok) throw await parseError(response)
+    return response.json()
+  }
+
+  private async send(token: string, method: string, path: string, body?: unknown): Promise<unknown> {
+    const response = await this.fetchFn(this.url(path), {
+      method,
+      headers: this.headers(token, body === undefined ? {} : { 'content-type': 'application/json' }),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    })
+    if (!response.ok) throw await parseError(response)
+    if (response.status === 204) return undefined
+    const text = await response.text()
+    return text ? JSON.parse(text) : undefined
+  }
+
+  /**
+   * Deletes a message the person wrote, with the agent's reply to it, within the window (PROF-HIST-010): named by
+   * the agent's id or by the client's own. `409 window-passed`, `409 legal-hold` and `404` reach the caller.
+   */
+  public async deleteMessage(sessionId: string, token: string, messageId: string): Promise<void> {
+    await this.send(token, 'DELETE', `/${encodeURIComponent(sessionId)}/messages/${encodeURIComponent(messageId)}`)
+  }
+
+  /** Shares a conversation with its own space (PROF-CONV-012). */
+  public async share(token: string, conversationId: string): Promise<{ shared: true; sharedAt: string }> {
+    return (await this.send(token, 'POST', `/conversations/${encodeURIComponent(conversationId)}/share`)) as never
+  }
+
+  /** Stops sharing it (PROF-CONV-012). */
+  public async unshare(token: string, conversationId: string): Promise<void> {
+    await this.send(token, 'DELETE', `/conversations/${encodeURIComponent(conversationId)}/share`)
+  }
+
+  /** Personal, the person's spaces and the templates they may create from (PROF-SPACE-001). */
+  public async spaces(token: string): Promise<Spaces> {
+    return spacesOf(await this.getJson(token, '/spaces'))
+  }
+
+  /** A new space of a template, owned by the person (PROF-SPACE-002). */
+  public async createSpace(
+    token: string,
+    input: { templateId: string; title: string; purpose: string; brief?: string }
+  ): Promise<SpaceInfo> {
+    const space = spaceOf(await this.send(token, 'POST', '/spaces', input))
+    if (!space) throw new ProfileError(502, 'bad-response')
+    return space
+  }
+
+  /** A space and, for an active member of a list space, its members (PROF-SPACE-003). */
+  public async space(token: string, spaceId: string): Promise<SpaceDetail> {
+    const detail = spaceDetailOf(await this.getJson(token, `/spaces/${encodeURIComponent(spaceId)}`))
+    if (!detail) throw new ProfileError(502, 'bad-response')
+    return detail
+  }
+
+  /** The owner changes a space within its template's bounds (PROF-SPACE-004). */
+  public async patchSpace(token: string, spaceId: string, patch: SpacePatch): Promise<SpaceInfo> {
+    const space = spaceOf(await this.send(token, 'PATCH', `/spaces/${encodeURIComponent(spaceId)}`, patch))
+    if (!space) throw new ProfileError(502, 'bad-response')
+    return space
+  }
+
+  /** Adds a person of the employee list, or invites one of another organization by email (PROF-SPACE-005). */
+  public async addMember(
+    token: string,
+    spaceId: string,
+    who: { directoryId: string } | { organizationKey: string; email: string }
+  ): Promise<void> {
+    await this.send(token, 'POST', `/spaces/${encodeURIComponent(spaceId)}/members`, who)
+  }
+
+  public async removeMember(token: string, spaceId: string, memberId: string): Promise<void> {
+    await this.send(token, 'DELETE', `/spaces/${encodeURIComponent(spaceId)}/members/${encodeURIComponent(memberId)}`)
+  }
+
+  /** Hands the space to a member of a list space, or to a person of the directory for a rule space (PROF-SPACE-006). */
+  public async transferOwnership(
+    token: string,
+    spaceId: string,
+    to: { memberId: string } | { directoryId: string }
+  ): Promise<void> {
+    await this.send(token, 'POST', `/spaces/${encodeURIComponent(spaceId)}/owner`, to)
+  }
+
+  /** The space's activity, newest first (PROF-SPACE-006). */
+  public async spaceActivity(token: string, spaceId: string, before?: string, limit = 50): Promise<SpaceActivityPage> {
+    const query = new URLSearchParams({ limit: String(limit), ...(before ? { before } : {}) })
+    return spaceActivityOf(await this.getJson(token, `/spaces/${encodeURIComponent(spaceId)}/activity?${query}`))
+  }
+
+  /** The conversations shared with a space (PROF-SPACE-007). */
+  public async sharedConversations(token: string, spaceId: string): Promise<SharedConversation[]> {
+    return sharedConversationsOf(await this.getJson(token, `/spaces/${encodeURIComponent(spaceId)}/shared`))
+  }
+
+  /** A shared conversation's history, read-only, in the shape of §8 (PROF-SPACE-007). */
+  public async sharedHistory(
+    token: string,
+    spaceId: string,
+    conversationId: string,
+    before?: string,
+    limit = 50
+  ): Promise<HistoryPage> {
+    const query = new URLSearchParams({ limit: String(limit), ...(before ? { before } : {}) })
+    return (await this.getJson(
+      token,
+      `/spaces/${encodeURIComponent(spaceId)}/shared/${encodeURIComponent(conversationId)}/messages?${query}`
+    )) as HistoryPage
+  }
+
+  /** An attachment of a shared conversation (PROF-SPACE-007). */
+  public async sharedAttachment(
+    token: string,
+    spaceId: string,
+    conversationId: string,
+    attachmentId: string
+  ): Promise<Blob> {
+    const response = await this.fetchFn(
+      this.url(
+        `/spaces/${encodeURIComponent(spaceId)}/shared/${encodeURIComponent(conversationId)}/attachments/${encodeURIComponent(attachmentId)}`
+      ),
+      { headers: this.headers(token) }
+    )
+    if (!response.ok) throw await parseError(response)
+    return response.blob()
+  }
+
+  /** The person's preferences, and their memories of every space or of one (PROF-MEM-001). */
+  public async memories(token: string, spaceId?: string): Promise<Memories> {
+    const query = spaceId ? `?${new URLSearchParams({ spaceId })}` : ''
+    return memoriesOf(await this.getJson(token, `/memories${query}`))
+  }
+
+  /** Deletes a memory of the person, for good (PROF-MEM-002). */
+  public async deleteMemory(token: string, memoryId: string): Promise<void> {
+    await this.send(token, 'DELETE', `/memories/${encodeURIComponent(memoryId)}`)
+  }
+
+  /** Deletes a preference of the person, by its name, percent-encoded (PROF-MEM-002). */
+  public async deletePreference(token: string, key: string): Promise<void> {
+    await this.send(token, 'DELETE', `/preferences/${encodeURIComponent(key)}`)
+  }
+
+  /** What the agent keeps about the person (PROF-MEM-003). */
+  public async aboutMe(token: string): Promise<AboutMe> {
+    return aboutMeOf(await this.getJson(token, '/about-me'))
+  }
+
+  /** The people of the employee list whose name contains `q`, for the member picker (PROF-DIR-001). */
+  public async directory(token: string, q: string): Promise<DirectoryPerson[]> {
+    return peopleOf(await this.getJson(token, `/directory?${new URLSearchParams({ q })}`))
+  }
+
+  /** The organizations of the trust graph whose name contains `q` (PROF-DIR-002). */
+  public async organizations(token: string, q: string): Promise<OrganizationInfo[]> {
+    return organizationsOf(await this.getJson(token, `/organizations?${new URLSearchParams({ q })}`))
+  }
+
+  /** Who holds which role and why, for the holders of the admin role (PROF-DIR-003); `403 not-admin` otherwise. */
+  public async adminRoles(token: string): Promise<AdminRoleEntry[]> {
+    return adminRolesOf(await this.getJson(token, '/admin/roles'))
+  }
+
+  /** The changes of the employee list, newest first (PROF-DIR-003). */
+  public async adminChanges(token: string, before?: string, limit = 50): Promise<AdminChangesPage> {
+    const query = new URLSearchParams({ limit: String(limit), ...(before ? { before } : {}) })
+    return adminChangesOf(await this.getJson(token, `/admin/changes?${query}`))
   }
 }

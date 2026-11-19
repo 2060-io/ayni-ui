@@ -2,19 +2,39 @@
 import type { AttachmentActivity } from '@ayni.org/ayni-agui-profile'
 import { noteLength, playedBars, WAVEFORM_LEVELS, waveformBars, waveformOf } from '@ayni.org/ayni-ui-core'
 import { Download, FileText, Pause, Play } from 'lucide-react'
-import { type KeyboardEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  createContext,
+  type KeyboardEvent,
+  type MouseEvent,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub } from '../state/useHub.js'
 
-function useObjectUrl(sessionId: string, attachmentId: string | undefined, enabled: boolean): string | undefined {
+/**
+ * Where attachments are read from: the session's own conversation by default; a conversation shared with a space
+ * reads them from the space (PROF-SPACE-007, UI-CONV-038).
+ */
+export const AttachmentLoader = createContext<((attachmentId: string) => Promise<Blob>) | null>(null)
+
+function useLoader(sessionId: string): (attachmentId: string) => Promise<Blob> {
   const hub = useHub()
+  const loader = useContext(AttachmentLoader)
+  return loader ?? ((attachmentId) => hub.attachmentBlob(sessionId, attachmentId))
+}
+
+function useObjectUrl(sessionId: string, attachmentId: string | undefined, enabled: boolean): string | undefined {
+  const load = useLoader(sessionId)
   const [url, setUrl] = useState<string>()
   useEffect(() => {
     if (!attachmentId || !enabled) return
     let revoked = false
     let created: string | undefined
-    hub
-      .attachmentBlob(sessionId, attachmentId)
+    load(attachmentId)
       .then((blob) => {
         if (revoked) return
         created = URL.createObjectURL(blob)
@@ -25,7 +45,7 @@ function useObjectUrl(sessionId: string, attachmentId: string | undefined, enabl
       revoked = true
       if (created) URL.revokeObjectURL(created)
     }
-  }, [sessionId, attachmentId, enabled, hub])
+  }, [sessionId, attachmentId, enabled])
   return url
 }
 
@@ -47,7 +67,7 @@ export function AttachmentView({
     attachment.type === 'image' ? full : attachment.type === 'voice' || attachment.type === 'video'
   )
   const [fileUrl, setFileUrl] = useState<string>()
-  const hub = useHub()
+  const load = useLoader(sessionId)
   if (attachment.type === 'image') {
     return (
       <figure className="attachment image">
@@ -119,7 +139,7 @@ export function AttachmentView({
           className="btn small"
           onClick={async () => {
             if (fileUrl) URL.revokeObjectURL(fileUrl)
-            const blob = await hub.attachmentBlob(sessionId, attachment.attachmentId)
+            const blob = await load(attachment.attachmentId)
             const url = URL.createObjectURL(blob)
             setFileUrl(url)
             const a = document.createElement('a')

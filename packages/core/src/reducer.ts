@@ -4,7 +4,9 @@
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import { withoutVoiceEchoes } from './mediaMessages.js'
+import { MEMORY_UPDATE, MEMORY_UPDATED, memoryLineOf } from './memories.js'
 import type { AgUiEvent } from './profileClient.js'
+import { spaceRefOf } from './spaces.js'
 import type { ReplyQuote, SessionRecord, Transcript, TranscriptMessage } from './types.js'
 
 export interface Reduction {
@@ -214,6 +216,8 @@ export function reduce(
     case 'STATE_SNAPSHOT': {
       const snapshot = event.snapshot as { ayni?: AyniState } | undefined
       if (snapshot?.ayni) s = { ...s, ayni: snapshot.ayni, principal: snapshot.ayni.principal ?? s.principal }
+      // the conversation's space, from the first snapshot on (PROF-STREAM-009)
+      s = withSpaceOf(s)
       break
     }
     case 'STATE_DELTA': {
@@ -221,7 +225,7 @@ export function reduce(
         { ayni: s.ayni ?? {} },
         (event.delta as { op: string; path: string; value?: unknown }[]) ?? []
       ) as { ayni?: AyniState }
-      if (patched.ayni) s = { ...s, ayni: patched.ayni }
+      if (patched.ayni) s = withSpaceOf({ ...s, ayni: patched.ayni })
       break
     }
     case 'MESSAGES_SNAPSHOT': {
@@ -255,6 +259,16 @@ export function reduce(
             Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []
           )
           if (!conversationId || !s.conversationId || conversationId === s.conversationId) t = withoutErased(t, ids)
+          break
+        }
+        case MEMORY_UPDATED: {
+          // the agent added, changed or removed a memory of the person in this turn: a line after its reply
+          // (UI-CONV-035, PROF-STREAM-010), under the entry id history gives the same line
+          const conversationId = typeof value.conversationId === 'string' ? value.conversationId : undefined
+          if (conversationId && s.conversationId && conversationId !== s.conversationId) break
+          const line = memoryLineOf(value, at)
+          if (line && !t.messages.some((m) => m.id === line.id || m.entryId === line.id))
+            t = { ...t, messages: [...t.messages, line] }
           break
         }
         case CUSTOM_EVENT.sessionBound:
@@ -314,6 +328,26 @@ export function reduce(
   return { transcript: t, session: s, signals }
 }
 
+/** The session with the space its state names (PROF-STREAM-009); unchanged when the state names none. */
+function withSpaceOf(s: SessionRecord): SessionRecord {
+  const space = spaceRefOf(s.ayni)
+  return space && space.id !== s.spaceId ? { ...s, spaceId: space.id } : s
+}
+
+/** The memories and preferences a reply used, as history gives them (PROF-HIST-011); nothing when it says nothing. */
+function usageFrom(meta: { usedMemories?: unknown; usedPreferences?: unknown }): {
+  usedMemories?: string[]
+  usedPreferences?: string[]
+} {
+  const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined)
+  const memories = ids(meta.usedMemories)
+  const preferences = ids(meta.usedPreferences)
+  return {
+    ...(memories ? { usedMemories: memories } : {}),
+    ...(preferences ? { usedPreferences: preferences } : {}),
+  }
+}
+
 /** History messages (MessagesSnapshot shape) to transcript messages (UI-CONV-012). */
 export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessage {
   const meta = (m.metadata ?? {}) as {
@@ -321,6 +355,8 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     completion?: string
     entryId?: string
     replyTo?: ReplyQuote
+    usedMemories?: unknown
+    usedPreferences?: unknown
   }
   const at = meta.createdAt ?? now()
   if (m.role === 'activity') {
@@ -341,6 +377,7 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     at,
     interrupted: meta.completion === 'interrupted',
     replyTo: meta.replyTo,
+    ...(role === 'assistant' ? usageFrom(meta) : {}),
   }
 }
 
@@ -357,11 +394,97 @@ export function reactionsOf(page: Record<string, unknown>[]): Record<string, { e
   return out
 }
 
-/** Merges a history page (newest last) into the transcript without duplicates (UI-CONV-012, UI-PRIV-003). */
+/**
+ * How a page of history was read, for the transcript to let go what history no longer returns (UI-CONV-037): a
+ * message deleted or erased while this device was away leaves its cache too.
+ */
+export interface HistoryRead {
+  /** the page was read with no `before`: it reaches the end of the conversation */
+  newest?: boolean
+  /** when the read was sent, by this device's clock: what arrived since is newer than the page and stays */
+  readAt?: string
+  /** a message the caller still drives (one whose sending is in flight): it stays */
+  keep?: (m: TranscriptMessage) => boolean
+}
+
+/**
+ * The kinds of message a deletion or an erasure takes (PROF-HIST-010, PROF-STREAM-008): the person's and the agent's
+ * texts, media and memory-update lines. Cards (a flow, an approval, a menu) and placeholders are never taken, and a
+ * message still on its way (streaming, waiting to be recorded) is not one history could return yet.
+ */
+function vanishable(m: TranscriptMessage): boolean {
+  if (m.role === 'activity') return m.activityType === ACTIVITY.attachment || m.activityType === MEMORY_UPDATE
+  return (m.role === 'user' || m.role === 'assistant') && !m.streaming && !m.queued
+}
+
+/**
+ * The transcript without the messages of the period a page covers that the page no longer returns (UI-CONV-037). The
+ * period runs from the page's oldest message (from the conversation's start when the page is its first) to its newest
+ * one, or on to the end of the conversation when the page is the newest. Times are the agent's: a message this device
+ * holds takes the agent's time once history names it (`mergeHistory`), and one that arrived after the read was sent
+ * (by this device's clock, as it was stamped) is newer than any page of that read.
+ */
+function withoutVanished(
+  messages: TranscriptMessage[],
+  page: Record<string, unknown>[],
+  nextBefore: string | null,
+  read: HistoryRead
+): TranscriptMessage[] {
+  const returned = new Set<string>()
+  const times: string[] = []
+  for (const m of page) {
+    returned.add(String(m.id))
+    const meta = (m.metadata ?? {}) as { entryId?: unknown; externalId?: unknown; createdAt?: unknown }
+    if (typeof meta.entryId === 'string') returned.add(meta.entryId)
+    if (typeof meta.externalId === 'string') returned.add(meta.externalId)
+    if (typeof meta.createdAt === 'string') times.push(meta.createdAt)
+  }
+  times.sort()
+  // from the conversation's start for its first page; else from the page's oldest message
+  const from = nextBefore === null ? '' : times[0]
+  // on to the end for the newest page; else to the page's newest message
+  const to = read.newest ? undefined : times[times.length - 1]
+  if (from === undefined || (!read.newest && to === undefined)) return messages
+  const inPage = (m: TranscriptMessage) => returned.has(m.id) || (!!m.entryId && returned.has(m.entryId))
+  const gone = (m: TranscriptMessage) =>
+    m.at >= from &&
+    (to === undefined || m.at <= to) &&
+    vanishable(m) &&
+    !inPage(m) &&
+    !read.keep?.(m) &&
+    // arrived after the read was sent: the page could not hold it
+    !(read.readAt && m.at >= read.readAt)
+  return messages.some(gone) ? messages.filter((m) => !gone(m)) : messages
+}
+
+/**
+ * The replies held here with what only history says of them: the memories and preferences their turn was given
+ * (PROF-HIST-011). A reply received live carries neither until history is read (UI-CONV-034).
+ */
+export function withUsageFrom(messages: TranscriptMessage[], page: Record<string, unknown>[]): TranscriptMessage[] {
+  const usage = new Map<string, ReturnType<typeof usageFrom>>()
+  for (const m of page) {
+    if (m.role !== 'assistant') continue
+    const used = usageFrom((m.metadata ?? {}) as Record<string, unknown>)
+    if (used.usedMemories || used.usedPreferences) usage.set(String(m.id), used)
+  }
+  if (!usage.size) return messages
+  return messages.map((m) => {
+    const used = m.role === 'assistant' ? usage.get(m.id) : undefined
+    return used ? { ...m, ...used } : m
+  })
+}
+
+/**
+ * Merges a history page (newest last) into the transcript without duplicates (UI-CONV-012, UI-PRIV-003). A message
+ * already held takes what only history gives of it: the memories and preferences its reply used (PROF-HIST-011).
+ * With `read`, what the page no longer returns of the period it covers leaves (UI-CONV-037).
+ */
 export function mergeHistory(
   transcript: Transcript,
   page: Record<string, unknown>[],
-  nextBefore: string | null
+  nextBefore: string | null,
+  read?: HistoryRead
 ): Transcript {
   const known = new Set(transcript.messages.map((m) => m.id))
   // a message this device sent is known under the id it gave the run; history names it under the
@@ -373,10 +496,27 @@ export function mergeHistory(
     if (external && known.has(external)) ownIdOf.set(external, String(m.id))
   }
   const renamedIds = new Set(ownIdOf.values())
-  const kept = transcript.messages.map((m) => (ownIdOf.has(m.id) ? { ...m, id: ownIdOf.get(m.id) as string } : m))
+  // a message held here takes the time the agent gives it, when the history is read to let go of what it no longer
+  // returns (UI-CONV-037): the period of a page is in the agent's times
+  const agentTimes = new Map<string, string>()
+  if (read)
+    for (const m of page) {
+      const createdAt = (m.metadata as { createdAt?: unknown } | undefined)?.createdAt
+      if (typeof createdAt === 'string') agentTimes.set(String(m.id), createdAt)
+    }
+  const kept = withUsageFrom(
+    transcript.messages.map((m) => {
+      const renamed = ownIdOf.has(m.id) ? { ...m, id: ownIdOf.get(m.id) as string } : m
+      const time = agentTimes.get(renamed.id)
+      // a flow card keeps its place at the flow's open time (UI-CONV-021)
+      return time && time !== renamed.at && vanishable(renamed) ? { ...renamed, at: time } : renamed
+    }),
+    page
+  )
   const older = page.map(toTranscriptMessage).filter((m) => !known.has(m.id) && !renamedIds.has(m.id))
   // a voice note shows once, whatever the agent's history and what this device kept say (UI-MEDIA-007)
-  const messages = withoutVoiceEchoes([...older, ...kept].sort((a, b) => a.at.localeCompare(b.at)))
+  let messages = withoutVoiceEchoes([...older, ...kept].sort((a, b) => a.at.localeCompare(b.at)))
+  if (read) messages = withoutVanished(messages, page, nextBefore, read)
   const reactions = { ...transcript.reactions, ...reactionsOf(page) }
   for (const [own, theirs] of ownIdOf) {
     if (reactions[own] && !reactions[theirs]) reactions[theirs] = reactions[own]
@@ -413,12 +553,19 @@ export function reachesTranscript(transcript: Transcript, page: Record<string, u
  * paging position when a page reached it. When none did, more was missed than was read: the transcript starts
  * over from the pages, so it never shows a hole between what it held and what it read.
  */
-export function catchUp(transcript: Transcript, pages: readonly HistoryPage[]): Transcript {
+export function catchUp(
+  transcript: Transcript,
+  pages: readonly HistoryPage[],
+  /** given, what the pages no longer return of the period they cover leaves the transcript (UI-CONV-037) */
+  read?: Omit<HistoryRead, 'newest'>
+): Transcript {
   if (!pages.length) return transcript
   const held = transcript.messages.length > 0
   const reached = !held || pages.some((p) => p.nextBefore === null || reachesTranscript(transcript, p.messages))
   let merged: Transcript = reached ? transcript : { ...transcript, messages: [], reactions: {} }
-  for (const page of pages) merged = mergeHistory(merged, page.messages, page.nextBefore)
+  // the first page is the newest: it reaches the end of the conversation
+  for (const [i, page] of pages.entries())
+    merged = mergeHistory(merged, page.messages, page.nextBefore, read ? { ...read, newest: i === 0 } : undefined)
   return held && reached
     ? { ...merged, oldestLoadedId: transcript.oldestLoadedId, complete: transcript.complete }
     : merged
@@ -431,8 +578,11 @@ export function catchUp(transcript: Transcript, pages: readonly HistoryPage[]): 
 export async function readCatchUp(
   transcript: Transcript,
   read: (before?: string) => Promise<HistoryPage>,
-  maxPages = 4
+  maxPages = 4,
+  /** given, what history no longer returns leaves the transcript (UI-CONV-037); `readAt` is set here */
+  purge?: Pick<HistoryRead, 'keep'>
 ): Promise<Transcript> {
+  const readAt = new Date().toISOString()
   const pages: HistoryPage[] = []
   let before: string | undefined
   for (let i = 0; i < maxPages; i++) {
@@ -446,5 +596,5 @@ export async function readCatchUp(
     if (done) break
     before = page.nextBefore ?? undefined
   }
-  return catchUp(transcript, pages)
+  return catchUp(transcript, pages, purge ? { ...purge, readAt } : undefined)
 }

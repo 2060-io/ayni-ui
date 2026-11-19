@@ -2419,3 +2419,669 @@ mark.hit.current {
   outline-offset: 6px;
   border-radius: 8px;
 }
+
+/* ---- spaces, memories, people and deletion within a window (UI-CONV-028..043) ---------------------------------- */
+
+/* a modal sheet */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(17, 24, 39, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.dialog {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(17, 24, 39, 0.3);
+  width: min(480px, 100%);
+  max-height: min(86vh, 760px);
+  overflow-y: auto;
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dialog.wide {
+  width: min(720px, 100%);
+}
+.dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dialog-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.dialog-sub {
+  font-size: 13px;
+  margin-top: 2px;
+}
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+@media (max-width: 760px) {
+  .dialog-backdrop {
+    place-items: end stretch;
+    padding: 0;
+  }
+  .dialog,
+  .dialog.wide {
+    width: 100%;
+    border-radius: 18px 18px 0 0;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* choices: the space chooser, the templates, the organizations of an invitation */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.choice {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  cursor: pointer;
+}
+.choice:hover,
+.choice:focus-within {
+  background: var(--surface);
+}
+.choice.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+.choice.dashed {
+  border-style: dashed;
+}
+.choice-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.choice-text b {
+  font-size: 14.5px;
+}
+.choice-mark,
+.ok-mark {
+  color: var(--accent);
+}
+.space-tile {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.space-tile.big {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+}
+.space-tile.accent {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+}
+
+/* the rows of the agent's card (UI-CONV-028) */
+.space-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.space-row,
+.shared-row,
+.keeps-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 7px 8px;
+  border-radius: 10px;
+}
+.space-row:hover,
+.shared-row:hover,
+.keeps-row:hover {
+  background: var(--surface);
+}
+.keeps-row.static:hover {
+  background: none;
+}
+.space-row.selected {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+}
+.space-row .count {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 9px;
+  font-size: 11px;
+  padding: 1px 6px;
+}
+.space-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.space-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.space-sub {
+  color: var(--muted);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.space-more {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+.space-more:hover {
+  background: var(--surface);
+}
+
+/* the space of a conversation: a grey chip, never the colour of unread or of a request (UI-CONV-030) */
+.space-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 12%, var(--bg));
+  border: 1px solid var(--border);
+}
+.space-chip:hover {
+  color: var(--text);
+}
+.space-chip.lg {
+  font-size: 13px;
+  padding: 3px 10px;
+  color: var(--text);
+}
+.space-chip-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 8px 16px 0;
+}
+.shared-tag {
+  font-size: 11.5px;
+  color: var(--muted);
+  grid-column: 1 / -1;
+}
+.row-space {
+  color: var(--text);
+}
+.left-line {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+}
+
+/* "<agent> updated a memory", after the reply of its turn (UI-CONV-035) */
+.memory-line {
+  align-self: center;
+  font-size: 12.5px;
+}
+.link {
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-align: left;
+}
+.link:hover {
+  text-decoration: underline;
+}
+
+/* a space's page (UI-CONV-031) */
+.space-page,
+.keeps-page,
+.admin-page,
+.shared-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.segments {
+  display: flex;
+  gap: 4px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.segments .seg {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.segments .seg.on {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  color: var(--accent);
+  font-weight: 600;
+}
+.space-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
+}
+.space-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.space-section .section-label {
+  margin: 0;
+  padding: 4px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 2px;
+  font-size: 13px;
+}
+.space-section .empty,
+.keeps-body .empty {
+  font-size: 13px;
+  padding: 6px 0;
+}
+.small {
+  font-size: 12.5px;
+}
+.wide-btn {
+  justify-content: center;
+  width: 100%;
+  min-height: 40px;
+}
+.space-conversations {
+  display: flex;
+  flex-direction: column;
+}
+.space-conversations .conv-row {
+  border-bottom: 0;
+  border-radius: 10px;
+}
+.space-purpose {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--border);
+  line-height: 1.4;
+}
+.purpose-by {
+  padding-left: 13px;
+}
+.space-brief {
+  margin: 0;
+  line-height: 1.4;
+}
+.rule-line {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 2px 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.rule-icon {
+  color: var(--accent);
+  flex: none;
+}
+.members-line {
+  margin: 0;
+}
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+.callout {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.callout-icon {
+  flex: none;
+  color: var(--muted);
+}
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* memories (UI-CONV-032..034) */
+.memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.memory-item {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.memory-item:hover {
+  background: var(--surface);
+}
+.memory-text {
+  line-height: 1.4;
+}
+.memory-by {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.memory-chevron {
+  margin-left: auto;
+}
+.memory-field {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.memory-key {
+  font-size: 12px;
+}
+.memory-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.btn.full {
+  width: 100%;
+  justify-content: center;
+}
+.btn.danger-soft {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg));
+  border-color: color-mix(in srgb, var(--danger) 20%, var(--bg));
+}
+.used-line {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.used-list {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.used-item {
+  align-items: flex-start;
+}
+.used-icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* what the agent keeps (UI-CONV-033) */
+.keeps-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.keeps-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+/* the owner's segments (UI-CONV-040, UI-CONV-041) and the admin view (UI-CONV-042) */
+.members-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.members-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.members-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.members-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.member-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.state-tag {
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.actions-cell {
+  text-align: right;
+}
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.activity-list li {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+}
+.activity-list .time {
+  color: var(--muted);
+  font-size: 12.5px;
+  min-width: 64px;
+}
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.step-n {
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.space-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .space-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.settings-form fieldset.field {
+  border: 0;
+  padding: 0;
+  margin: 0 0 10px;
+}
+.settings-form legend {
+  font-size: 14px;
+  padding: 0;
+  margin-bottom: 4px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 3px 0;
+}
+.transfer-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* a conversation shared with a space, read-only (UI-CONV-038) */
+.transcript.read-only .row {
+  cursor: default;
+}
+.load-older {
+  align-self: center;
+}
+
+/* from the trust card to what the agent keeps (UI-CONV-033) */
+.pot-keeps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-top: 12px;
+}
+.pot-keeps span {
+  flex: 1;
+}
+.pot-keeps:hover {
+  background: var(--surface);
+}
+
+.space-row.selected .space-name {
+  color: var(--accent);
+}
+
+/* Delete, last in the menu of the person's message, in red (UI-CONV-036); Remove agent, in red */
+.menu-popover button.danger,
+.msg-menu button[role="menuitem"].danger,
+.sheet button[role="menuitem"].danger,
+.msg-menu button[role="menuitem"].danger svg,
+.sheet button[role="menuitem"].danger svg {
+  color: var(--danger);
+}

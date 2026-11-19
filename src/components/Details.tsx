@@ -1,10 +1,12 @@
-/** The side sheet (UI-SHELL-014): message info (UI-CONV-019). */
+/** The side sheet (UI-SHELL-014): message info (UI-CONV-019), with the memories a reply used (UI-CONV-034). */
 import { quoteLabel } from '@ayni.org/ayni-ui-core'
 import { Copy, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { nameOf } from '../emoji.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { UsedMemories } from './Memories.js'
 import { plainText } from './MessageActions.js'
+import { spaceOfSession } from './SpaceParts.js'
 
 /** What the UI knows about one message: time, outcome, the steps behind a reply, reactions, ids. */
 export function MessageInfo() {
@@ -69,6 +71,14 @@ export function MessageInfo() {
           ) : null}
         </dl>
       </section>
+      {m.role === 'assistant' && agent && hub.speaks33(agent.did) ? (
+        <UsedMemories
+          sessionId={session.sessionId}
+          message={m}
+          agentDid={agent.did}
+          spaceId={spaceOfSession(session, snap.spaces[agent.did]?.spaces ?? [])?.id}
+        />
+      ) : null}
       {m.role === 'assistant' && m.steps?.length ? (
         <section className="info-card">
           <h3>{t('details.steps')}</h3>

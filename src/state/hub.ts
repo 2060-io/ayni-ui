@@ -16,6 +16,9 @@ import {
   addAgent as coreAddAgent,
   countOccurrences,
   type DeviceStore,
+  deletionIdOf,
+  deletionRefusalOf,
+  deletionWindowOf,
   emptyTranscript,
   excerpt,
   fileUnderController,
@@ -27,6 +30,7 @@ import {
   ProfileClient,
   ProfileError,
   parseAppLink,
+  personalSpaceOf,
   type ReplyQuote,
   type RuntimeConfig,
   readCatchUp,
@@ -34,14 +38,23 @@ import {
   reduce,
   refreshDescriptor,
   type SessionRecord,
+  type SharedConversation,
+  type SpaceInfo,
+  type SpacePatch,
+  type SpaceSegment,
+  type Spaces,
   type SyncBus,
   type SyncMessage,
   type Transcript,
+  type TranscriptMessage,
   taken,
   takesQueue,
+  turnToDelete,
   unreadFrom,
   type VoiceMeasures,
   withoutOrphans,
+  withRestored,
+  withUsageFrom,
 } from '@ayni.org/ayni-ui-core'
 import i18next from '../i18n/index.js'
 import { loadConfig } from './config.js'
@@ -58,6 +71,14 @@ export type View =
   | 'phone'
   /** `/app/connect?oob=`: the invitation as a QR for other wallets (CC-WEB-002) */
   | 'connect'
+  /** a space's page, where a conversation opens (UI-CONV-031) */
+  | 'space'
+  /** "What <agent> keeps about you" (UI-CONV-033) */
+  | 'keeps'
+  /** the admin view of roles (UI-CONV-042) */
+  | 'admin'
+  /** a conversation shared with a space, read-only (UI-CONV-038) */
+  | 'shared'
 
 export interface Snapshot {
   ready: boolean
@@ -103,6 +124,22 @@ export interface Snapshot {
   connectOob: string | null
   /** the settings section an app link asked for (`/app/settings/devices`) */
   settingsSection: 'devices' | null
+  /** per agent: Personal, the person's spaces and the templates they may create from (profile 3.3, PROF-SPACE-001) */
+  spaces: Record<string, Spaces | undefined>
+  /** the space whose page is open (view `space`, UI-CONV-031) */
+  spaceFor: { agentDid: string; spaceId: string; segment: SpaceSegment } | null
+  /** the agent whose page "What <agent> keeps about you" is open (view `keeps`, UI-CONV-033) */
+  keepsFor: string | null
+  /** the agent whose admin view of roles is open (view `admin`, UI-CONV-042) */
+  adminFor: string | null
+  /** per agent: whether its admin view answers this person (UI-CONV-042); unknown until asked */
+  admins: Record<string, boolean | undefined>
+  /** the conversation shared with a space that is open, read-only (view `shared`, UI-CONV-038) */
+  sharedFor: { agentDid: string; spaceId: string; conversation: SharedConversation } | null
+  /** the sheet of a memory or of a preference (UI-CONV-032) */
+  memoryFor: { agentDid: string; memoryId?: string; preferenceKey?: string; spaceId?: string } | null
+  /** moves when the person deletes a memory or a preference: what lists them reads them again */
+  memoriesVersion: number
 }
 
 type Listener = () => void
@@ -150,6 +187,14 @@ export class Hub {
       phoneFor: null,
       connectOob: null,
       settingsSection: null,
+      spaces: {},
+      spaceFor: null,
+      keepsFor: null,
+      adminFor: null,
+      admins: {},
+      sharedFor: null,
+      memoryFor: null,
+      memoriesVersion: 0,
     }
   }
 
@@ -629,13 +674,22 @@ export class Hub {
   }
 
   /** Opens a session for the agent, then streams it, loads what it continues and sends the text it carries. */
-  private async open(agentDid: string, resume?: ResumeTarget, fresh = false, quiet = false): Promise<SessionRecord> {
+  private async open(
+    agentDid: string,
+    resume?: ResumeTarget,
+    fresh = false,
+    quiet = false,
+    /** the space a new conversation starts in (PROF-CONV-011): Personal without it */
+    spaceId?: string
+  ): Promise<SessionRecord> {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent) throw new Error('agent not found')
     if (!this.canConnect(agent)) throw new Error('agent is not trusted')
     const shownId = this.snapshot.selectedSessionId
     const shown = this.snapshot.sessions.find((s) => s.sessionId === shownId)
-    const { session, reused } = await this.withOpening(agentDid, () => this.openNow(agentDid, resume, fresh, quiet))
+    const { session, reused } = await this.withOpening(agentDid, () =>
+      this.openNow(agentDid, resume, fresh, quiet, spaceId)
+    )
     // a quiet opening changes nothing the person sees: what was on screen stays on screen. When it is that very
     // conversation that got its session back, the screen follows it to the new session and nothing else moves
     const sameConversation =
@@ -667,7 +721,8 @@ export class Hub {
     agentDid: string,
     resume: ResumeTarget | undefined,
     fresh: boolean,
-    quiet = false
+    quiet = false,
+    spaceId?: string
   ): Promise<{ session: SessionRecord; reused: boolean }> {
     // its turn has come, perhaps after another tab's opening: the secret and the sessions are read as they are now
     await this.reload()
@@ -698,7 +753,9 @@ export class Hub {
         resume?.sessionId,
         undefined,
         resume?.conversationId,
-        fresh
+        fresh,
+        false,
+        fresh ? spaceId : undefined
       )
       session = {
         sessionId: created.sessionId,
@@ -734,7 +791,8 @@ export class Hub {
           resume?.conversationId,
           fresh,
           // a refresh the person did not ask for binds with the proof or not at all: the phone is asked nothing
-          quiet
+          quiet,
+          fresh ? spaceId : undefined
         )
         .catch(async (e) => {
           // refused silently: the pairing this browser held is over, and it reads as not linked from here on
@@ -800,6 +858,11 @@ export class Hub {
       session.archived = old.archived
       session.lastPreview = old.lastPreview
       session.lastMessageAt = old.lastMessageAt
+      session.spaceId = old.spaceId
+      session.shared = old.shared
+    } else if (fresh) {
+      // a new conversation is in the space it was started from, else in Personal (PROF-CONV-011)
+      session.spaceId = spaceId ?? personalSpaceOf(this.snapshot.spaces[agentDid]?.spaces ?? [])?.id
     }
     await this.store.putSession(session)
     await this.serial(async () => this.store.putTranscript(await this.inheritTranscript(session, old)))
@@ -933,6 +996,8 @@ export class Hub {
         ...s,
         title: c.title || s.title,
         archived: c.state === 'archived',
+        // its space and its share (PROF-CONV-010)
+        ...spaceFieldsOf(c, s),
         lastPreview: c.lastPreview ?? s.lastPreview,
         lastMessageAt: c.lastActivityAt > s.lastMessageAt ? c.lastActivityAt : s.lastMessageAt,
         // the count is the agent's, the same on every device (UI-SESS-017)
@@ -956,10 +1021,14 @@ export class Hub {
         ayni: null,
         conversationId: c.id,
         archived: c.state === 'archived',
+        ...spaceFieldsOf(c),
       })
     }
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
+    // with the list, the spaces its conversations belong to (UI-CONV-028), and whether the admin view answers
+    await this.loadSpacesWith(agentDid, client, token)
+    void this.probeAdmin(agentDid, client, token)
   }
 
   /** The bound session of the record's conversation on this device, if any (UI-SESS-014). */
@@ -1130,10 +1199,13 @@ export class Hub {
     await client.revokeDevice(handle, { token })
   }
 
-  /** A new or resumed conversation of the agent (UI-SESS-001/013), through the agent's opening lock. */
-  public async newConversation(agentDid: string, resume?: ResumeTarget): Promise<SessionRecord> {
+  /**
+   * A new or resumed conversation of the agent (UI-SESS-001/013), through the agent's opening lock. A new one takes
+   * the space it is started from (UI-CONV-029): `spaceId` from a space's page, Personal from the agent's card.
+   */
+  public async newConversation(agentDid: string, resume?: ResumeTarget, spaceId?: string): Promise<SessionRecord> {
     const fresh = !resume?.sessionId && !resume?.conversationId
-    return this.open(agentDid, resume, fresh)
+    return this.open(agentDid, resume, fresh, false, spaceId)
   }
 
   /** A resumed session takes over the closed conversation's local transcript and replaces its record. */
@@ -1231,6 +1303,9 @@ export class Hub {
     if (!record || change.state === 'final') return false
     if (change.title !== undefined && change.title !== record.title) return false
     if (change.state !== undefined && (change.state === 'archived') !== !!record.archived) return false
+    // moved to another space before its first message, or shared, or no longer shared (PROF-CONV-010)
+    if (change.spaceId !== undefined && change.spaceId !== record.spaceId) return false
+    if (change.shared !== undefined && change.shared !== !!record.shared) return false
     const unreadCount = unreadFrom(change.unread, record.unreadCount, this.isOnScreen(record.sessionId))
     if (unreadCount !== record.unreadCount) await this.saveSession({ ...record, unreadCount })
     return true
@@ -1534,10 +1609,16 @@ export class Hub {
       if (session?.state !== 'bound') return
       const { client, token } = this.clientOf(session)
       const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
-      const merged = await readCatchUp(transcript, async (before) => {
-        const page = await client.history(sessionId, token, before, 50)
-        return { messages: page.messages as Record<string, unknown>[], nextBefore: page.nextBefore }
-      })
+      const merged = await readCatchUp(
+        transcript,
+        async (before) => {
+          const page = await client.history(sessionId, token, before, 50)
+          return { messages: page.messages as Record<string, unknown>[], nextBefore: page.nextBefore }
+        },
+        4,
+        // what was deleted or erased while this browser was away leaves it too (UI-CONV-037)
+        this.purgeOf(session)
+      )
       if (merged === transcript) return
       await this.store.putTranscript(merged)
       this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: merged } })
@@ -1550,9 +1631,17 @@ export class Hub {
     const session = await this.store.getSession(sessionId)
     if (session?.state !== 'bound') return
     const { client, token } = this.clientOf(session)
+    const readAt = new Date().toISOString()
     const page = await client.history(sessionId, token, before, 50)
     const transcript = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
-    const merged = mergeHistory(transcript, page.messages as Record<string, unknown>[], page.nextBefore)
+    // what the page no longer returns of the period it covers was deleted or erased meanwhile (UI-CONV-037)
+    const purge = this.purgeOf(session)
+    const merged = mergeHistory(
+      transcript,
+      page.messages as Record<string, unknown>[],
+      page.nextBefore,
+      purge ? { ...purge, newest: !before, readAt } : undefined
+    )
     await this.store.putTranscript(merged)
     this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: merged } })
     this.bus?.post({ kind: 'transcript', sessionId })
@@ -1813,6 +1902,13 @@ export class Hub {
           closedReason: (e.reason as SessionRecord['closedReason']) ?? 'agent',
           sessionToken: null,
         })
+      } else if (e instanceof ProfileError && e.status === 409 && SPACE_LEFT.has(e.code)) {
+        // the person left the conversation's space: the agent recorded nothing, and the conversation is read-only
+        // from now on (PROF-RUN-014, UI-CONV-043)
+        await this.dropMessage(sessionId, `u_${runId}`)
+        await this.loadSpaces(session.agentDid).catch(() => undefined)
+        const space = this.snapshot.spaces[session.agentDid]?.spaces.find((x) => x.id === session.spaceId)
+        throw new Error(i18next.t('conversation.spaceLeft', { space: space?.title ?? '' }))
       } else if (!controller.signal.aborted) throw e
     } finally {
       const left = this.runs.get(sessionId)
@@ -1837,6 +1933,339 @@ export class Hub {
         this.bus?.post({ kind: 'transcript', sessionId })
       })
     }
+  }
+
+  // ---- deleting a message within the window (UI-CONV-036/037, PROF-HIST-010) ----------------------------------
+
+  /** The deletion window the agent of a session declares, in seconds; null when nobody may delete there. */
+  public deletionWindow(sessionId: string): number | null {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    return deletionWindowOf(this.snapshot.agents.find((a) => a.did === session?.agentDid)?.descriptor.features)
+  }
+
+  /**
+   * Deletes a message the person wrote, with the agent's reply to it (UI-CONV-036): both leave the transcript at
+   * once, with no confirmation, and the agent is asked to delete them (PROF-HIST-010); its `ayni.messages.erased`
+   * takes them from the person's other devices. When the agent refuses or cannot be reached they come back where
+   * they were, and the error says why.
+   */
+  public async deleteMessage(sessionId: string, messageId: string): Promise<void> {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    const agent = this.snapshot.agents.find((a) => a.did === session?.agentDid)
+    if (!session || !agent) throw new Error('session not found')
+    const { client, token } = this.clientOf(session)
+    let removed: TranscriptMessage[] = []
+    let before: TranscriptMessage[] = []
+    let target = messageId
+    await this.serial(async () => {
+      const t = await this.store.getTranscript(sessionId)
+      if (!t) return
+      removed = turnToDelete(t.messages, messageId)
+      if (!removed.length) return
+      target = deletionIdOf(removed[0])
+      before = t.messages
+      const gone = new Set(removed.map((m) => m.id))
+      const next = { ...t, messages: t.messages.filter((m) => !gone.has(m.id)) }
+      await this.store.putTranscript(next)
+      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+      this.bus?.post({ kind: 'transcript', sessionId })
+    })
+    if (!removed.length) return
+    if (this.snapshot.inspect && removed.some((m) => m.id === this.snapshot.inspect?.messageId))
+      this.set({ inspect: null })
+    try {
+      await client.deleteMessage(sessionId, token, target)
+    } catch (e) {
+      await this.serial(async () => {
+        const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+        const next = { ...t, messages: withRestored(t.messages, removed, before) }
+        await this.store.putTranscript(next)
+        this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+        this.bus?.post({ kind: 'transcript', sessionId })
+      })
+      const reason = deletionRefusalOf(e instanceof ProfileError ? e : undefined)
+      throw new Error(i18next.t(`conversation.deleteRefused.${reason}`, { agent: agent.name }))
+    }
+  }
+
+  /**
+   * How a history read lets go of what history no longer returns (UI-CONV-037): only against an agent that keeps
+   * history, and never a message this browser is still sending (its run in flight, or sent in the last minute).
+   */
+  private purgeOf(session: SessionRecord): { keep: (m: TranscriptMessage) => boolean } | undefined {
+    const agent = this.snapshot.agents.find((a) => a.did === session.agentDid)
+    if (!agent?.descriptor.features.history) return undefined
+    const sessionId = session.sessionId
+    return {
+      keep: (m) =>
+        m.role === 'user' &&
+        m.id.startsWith('u_') &&
+        (!!this.runs.get(sessionId)?.has(m.id.slice(2)) || Date.now() - Date.parse(m.at) < 60_000),
+    }
+  }
+
+  /**
+   * The memories and preferences a reply used (UI-CONV-034) are only in history (PROF-HIST-011): for a reply received
+   * live, history is read back, newest page first, until it holds the reply. True when it was found.
+   */
+  public async readUsage(sessionId: string, messageId: string, maxPages = 10): Promise<boolean> {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (session?.state !== 'bound' || !session.sessionToken) return false
+    const { client, token } = this.clientOf(session)
+    let before: string | undefined
+    for (let i = 0; i < maxPages; i++) {
+      const page = await client.history(sessionId, token, before, 50)
+      const messages = page.messages as Record<string, unknown>[]
+      if (messages.some((m) => String(m.id) === messageId)) {
+        await this.serial(async () => {
+          const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+          const next = { ...t, messages: withUsageFrom(t.messages, messages) }
+          await this.store.putTranscript(next)
+          this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+        })
+        return true
+      }
+      if (!page.nextBefore || !messages.length) return false
+      before = page.nextBefore
+    }
+    return false
+  }
+
+  // ---- spaces (UI-CONV-028..031, 038..041, 043; profile 3.3 §3.7) ------------------------------------------------
+
+  /** Whether the agent speaks profile 3.3: spaces, memories, people, deleting within a window. */
+  public speaks33(agentDid: string): boolean {
+    const version = this.snapshot.agents.find((a) => a.did === agentDid)?.descriptor.profileVersion ?? '3.0'
+    const [major, minor] = version.split('.').map(Number)
+    return major > 3 || (major === 3 && (minor ?? 0) >= 3)
+  }
+
+  private async loadSpacesWith(agentDid: string, client: ProfileClient, token: string): Promise<void> {
+    if (!this.speaks33(agentDid)) return
+    try {
+      const spaces = await client.spaces(token)
+      this.set({ spaces: { ...this.snapshot.spaces, [agentDid]: spaces } })
+    } catch (e) {
+      // an agent that serves no spaces: the person has Personal alone, as before spaces
+      if (e instanceof ProfileError && e.status === 404)
+        this.set({ spaces: { ...this.snapshot.spaces, [agentDid]: { spaces: [], templates: [] } } })
+    }
+  }
+
+  /** Reads the person's spaces with the agent again (PROF-SPACE-001). */
+  public async loadSpaces(agentDid: string): Promise<Spaces | undefined> {
+    await this.withAgent(agentDid, (client, token) => this.loadSpacesWith(agentDid, client, token))
+    return this.snapshot.spaces[agentDid]
+  }
+
+  /** Whether the agent answers this person its admin view (UI-CONV-042): asked once per page load. */
+  private async probeAdmin(agentDid: string, client: ProfileClient, token: string): Promise<void> {
+    if (!this.speaks33(agentDid) || this.snapshot.admins[agentDid] !== undefined) return
+    this.snapshot = { ...this.snapshot, admins: { ...this.snapshot.admins, [agentDid]: false } }
+    try {
+      await client.adminRoles(token)
+      this.set({ admins: { ...this.snapshot.admins, [agentDid]: true } })
+    } catch (e) {
+      // refused (403 not-admin, 404 from an agent with no admin view): no Roles; anything else is asked again later
+      const refused = e instanceof ProfileError && (e.status === 403 || e.status === 404)
+      this.set({ admins: { ...this.snapshot.admins, [agentDid]: refused ? false : undefined } })
+    }
+  }
+
+  /**
+   * A call of the agent on the person's behalf, with any bound session's token (profile 3.3 §3.7 to §3.9). With none
+   * bound, a paired browser gets one quietly first (UI-SESS-016): what the person has on screen stays there.
+   */
+  private async withAgent<T>(agentDid: string, fn: (client: ProfileClient, token: string) => Promise<T>): Promise<T> {
+    const boundOf = () =>
+      this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
+    if (!boundOf()) await this.refresh(agentDid).catch(() => undefined)
+    const bound = boundOf()
+    if (!bound) throw new Error('link your phone first')
+    const { client, token } = this.clientOf(bound)
+    return fn(client, token)
+  }
+
+  /** A space's page in the main pane (UI-CONV-031). */
+  public openSpace(agentDid: string, spaceId: string, segment: SpaceSegment = 'conversations'): void {
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    this.set({
+      view: 'space',
+      spaceFor: { agentDid, spaceId, segment },
+      selectedAgentDid: agentDid,
+      selectedControllerDid: agent?.controllerDid ?? this.snapshot.selectedControllerDid,
+      inspect: null,
+    })
+  }
+
+  public setSpaceSegment(segment: SpaceSegment): void {
+    if (this.snapshot.spaceFor) this.set({ spaceFor: { ...this.snapshot.spaceFor, segment } })
+  }
+
+  public spaceDetail(agentDid: string, spaceId: string) {
+    return this.withAgent(agentDid, (client, token) => client.space(token, spaceId))
+  }
+
+  public sharedConversations(agentDid: string, spaceId: string) {
+    return this.withAgent(agentDid, (client, token) => client.sharedConversations(token, spaceId))
+  }
+
+  /** A new space of a template, owned by the person (UI-CONV-039, PROF-SPACE-002); the list is read again. */
+  public async createSpace(
+    agentDid: string,
+    input: { templateId: string; title: string; purpose: string; brief?: string }
+  ): Promise<SpaceInfo> {
+    const space = await this.withAgent(agentDid, (client, token) => client.createSpace(token, input))
+    await this.loadSpaces(agentDid).catch(() => undefined)
+    return space
+  }
+
+  /** The owner changes a space within its template's bounds (UI-CONV-041, PROF-SPACE-004). */
+  public async patchSpace(agentDid: string, spaceId: string, patch: SpacePatch): Promise<SpaceInfo> {
+    const space = await this.withAgent(agentDid, (client, token) => client.patchSpace(token, spaceId, patch))
+    await this.loadSpaces(agentDid).catch(() => undefined)
+    return space
+  }
+
+  public async addMember(
+    agentDid: string,
+    spaceId: string,
+    who: { directoryId: string } | { organizationKey: string; email: string }
+  ): Promise<void> {
+    await this.withAgent(agentDid, (client, token) => client.addMember(token, spaceId, who))
+    await this.loadSpaces(agentDid).catch(() => undefined)
+  }
+
+  public async removeMember(agentDid: string, spaceId: string, memberId: string): Promise<void> {
+    await this.withAgent(agentDid, (client, token) => client.removeMember(token, spaceId, memberId))
+    await this.loadSpaces(agentDid).catch(() => undefined)
+  }
+
+  /** Hands the space to someone else (UI-CONV-041, PROF-SPACE-006): the person's owner segments leave with it. */
+  public async transferOwnership(
+    agentDid: string,
+    spaceId: string,
+    to: { memberId: string } | { directoryId: string }
+  ): Promise<void> {
+    await this.withAgent(agentDid, (client, token) => client.transferOwnership(token, spaceId, to))
+    await this.loadSpaces(agentDid).catch(() => undefined)
+    if (this.snapshot.spaceFor?.spaceId === spaceId) this.setSpaceSegment('about')
+  }
+
+  public spaceActivity(agentDid: string, spaceId: string, before?: string) {
+    return this.withAgent(agentDid, (client, token) => client.spaceActivity(token, spaceId, before))
+  }
+
+  /** The member picker (UI-CONV-040, PROF-DIR-001). */
+  public searchPeople(agentDid: string, q: string) {
+    return this.withAgent(agentDid, (client, token) => client.directory(token, q))
+  }
+
+  /** The organizations of the trust graph, for an invitation (UI-CONV-040, PROF-DIR-002). */
+  public searchOrganizations(agentDid: string, q: string) {
+    return this.withAgent(agentDid, (client, token) => client.organizations(token, q))
+  }
+
+  /**
+   * Moves the empty conversation to another space (UI-CONV-029, PROF-CONV-011): only before the person's first
+   * message; the agent says so with `409 has-messages`.
+   */
+  public async setConversationSpace(sessionId: string, spaceId: string): Promise<void> {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!session?.conversationId) throw new Error('conversation not known to the agent yet')
+    const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
+    try {
+      await client.patchConversation(token, session.conversationId, { spaceId })
+    } catch (e) {
+      if (e instanceof ProfileError && e.status === 409) throw new Error(i18next.t('spaces.hasMessages'))
+      throw e
+    }
+    const current = this.snapshot.sessions.find((s) => s.sessionId === sessionId) ?? session
+    await this.saveSession({ ...current, spaceId })
+  }
+
+  /** Shares the conversation with its own space, or stops sharing it (UI-CONV-038, PROF-CONV-012). */
+  public async setShared(sessionId: string, shared: boolean): Promise<void> {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!session?.conversationId) throw new Error('conversation not known to the agent yet')
+    const space = this.snapshot.spaces[session.agentDid]?.spaces.find((x) => x.id === session.spaceId)
+    const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
+    try {
+      if (shared) await client.share(token, session.conversationId)
+      else await client.unshare(token, session.conversationId)
+    } catch (e) {
+      if (e instanceof ProfileError && e.code === 'handover-not-allowed')
+        throw new Error(i18next.t('spaces.shareNotAllowed', { space: space?.title ?? '' }))
+      if (e instanceof ProfileError && e.code === 'final') throw new Error(i18next.t('spaces.shareFinal'))
+      throw e
+    }
+    const current = this.snapshot.sessions.find((s) => s.sessionId === sessionId) ?? session
+    await this.saveSession({ ...current, shared })
+    this.notify(
+      'info',
+      shared ? i18next.t('spaces.sharedNotice', { space: space?.title ?? '' }) : i18next.t('spaces.unsharedNotice')
+    )
+  }
+
+  /** A conversation shared with a space, read-only (UI-CONV-038). */
+  public openShared(agentDid: string, spaceId: string, conversation: SharedConversation): void {
+    this.set({ view: 'shared', sharedFor: { agentDid, spaceId, conversation }, inspect: null })
+  }
+
+  public sharedHistory(agentDid: string, spaceId: string, conversationId: string, before?: string) {
+    return this.withAgent(agentDid, (client, token) => client.sharedHistory(token, spaceId, conversationId, before, 50))
+  }
+
+  public sharedAttachment(agentDid: string, spaceId: string, conversationId: string, attachmentId: string) {
+    return this.withAgent(agentDid, (client, token) =>
+      client.sharedAttachment(token, spaceId, conversationId, attachmentId)
+    )
+  }
+
+  // ---- memories and what the agent keeps (UI-CONV-032..035; profile 3.3 §3.8) ---------------------------------
+
+  /** The person's preferences and their memories, of every space or of one (PROF-MEM-001). */
+  public memories(agentDid: string, spaceId?: string) {
+    return this.withAgent(agentDid, (client, token) => client.memories(token, spaceId))
+  }
+
+  /** Deletes a memory for good (UI-CONV-032, PROF-MEM-002): every list of memories reads again. */
+  public async deleteMemory(agentDid: string, memoryId: string): Promise<void> {
+    await this.withAgent(agentDid, (client, token) => client.deleteMemory(token, memoryId))
+    this.set({ memoriesVersion: this.snapshot.memoriesVersion + 1 })
+  }
+
+  public async deletePreference(agentDid: string, key: string): Promise<void> {
+    await this.withAgent(agentDid, (client, token) => client.deletePreference(token, key))
+    this.set({ memoriesVersion: this.snapshot.memoriesVersion + 1 })
+  }
+
+  public aboutMe(agentDid: string) {
+    return this.withAgent(agentDid, (client, token) => client.aboutMe(token))
+  }
+
+  /** "What <agent> keeps about you" (UI-CONV-033): from the agent's menu, the conversation's, the trust card. */
+  public openKeeps(agentDid: string): void {
+    this.set({ view: 'keeps', keepsFor: agentDid, trustFor: null, inspect: null })
+  }
+
+  /** The sheet of a memory or a preference (UI-CONV-032); null closes it. */
+  public openMemory(ref: Snapshot['memoryFor']): void {
+    this.set({ memoryFor: ref })
+  }
+
+  // ---- the admin view (UI-CONV-042; profile 3.3 §3.9) -----------------------------------------------------------
+
+  public openAdmin(agentDid: string): void {
+    this.set({ view: 'admin', adminFor: agentDid, inspect: null })
+  }
+
+  public adminRoles(agentDid: string) {
+    return this.withAgent(agentDid, (client, token) => client.adminRoles(token))
+  }
+
+  public adminChanges(agentDid: string, before?: string) {
+    return this.withAgent(agentDid, (client, token) => client.adminChanges(token, before))
   }
 
   // ---- attachments (UI-MEDIA-001/003/004) -------------------------------------------------------------------
@@ -1873,6 +2302,20 @@ export class Hub {
     this.set({ prefs })
     this.bus?.post({ kind: 'changed', what: 'preferences' })
   }
+}
+
+/**
+ * The answer of a run on a conversation of a space the person left (PROF-RUN-014): `space-left`, as the profile names
+ * it and as the agent branch answers it (checked against it on 2026-11-19).
+ */
+const SPACE_LEFT = new Set(['space-left'])
+
+/** The space and the share the agent's list gives a conversation (PROF-CONV-010); what it does not say is kept. */
+function spaceFieldsOf(listed: unknown, record?: SessionRecord): Pick<SessionRecord, 'spaceId' | 'shared'> {
+  const c = listed as { spaceId?: unknown; shared?: unknown }
+  const spaceId = typeof c.spaceId === 'string' ? c.spaceId : record?.spaceId
+  const shared = typeof c.shared === 'boolean' ? c.shared : record?.shared
+  return { ...(spaceId ? { spaceId } : {}), ...(shared !== undefined ? { shared } : {}) }
 }
 
 /** What a new session continues: a local session, the agent's conversation, and text to send once bound. */
