@@ -60,6 +60,30 @@ export const CONVERSATION_DESIGN = {
   /** the button that returns to the latest message */
   latestButton: { size: 36, right: 20, bottom: 12, awayBeyond: 320 },
   /**
+   * A message of the person that the AI never received (UI-CONV-044, APP-CONV-045, D95): the person's bubble, in its
+   * shape (`bubble`), with no fill, so the transcript's ground shows through, and an edge; in its meta line a lock,
+   * then "Not shared with the AI" and the time.
+   */
+  withheld: { borderWidth: 1.5, iconSize: 11, iconGap: 3 },
+  /**
+   * The line "<agent> updated a memory" (UI-CONV-035, APP-CONV-037): a centred chip, the whole of it the button that
+   * opens the memory's sheet, with a bookmark before the words and a chevron after them. No fill.
+   */
+  memoryChip: {
+    paddingY: 4,
+    paddingX: 10,
+    radius: 999,
+    borderWidth: 1,
+    fontSize: 12.5,
+    gap: 5,
+    iconSize: 13,
+    /**
+     * the share of the edge's colour mixed into a transparent ground: the border role hardly shows on the dark ground
+     * and faintly on white, the muted colour at this share reads on both
+     */
+    borderShare: 0.45,
+  },
+  /**
    * The agent is working (UI-CONV-016): a bubble on the agent's side with three bouncing dots, then the steps of
    * the run in progress or "Thinking…".
    */
@@ -99,6 +123,10 @@ export const CONVERSATION_COLORS = {
   latestButton: { background: 'bg', border: 'border', icon: 'text' },
   progress: { background: 'surface', text: 'muted' },
   dots: { color: 'accent' },
+  /** no background: the transcript's ground shows through; the meta line, its lock included, in the accent */
+  withheldBubble: { border: 'accent', text: 'text', meta: 'accent' },
+  /** no background; the edge is `border` at `memoryChip.borderShare` */
+  memoryChip: { border: 'muted', text: 'muted', icon: 'muted' },
 } as const satisfies Record<string, Record<string, ColorRole>>
 
 /** The side a message sits on, and the corner its bubble tightens. */
@@ -171,6 +199,13 @@ export const CONVERSATION_COPY = {
   /** the context line under the message form (UI-CONV-026), with the numbers of `contextLineOf` */
   context: 'Context {{used}} / {{max}}',
   contextCached: 'Context {{used}} / {{max}} · {{cached}} cached',
+  /**
+   * a message of the person the AI never received (UI-CONV-044): its meta line, before the time, and what screen
+   * readers read of it
+   */
+  withheld: 'Not shared with the AI',
+  /** the same message's Info */
+  withheldInfo: "Only the service's code read this. It was not shared with the AI.",
 } as const
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { emptyTranscript, mergeHistory, orderAgents, reduce } from '../src/index.js'
-import type { SessionRecord } from '../src/types.js'
+import { emptyTranscript, isWithheld, mergeHistory, orderAgents, reduce } from '../src/index.js'
+import type { SessionRecord, TranscriptMessage } from '../src/types.js'
 
 const session = (): SessionRecord => ({
   sessionId: 's1',
@@ -476,5 +476,83 @@ describe('erased messages (UI-CONV-027, PROF-STREAM-008)', () => {
   it('applies to a session that does not know its conversation yet', () => {
     const { transcript } = erased({ conversationId: 'c1', messageIds: ['msg_2'] }, session())
     expect(transcript.messages.map((m) => m.id)).toEqual(['msg_1', 'att_1', 'msg_4'])
+  })
+})
+
+describe('messages of the person the AI never received (UI-CONV-044, D95, PROF-STREAM-011, PROF-HIST-013)', () => {
+  const at = (s: number) => `2026-01-01T00:00:0${s}.000Z`
+  const held = () => ({
+    ...emptyTranscript('s1'),
+    messages: [
+      { id: 'msg_1', role: 'user' as const, content: 'Send me the badge', at: at(1) },
+      { id: 'msg_2', role: 'assistant' as const, content: 'What is your work email?', at: at(2) },
+      // typed on this browser: held under the id this browser gave it until history names it
+      { id: 'u_run-3', role: 'user' as const, content: 'ana.rios@northwind.example', at: at(3) },
+      // written by the service's code
+      { id: 'msg_4', role: 'assistant' as const, content: 'A code is on its way.', at: at(4) },
+    ],
+  })
+  const withheld = (value: unknown, s: SessionRecord = { ...session(), conversationId: 'c1' }) =>
+    reduce(held(), s, { type: 'CUSTOM', name: 'ayni.messages.withheld', value }, true, true).transcript
+  const marked = (t: { messages: TranscriptMessage[] }) => t.messages.filter(isWithheld).map((m) => m.id)
+
+  it('history: metadata.modelVisible false marks a message of the person; absent, the AI received it', () => {
+    const t = mergeHistory(
+      emptyTranscript('s1'),
+      [
+        { id: 'msg_1', role: 'user', content: 'Send me the badge', metadata: { createdAt: at(1) } },
+        { id: 'msg_3', role: 'user', content: '482913', metadata: { createdAt: at(3), modelVisible: false } },
+        { id: 'msg_4', role: 'assistant', content: 'Verified.', metadata: { createdAt: at(4), modelVisible: false } },
+      ],
+      null
+    )
+    expect(marked(t)).toEqual(['msg_3'])
+    expect(t.messages.find((m) => m.id === 'msg_1')).not.toHaveProperty('modelVisible')
+  })
+
+  it('history marks a message already held, the one this browser sent once it takes the agent id', () => {
+    const t = mergeHistory(
+      held(),
+      [
+        {
+          id: 'msg_3',
+          role: 'user',
+          content: 'ana.rios@northwind.example',
+          metadata: { createdAt: at(3), externalId: 'u_run-3', modelVisible: false },
+        },
+      ],
+      null
+    )
+    expect(marked(t)).toEqual(['msg_3'])
+  })
+
+  it('live: the event marks a bubble already drawn, by the id this browser gave it (clientIds)', () => {
+    const t = withheld({ conversationId: 'c1', messageIds: ['msg_3'], clientIds: ['u_run-3'] })
+    expect(marked(t)).toEqual(['u_run-3'])
+    expect(t.messages.map((m) => m.id)).toEqual(['msg_1', 'msg_2', 'u_run-3', 'msg_4'])
+  })
+
+  it("live: the event marks a message from another device, by the agent's id (messageIds)", () => {
+    expect(marked(withheld({ conversationId: 'c1', messageIds: ['msg_1'] }))).toEqual(['msg_1'])
+  })
+
+  it("the agent's messages stay as they are, and so does another conversation's transcript", () => {
+    expect(marked(withheld({ conversationId: 'c1', messageIds: ['msg_2', 'msg_4'] }))).toEqual([])
+    expect(marked(withheld({ conversationId: 'c2', messageIds: ['msg_1'] }))).toEqual([])
+    expect(marked(withheld({ conversationId: 'c1' }))).toEqual([])
+    // a session that does not know its conversation yet takes it
+    expect(marked(withheld({ conversationId: 'c1', messageIds: ['msg_1'] }, session()))).toEqual(['msg_1'])
+  })
+
+  it('a stream that replays the message after a reconnect keeps it marked', () => {
+    const t = withheld({ conversationId: 'c1', messageIds: ['msg_1'] })
+    const replayed = reduce(
+      t,
+      { ...session(), conversationId: 'c1' },
+      { type: 'TEXT_MESSAGE_START', messageId: 'msg_1', role: 'user' },
+      false,
+      true
+    ).transcript
+    expect(marked(replayed)).toEqual(['msg_1'])
   })
 })

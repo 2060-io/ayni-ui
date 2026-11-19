@@ -1,6 +1,6 @@
 {
   "name": "@ayni.org/ayni-ui-core",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Framework-independent core of the Ayni UI (UI-SHELL-004): agents and controllers, trust resolution, sessions and binding, the conversation reducer, spaces, memories and deletion within a window (profile 3.3), the local store and sync; shared by the browser UI and the Ayni app",
   "type": "module",
   "main": "./dist/index.js",
