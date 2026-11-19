@@ -291,5 +291,63 @@
       the agent added to PROF-STREAM-008 for this), so it leaves the transcript even before history is read back.
     - The rules are the core's (0.3.13, `contextFigure.ts`: `contextFigureOf`, `formatTokens`, `contextLineOf`;
       `withoutErased`), with the English wording in `CONVERSATION_COPY`, for the app to apply the same ones.
-37. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+37. **Spaces, memories, people, and deleting a message within a window** (2026-11-19, Fabrice's decisions of the
+    spaces review, agent D80 to D93; AG-UI profile 3.3; UI-CONV-017 amended, UI-CONV-028 to UI-CONV-043). Built against
+    ayni-spec #94 with the agent's answers mocked as the profile gives them; the agent of the same change was being
+    built at the same time.
+    - **Core 0.4.0.** The profile 3.3 types are local (`spaces.ts`, `memories.ts`, `people.ts`, `deletion.ts`) until
+      the profile package of 3.3 is published; the dependency stays at 3.1. `ProfileClient` calls every endpoint of
+      §3.6 to §3.9 and §8; `ProfileError` carries the `field` of a 422. The rules every screen follows are in the core
+      for the Ayni app, with the English wording in `SPACES_COPY` (a test compares it with `en.json`). `CLIENT.version`
+      is 3.3.0.
+    - **Which agents.** An agent of profile 3.3 or later is asked for its spaces with its list of conversations, and
+      once per page load whether its admin view answers this person (`GET /admin/roles`: Roles shows on a 200 only).
+      A 404 on `/spaces` reads as Personal alone. Reads open no conversation on screen: with nothing bound, a paired
+      browser gets a session quietly first.
+    - **The card (UI-CONV-028).** With a space other than Personal, the rows (three by latest activity, then "N more
+      spaces"), then a "Personal" label and the conversations of Personal; a conversation whose space this browser
+      does not know stays with Personal, so nothing is ever out of sight. A row's unread count is the sum of the
+      person's conversations of that space here (the agent's count before any is listed), so it moves with every
+      reply and reading, as the agent's total does. A search shows the matching spaces and the matching
+      conversations of every space, those outside Personal prefixed with their space; the archived view lists every
+      space's. **New space is in the agent's menu** (and at the end of the chooser): the card itself must stay as it
+      was for a person with Personal alone, who may still be a creator. Mine, for him to confirm.
+    - **The chips (UI-CONV-029, UI-CONV-030).** Personal is written "Personal" by the UI, whatever the agent calls it.
+      The retention reads in days, as the spec writes it ("kept 365 days"); a space with no limit (`null`) reads "kept
+      with no time limit". A press on a space in the chooser applies at once (the board's confirm button is not
+      built). New space from the chooser creates the space, moves the empty conversation into it, and opens its page.
+      The header chip is grey (the muted colour), never teal or amber.
+    - **The space's page (UI-CONV-031, UI-CONV-038 to UI-CONV-041, UI-CONV-043).** "Shared with the space" leaves out
+      the person's own shared conversations, which are under Yours, marked "Shared with <space>". The members'
+      states: the profile gives `active`, `invited`, `left` and the role `guest` for a person of another
+      organization, so an invitation not bound yet is "Invited" for a guest and "Not yet on <agent>" for a person
+      picked from the employee list. **The template's bounds are not in §3.7:** the UI reads them from the template
+      when the agent gives them (`rules` with `min`/`max`/`allowed`, the shape the agent branch writes) and offers
+      only those values; otherwise it offers the current values and the usual ones, and shows the agent's `422
+      out-of-bounds` naming the field. The spec should give the bounds (flagged). The languages offered are the
+      agent's, the UI's and the current one. The transfer goes to an active member of a list space, or to a person of
+      the employee list for a rule space; the owner's segments then leave and the page shows About.
+    - **Memories (UI-CONV-032 to UI-CONV-035).** One sheet for a memory or a preference, opened from the space's
+      page, the keeps page, a reply's Info and the transcript line; after a deletion every list reads again. A
+      reply's Info reads history back (up to ten pages of fifty) when the reply came live and does not say what it
+      used; when history says nothing either, nothing is claimed. The "updated a memory" line is placed after the
+      last message of the agent of its turn, never past the person's next message, live and from history alike.
+      "What <agent> keeps about you" opens from the agent's menu, the conversation's menu (its row) and the trust
+      card; its memories by space open in place.
+    - **Deleting (UI-CONV-017, UI-CONV-036).** Delete is offered on the person's text and media messages that the
+      agent recorded, younger than `features.erasure.windowSeconds` counted from the message's time, while online and
+      while the conversation's session is live; a boolean `erasure` (3.2) offers nothing. A timer takes the item out
+      of an open menu at the end of the window. The message and the reply leave at once: the agent's texts, media,
+      placeholders and memory lines up to the person's next message; cards stay. They come back in their places,
+      with the reason, on a refusal or when the agent cannot be reached. A media message is named by its entry.
+    - **Away (UI-CONV-037).** Against an agent that keeps history, a read of history lets go of every text, media or
+      memory line of the period the page covers (from its oldest message, from the start for the first page; to its
+      newest, or to the end for the newest page) that it no longer returns. A message held here takes the agent's
+      time when history names it, so the period is compared in the agent's times; what arrived after the read was
+      sent, what this browser is still sending (a run in flight, or sent in the last minute), messages still on
+      their way and cards stay.
+    - **Refusals.** `409 space-left` drops the message, reads the spaces again and replaces the form with the line;
+      `left-space`, the code the agent branch uses today, is read the same until the two agree. There was no
+      whole-conversation erasure in the web UI to remove.
+38. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

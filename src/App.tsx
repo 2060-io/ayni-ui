@@ -3,15 +3,20 @@ import { useTranslation } from 'react-i18next'
 import { preloadAboutArt } from './brand/aboutArt.js'
 import { About } from './components/About.js'
 import { AddPage } from './components/AddPage.js'
+import { AdminPage } from './components/AdminRoles.js'
 import { Column } from './components/Column.js'
 import { ConnectPage } from './components/ConnectPage.js'
 import { Conversation } from './components/Conversation.js'
 import { MessageInfo } from './components/Details.js'
 import { Directory } from './components/Directory.js'
+import { KeepsPage } from './components/Keeps.js'
+import { MemorySheet } from './components/Memories.js'
 import { PhonePage } from './components/PhonePage.js'
 import { ProofOfTrust } from './components/ProofOfTrust.js'
 import { Rail } from './components/Rail.js'
 import { Settings } from './components/Settings.js'
+import { SharedConversationView } from './components/SharedConversation.js'
+import { SpacePage } from './components/SpacePage.js'
 import { Splitter } from './components/Splitter.js'
 import type { Hub } from './state/hub.js'
 import { HubContext, useHub, useSnapshot } from './state/useHub.js'
@@ -70,6 +75,14 @@ function Shell() {
       <PhonePage />
     ) : snap.view === 'connect' ? (
       <ConnectPage />
+    ) : snap.view === 'space' ? (
+      <SpacePage />
+    ) : snap.view === 'keeps' ? (
+      <KeepsPage />
+    ) : snap.view === 'admin' ? (
+      <AdminPage />
+    ) : snap.view === 'shared' ? (
+      <SharedConversationView />
     ) : (
       <Conversation />
     )
@@ -86,6 +99,7 @@ function Shell() {
           <MessageInfo />
         </aside>
       ) : null}
+      {snap.memoryFor ? <MemorySheet /> : null}
       {snap.notice ? (
         <div className="toast" role="status">
           {snap.notice.text}

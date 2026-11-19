@@ -26,8 +26,10 @@ import {
   BadgeCheck,
   Building2,
   Check,
+  ChevronRight,
   Copy,
   ExternalLink,
+  Eye,
   FileText,
   Globe,
   Link2,
@@ -40,6 +42,7 @@ import {
 } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { linkOf } from '../state/link.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 
@@ -232,6 +235,15 @@ export function ProofOfTrust({
                 </Section>
               ) : null}
             </>
+          ) : null}
+
+          {/* what this agent keeps about the person, from its trust card (UI-CONV-033) */}
+          {hub.speaks33(agent.did) && linkOf(agent, snap.sessions).linked ? (
+            <button type="button" className="pot-keeps" onClick={() => hub.openKeeps(agent.did)}>
+              <Eye size={16} aria-hidden="true" />
+              <span>{t('column.keeps', { agent: agent.name })}</span>
+              <ChevronRight size={16} aria-hidden="true" />
+            </button>
           ) : null}
 
           {connect ? (
