@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.17.0](https://github.com/2060-io/ayni-ui/compare/v0.16.0...v0.17.0) (2026-11-19)
+
+
+### Features
+
+* **core:** profile 3.3 for spaces, memories, people and deleting within a window (core 0.4.0) ([46ed6e7](https://github.com/2060-io/ayni-ui/commit/46ed6e7d9f9964d452204bc33be614d399c1a02a))
+* **spaces:** spaces, personal memories, people and deleting a message within a window ([48f35f9](https://github.com/2060-io/ayni-ui/commit/48f35f95716cb5beac4440eb5ffec3215d439670))
+* **spaces:** spaces, personal memories, people and deleting a message within a window (profile 3.3, core 0.4.0) ([daecaab](https://github.com/2060-io/ayni-ui/commit/daecaab1a7a9f22084b24718265fc042e0597008))
+
+
+### Bug Fixes
+
+* **conversation:** read only space-left, the code the agent answers a run in a space the person left ([8776b2e](https://github.com/2060-io/ayni-ui/commit/8776b2e2d61bfacaeccaaf311b66e27e74be8f87))
+
 ## [0.16.0](https://github.com/2060-io/ayni-ui/compare/v0.15.0...v0.16.0) (2026-11-18)
 
 
