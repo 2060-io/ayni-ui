@@ -346,8 +346,12 @@
       time when history names it, so the period is compared in the agent's times; what arrived after the read was
       sent, what this browser is still sending (a run in flight, or sent in the last minute), messages still on
       their way and cards stay.
-    - **Refusals.** `409 space-left` drops the message, reads the spaces again and replaces the form with the line;
-      `left-space`, the code the agent branch uses today, is read the same until the two agree. There was no
-      whole-conversation erasure in the web UI to remove.
+    - **Refusals.** `409 space-left` drops the message, reads the spaces again and replaces the form with the line.
+      There was no whole-conversation erasure in the web UI to remove.
+    - **Checked against the agent branch (2026-11-19).** The core's client, parsers and reducer were run over HTTP
+      against the agent's `feat/spaces-memories-people` (stub model, a directory of fictional people): every
+      endpoint and event of §3.6 to §3.9 and §8 that the branch serves read as the core expects. The agent answers
+      `space-left`, so `left-space` is no longer read; it gives the template bounds as the spec now writes them
+      (`rules` with `default`, `min`/`max`, `allowed`, PROF-SPACE-001), so the bounds are no longer a gap.
 38. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

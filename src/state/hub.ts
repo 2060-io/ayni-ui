@@ -2304,8 +2304,11 @@ export class Hub {
   }
 }
 
-/** The answer of a run on a conversation of a space the person left (PROF-RUN-014). */
-const SPACE_LEFT = new Set(['space-left', 'left-space'])
+/**
+ * The answer of a run on a conversation of a space the person left (PROF-RUN-014): `space-left`, as the profile names
+ * it and as the agent branch answers it (checked against it on 2026-11-19).
+ */
+const SPACE_LEFT = new Set(['space-left'])
 
 /** The space and the share the agent's list gives a conversation (PROF-CONV-010); what it does not say is kept. */
 function spaceFieldsOf(listed: unknown, record?: SessionRecord): Pick<SessionRecord, 'spaceId' | 'shared'> {

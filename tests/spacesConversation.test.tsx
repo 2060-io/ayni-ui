@@ -212,7 +212,19 @@ describe('a space the person left (UI-CONV-043, PROF-RUN-014)', () => {
 
   it('a message the agent refuses with 409 space-left leaves the transcript, and the person is told', async () => {
     fakeAgent([
-      ['POST /s1/runs', () => json({ error: 'space-left' }, 409)],
+      // the body the agent branch answers (integration run of 2026-11-19)
+      [
+        'POST /s1/runs',
+        () =>
+          json(
+            {
+              error: 'space-left',
+              message:
+                'you are no longer a member of the space of this conversation: it stays readable, and takes no message',
+            },
+            409
+          ),
+      ],
       ['GET /spaces', () => json(leftSpaces)],
     ])
     const { hub, el } = await conversation({ spaceId: TRUCK.id, messages: [said('u1', 'user')] })
