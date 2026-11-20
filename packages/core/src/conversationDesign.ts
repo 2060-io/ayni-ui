@@ -1,3 +1,5 @@
+import { awaitsConfirmation } from './tools.js'
+
 /**
  * The design of a conversation, written once for the two renderers of the Ayni UI: the browser (CSS) and the Ayni
  * app (React Native styles). The numbers are CSS pixels, which React Native reads as density-independent points.
@@ -94,6 +96,44 @@ export const CONVERSATION_DESIGN = {
    * start `delayMs` and twice `delayMs` later.
    */
   dots: { size: 7, gap: 4, periodMs: 1200, delayMs: 150, lift: 4, restOpacity: 0.35, peakAt: 0.4, restFrom: 0.8 },
+  /**
+   * The exact action of a tool call (UI-CONV-045, UI-APPR-006, APP-CONV-046, APP-CONV-051), on the card of its
+   * confirmation and of its approval, which is the transcript's card: the source's title in small muted words, the
+   * action's title in bold, the account in a muted line, then every field, its label above its whole value, with its
+   * line breaks (a value of indented JSON in a monospaced face), a pinned field with a lock before its label.
+   */
+  toolCard: {
+    sourceFontSize: 12,
+    titleFontSize: 15,
+    titleWeight: 600,
+    accountFontSize: 13,
+    /** between the fields, and above the first */
+    fieldsGap: 10,
+    labelFontSize: 12,
+    valueFontSize: 14,
+    monoFontSize: 12.5,
+    lockIconSize: 12,
+    /** the outcome that replaces the buttons once decided */
+    outcomeFontSize: 14,
+    outcomeWeight: 600,
+    /** "Your answer was not sent. Try again.": the danger colour at this share over the card, the words in the text colour */
+    errorTint: 0.12,
+  },
+  /**
+   * The amber notice of a confirmation asked because the reply read content from outside the organization
+   * (UI-CONV-045): before the fields, a ground tinted with the warning colour (`tint` of it over the card), an edge and
+   * an icon in it, the words in the text colour.
+   */
+  untrustedNotice: {
+    paddingY: 8,
+    paddingX: 10,
+    radius: 8,
+    borderWidth: 1,
+    fontSize: 13,
+    iconSize: 15,
+    gap: 8,
+    tint: 0.12,
+  },
 } as const
 
 export type ConversationDesign = typeof CONVERSATION_DESIGN
@@ -127,6 +167,20 @@ export const CONVERSATION_COLORS = {
   withheldBubble: { border: 'accent', text: 'text', meta: 'accent' },
   /** no background; the edge is `border` at `memoryChip.borderShare` */
   memoryChip: { border: 'muted', text: 'muted', icon: 'muted' },
+  /** the exact action of a tool call, on the transcript's card (`surface`, `border`); `error`: a tint of it, the words in `text` */
+  toolCard: {
+    source: 'muted',
+    title: 'text',
+    account: 'muted',
+    label: 'muted',
+    value: 'text',
+    lock: 'muted',
+    outcome: 'text',
+    error: 'danger',
+    errorText: 'text',
+  },
+  /** the ground is `tint` at `untrustedNotice.tint` over the card's `surface` */
+  untrustedNotice: { tint: 'warning', border: 'warning', icon: 'warning', text: 'text' },
 } as const satisfies Record<string, Record<string, ColorRole>>
 
 /** The side a message sits on, and the corner its bubble tightens. */
@@ -211,19 +265,21 @@ export const CONVERSATION_COPY = {
 /**
  * What the transcript shows while the agent works (UI-CONV-016): the steps of the run in progress when it reports
  * some; else "thinking", from the start of a run until its reply begins to stream; nothing when no run is in
- * progress or the reply is already arriving. A run started from another device of the person counts the same.
+ * progress or the reply is already arriving. A run started from another device of the person counts the same. While
+ * the reply waits on a confirmation card, its last item, nothing shows under it (UI-CONV-045).
  */
 export function progressOf(
   transcript:
     | {
         run: { steps: readonly string[] } | null
-        messages: readonly { role: string; streaming?: boolean }[]
+        messages: readonly { role: string; streaming?: boolean; activityType?: string; content?: unknown }[]
       }
     | null
     | undefined
 ): { kind: 'steps'; steps: readonly string[] } | { kind: 'thinking' } | null {
   const run = transcript?.run
   if (!run) return null
+  if (awaitsConfirmation(transcript.messages)) return null
   if (run.steps.length) return { kind: 'steps', steps: run.steps }
   const replying = transcript.messages.some((m) => m.role !== 'activity' && m.streaming)
   return replying ? null : { kind: 'thinking' }

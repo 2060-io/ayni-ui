@@ -8,10 +8,11 @@
 import type { TranscriptMessage } from './types.js'
 
 /**
- * Why a run gets no turn: its message was recorded and waits, the agent refused it (too many wait), or its caller
- * gave up while an action waited for its turn. Carried by the run's `RunStarted` as `noTurn`.
+ * Why a run gets no turn: its message was recorded and waits, the agent refused it (too many wait), its caller gave up
+ * while an action waited for its turn, or it carried a decision on a confirmation, which never starts a turn
+ * (PROF-TOOL-008). Carried by the run's `RunStarted` as `noTurn`.
  */
-export type NoTurn = 'waiting' | 'refused' | 'withdrawn'
+export type NoTurn = 'waiting' | 'refused' | 'withdrawn' | 'decision'
 
 /** How a run ended, for the client that sent it. Empty for a run that had its turn. */
 export interface RunEnd {
@@ -20,6 +21,9 @@ export interface RunEnd {
   messageId?: string
   /** the code of the error that ended a run without a turn */
   code?: string
+  /** a decision run: the approval it decided, and its status once the agent took the first decision (PROF-TOOL-008) */
+  approvalId?: string
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED'
 }
 
 /** A message of the person that waits for the turn in progress of its conversation to end. */
@@ -35,10 +39,16 @@ export interface WaitingMessage {
   at: string
 }
 
+/** The statuses a decision run may answer (PROF-TOOL-008). */
+const DECIDED = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'EXPIRED'] as const
+
 /** What a `RunStarted` says of a run that gets no turn; undefined for any other event. */
 export function noTurnOf(event: { type?: unknown; noTurn?: unknown }): NoTurn | undefined {
   if (event.type !== 'RUN_STARTED') return undefined
-  return event.noTurn === 'waiting' || event.noTurn === 'refused' || event.noTurn === 'withdrawn'
+  return event.noTurn === 'waiting' ||
+    event.noTurn === 'refused' ||
+    event.noTurn === 'withdrawn' ||
+    event.noTurn === 'decision'
     ? event.noTurn
     : undefined
 }
@@ -62,10 +72,18 @@ export function runEvents<E extends { type?: unknown }>(
         return
       }
       if (!ended) return forward(event)
-      const { code, outcome } = event as { code?: unknown; outcome?: { messageId?: unknown } | null }
+      const { code, outcome } = event as {
+        code?: unknown
+        outcome?: { messageId?: unknown; type?: unknown; approvalId?: unknown; status?: unknown } | null
+      }
       if (event.type === 'RUN_ERROR' && typeof code === 'string') ended = { ...ended, code }
       if (event.type === 'RUN_FINISHED' && typeof outcome?.messageId === 'string')
         ended = { ...ended, messageId: outcome.messageId }
+      // the status the agent holds for the approval a decision named: the first decision counts (PROF-TOOL-008)
+      if (event.type === 'RUN_FINISHED' && outcome?.type === 'decision' && typeof outcome.approvalId === 'string') {
+        const status = DECIDED.find((s) => s === outcome.status)
+        ended = { ...ended, approvalId: outcome.approvalId, ...(status ? { status } : {}) }
+      }
     },
     end: () => ended ?? {},
   }

@@ -8,6 +8,7 @@ import {
   deletableUntil,
   destinationKey,
   isAttachment,
+  isConfirmation,
   isWithheld,
   lastAttachments,
   MEMORY_UPDATE,
@@ -49,6 +50,7 @@ import { type AppLinkSpec, Markdown } from './Markdown.js'
 import { MemoryLine } from './Memories.js'
 import { MessageTools, type Popover, ReactionPill, useLongPress } from './MessageActions.js'
 import { SpaceComposerChip, SpaceHeaderChip, spaceOfSession, spaceTitle } from './SpaceParts.js'
+import { ConfirmationCard } from './Tools.js'
 import { useDismiss } from './useDismiss.js'
 
 /** Scrolled up beyond this distance from the latest message, the button that returns to it shows (shared with the app). */
@@ -622,7 +624,12 @@ function Message({
         )
       }
       case ACTIVITY.approval:
-        return <ApprovalCard sessionId={sessionId} approval={m.content as never} />
+        // the person's confirmation of a tool call, at its place in the reply (UI-CONV-045)
+        return isConfirmation(m.content) ? (
+          <ConfirmationCard sessionId={sessionId} content={m.content} agentName={agentName} />
+        ) : (
+          <ApprovalCard sessionId={sessionId} approval={m.content as never} />
+        )
       case ACTIVITY.capability:
         return <CapabilityCard capability={m.content as never} />
       case ACTIVITY.flow:

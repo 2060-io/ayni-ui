@@ -1,19 +1,20 @@
 /**
  * AG-UI events (runs and the session stream) to the local transcript and session state
- * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015/027, UI-CAP-001, UI-APPR-002).
+ * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015/027, UI-CONV-045/046/047, UI-CAP-001, UI-APPR-002).
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import { withoutVoiceEchoes } from './mediaMessages.js'
 import { MEMORY_UPDATE, MEMORY_UPDATED, memoryLineOf } from './memories.js'
 import type { AgUiEvent } from './profileClient.js'
 import { spaceRefOf } from './spaces.js'
+import { messageSourcesOf, SPACE_TOOLS_CHANGED, withApprovalUpdate } from './tools.js'
 import type { ReplyQuote, SessionRecord, Transcript, TranscriptMessage } from './types.js'
 
 export interface Reduction {
   transcript: Transcript
   session: SessionRecord
   /** signals the shell reacts to (title, badge, sound) */
-  signals: ('message' | 'bound' | 'closed' | 'token' | 'approval' | 'identified' | 'conversations')[]
+  signals: ('message' | 'bound' | 'closed' | 'token' | 'approval' | 'identified' | 'conversations' | 'tools')[]
 }
 
 export function emptyTranscript(sessionId: string): Transcript {
@@ -240,12 +241,15 @@ export function reduce(
             !(m.role === 'activity' && m.activityType === ACTIVITY.generating && m.content.entryId === content.entryId)
         )
       }
+      // an approval's card replaced in place, a confirmation decided or its allowance ended, keeps its place in the
+      // reply (UI-CONV-045)
+      const held = activityType === ACTIVITY.approval ? messages.find((m) => m.id === id) : undefined
       messages = upsertMessage(messages, {
         id,
         role: 'activity',
         activityType,
         content,
-        at: flowAt,
+        at: held?.at ?? flowAt,
         entryId: content.entryId as string | undefined,
       })
       // a voice note shows once: not beside a text that only repeats its transcription (UI-MEDIA-007)
@@ -362,8 +366,18 @@ export function reduce(
           break
         }
         case CUSTOM_EVENT.approvalRequest:
-        case CUSTOM_EVENT.approvalUpdate:
           signals.push('approval')
+          break
+        case CUSTOM_EVENT.approvalUpdate:
+          // the card of the approval, or of a confirmation, takes its new status where it is, on every device: a
+          // decision, the scope of an allow, the end of an allowance (UI-APPR-002, UI-CONV-045, UI-CONV-046)
+          t = withApprovalUpdate(t, value)
+          signals.push('approval')
+          break
+        case SPACE_TOOLS_CHANGED:
+          // a change of a space's tools applied or was dropped: the shell tells the screens that wait for it
+          // (UI-CONV-050, PROF-TOOL-006); nothing of it enters the transcript
+          signals.push('tools')
           break
         case CUSTOM_EVENT.reaction: {
           // one reaction per person per message: an add replaces, a remove clears (PROF-RUN-010)
@@ -404,6 +418,11 @@ function usageFrom(meta: { usedMemories?: unknown; usedPreferences?: unknown }):
   }
 }
 
+/** The sources a reply used, as history gives them (PROF-TOOL-010): an empty list when it says none. */
+function sourcesFrom(meta: { sources?: unknown }): { sources: ReturnType<typeof messageSourcesOf> } {
+  return { sources: messageSourcesOf(meta.sources) }
+}
+
 /** History messages (MessagesSnapshot shape) to transcript messages (UI-CONV-012). */
 export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessage {
   const meta = (m.metadata ?? {}) as {
@@ -414,6 +433,7 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     usedMemories?: unknown
     usedPreferences?: unknown
     modelVisible?: unknown
+    sources?: unknown
   }
   const at = meta.createdAt ?? now()
   if (m.role === 'activity') {
@@ -434,7 +454,9 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     at,
     interrupted: meta.completion === 'interrupted',
     replyTo: meta.replyTo,
-    ...(role === 'assistant' ? usageFrom(meta) : {}),
+    // what the reply used: the person's memories and preferences (PROF-HIST-011), the sources of its tools
+    // (PROF-TOOL-010); a reply read from history that names no source used none
+    ...(role === 'assistant' ? { ...usageFrom(meta), ...sourcesFrom(meta) } : {}),
     // a message of the person the AI never received (PROF-HIST-013); absent, the AI received it
     ...(role === 'user' && meta.modelVisible === false ? { modelVisible: false as const } : {}),
   }
@@ -518,14 +540,15 @@ function withoutVanished(
 
 /**
  * The replies held here with what only history says of them: the memories and preferences their turn was given
- * (PROF-HIST-011). A reply received live carries neither until history is read (UI-CONV-034).
+ * (PROF-HIST-011), and the sources of the tool results it read (PROF-TOOL-010). A reply received live carries none
+ * of them until history is read (UI-CONV-034, UI-CONV-047).
  */
 export function withUsageFrom(messages: TranscriptMessage[], page: Record<string, unknown>[]): TranscriptMessage[] {
-  const usage = new Map<string, ReturnType<typeof usageFrom>>()
+  const usage = new Map<string, ReturnType<typeof usageFrom> & ReturnType<typeof sourcesFrom>>()
   for (const m of page) {
     if (m.role !== 'assistant') continue
-    const used = usageFrom((m.metadata ?? {}) as Record<string, unknown>)
-    if (used.usedMemories || used.usedPreferences) usage.set(String(m.id), used)
+    const meta = (m.metadata ?? {}) as Record<string, unknown>
+    usage.set(String(m.id), { ...usageFrom(meta), ...sourcesFrom(meta) })
   }
   if (!usage.size) return messages
   return messages.map((m) => {

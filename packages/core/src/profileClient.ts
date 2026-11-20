@@ -37,6 +37,15 @@ import {
   spacesOf,
 } from './spaces.js'
 import { readSse } from './sse.js'
+import {
+  type ConversationSource,
+  conversationSourcesOf,
+  type SpaceTool,
+  type SpaceToolAnswer,
+  spaceToolOf,
+  spaceToolsOf,
+  type ToolRule,
+} from './tools.js'
 import { type VoiceMeasures, voiceMeasureFields } from './voiceNote.js'
 
 export class ProfileError extends Error {
@@ -325,15 +334,37 @@ export class ProfileClient {
   }
 
   private async send(token: string, method: string, path: string, body?: unknown): Promise<unknown> {
+    return (await this.sendFor(token, method, path, body)).body
+  }
+
+  /** A request with its answer's status: a change of a space's tools applies (`200`) or waits (`202`, §3.10). */
+  private async sendFor(
+    token: string,
+    method: string,
+    path: string,
+    body?: unknown
+  ): Promise<{ status: number; body: unknown }> {
     const response = await this.fetchFn(this.url(path), {
       method,
       headers: this.headers(token, body === undefined ? {} : { 'content-type': 'application/json' }),
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     })
     if (!response.ok) throw await parseError(response)
-    if (response.status === 204) return undefined
+    if (response.status === 204) return { status: 204, body: undefined }
     const text = await response.text()
-    return text ? JSON.parse(text) : undefined
+    return { status: response.status, body: text ? JSON.parse(text) : undefined }
+  }
+
+  /** The tool of an answer of §3.10, `{ "tool" }`; a `502` for an answer that carries none. */
+  private static toolOf(body: unknown): SpaceTool {
+    const tool = spaceToolOf((body as { tool?: unknown } | undefined)?.tool)
+    if (!tool) throw new ProfileError(502, 'bad-response')
+    return tool
+  }
+
+  private async toolChange(token: string, method: string, path: string, body?: unknown): Promise<SpaceToolAnswer> {
+    const answer = await this.sendFor(token, method, path, body)
+    return { status: answer.status === 202 ? 202 : 200, tool: ProfileClient.toolOf(answer.body) }
   }
 
   /**
@@ -467,6 +498,77 @@ export class ProfileClient {
   /** What the agent keeps about the person (PROF-MEM-003). */
   public async aboutMe(token: string): Promise<AboutMe> {
     return aboutMeOf(await this.getJson(token, '/about-me'))
+  }
+
+  // ---- profile 3.4: the tools of a space (§3.10), the sources of a conversation and its allowances (§3.6)
+
+  private static toolsPath(spaceId: string, source?: string, rest = ''): string {
+    return `/spaces/${encodeURIComponent(spaceId)}/tools${source ? `/${encodeURIComponent(source)}` : ''}${rest}`
+  }
+
+  /** The tools of a space: every source of its template to its owner, the `ready` ones to a member (PROF-TOOL-001). */
+  public async spaceTools(token: string, spaceId: string): Promise<SpaceTool[]> {
+    return spaceToolsOf(await this.getJson(token, ProfileClient.toolsPath(spaceId)))
+  }
+
+  /** The owner adds a source the template offers, or switches an `off` one back on: `202`, waiting (PROF-TOOL-002). */
+  public async addSpaceTool(
+    token: string,
+    spaceId: string,
+    input: { source: string; bindings?: Record<string, string>; calls?: Record<string, ToolRule> }
+  ): Promise<SpaceToolAnswer> {
+    return this.toolChange(token, 'POST', ProfileClient.toolsPath(spaceId), input)
+  }
+
+  /** The owner changes bindings and rules: `200` when it only narrows, `202` when it grants (PROF-TOOL-003). */
+  public async patchSpaceTool(
+    token: string,
+    spaceId: string,
+    source: string,
+    patch: { bindings?: Record<string, string>; calls?: Record<string, ToolRule> }
+  ): Promise<SpaceToolAnswer> {
+    return this.toolChange(token, 'PATCH', ProfileClient.toolsPath(spaceId, source), patch)
+  }
+
+  /** The owner sets or replaces the space's account: `202`, waiting (PROF-TOOL-004). The token is sent and kept nowhere. */
+  public async setSpaceToolAccount(
+    token: string,
+    spaceId: string,
+    source: string,
+    secret: string
+  ): Promise<SpaceToolAnswer> {
+    return this.toolChange(token, 'PUT', ProfileClient.toolsPath(spaceId, source, '/account'), { token: secret })
+  }
+
+  /** The owner clears the space's account, at once (PROF-TOOL-004). */
+  public async clearSpaceToolAccount(token: string, spaceId: string, source: string): Promise<SpaceTool> {
+    return ProfileClient.toolOf(await this.send(token, 'DELETE', ProfileClient.toolsPath(spaceId, source, '/account')))
+  }
+
+  /** The owner removes a source from the space, at once: `available` or `off` again (PROF-TOOL-005). */
+  public async removeSpaceTool(token: string, spaceId: string, source: string): Promise<SpaceTool> {
+    return ProfileClient.toolOf(await this.send(token, 'DELETE', ProfileClient.toolsPath(spaceId, source)))
+  }
+
+  /** The owner withdraws the change that waits for the phone (PROF-TOOL-005). */
+  public async withdrawSpaceToolChange(token: string, spaceId: string, source: string): Promise<void> {
+    await this.send(token, 'DELETE', ProfileClient.toolsPath(spaceId, source, '/pending'))
+  }
+
+  /** The sources of the tool results a conversation holds, for its Principal (PROF-TOOL-011). */
+  public async conversationSources(token: string, conversationId: string): Promise<ConversationSource[]> {
+    return conversationSourcesOf(
+      await this.getJson(token, `/conversations/${encodeURIComponent(conversationId)}/sources`)
+    )
+  }
+
+  /** Ends the allowance a confirmation gave ("Allow for this conversation", PROF-TOOL-012). */
+  public async endAllowance(token: string, conversationId: string, approvalId: string): Promise<void> {
+    await this.send(
+      token,
+      'DELETE',
+      `/conversations/${encodeURIComponent(conversationId)}/allowances/${encodeURIComponent(approvalId)}`
+    )
   }
 
   /** The people of the employee list whose name contains `q`, for the member picker (PROF-DIR-001). */

@@ -117,6 +117,12 @@ export type SpaceActivityKind =
   | 'rules-changed'
   | 'shared'
   | 'unshared'
+  /** the changes of the space's tools (profile 3.4, PROF-TOOL-006) */
+  | 'tool-added'
+  | 'tool-changed'
+  | 'tool-removed'
+  | 'account-set'
+  | 'account-cleared'
 
 export const SPACE_ACTIVITY_KINDS: readonly SpaceActivityKind[] = [
   'created',
@@ -128,6 +134,11 @@ export const SPACE_ACTIVITY_KINDS: readonly SpaceActivityKind[] = [
   'rules-changed',
   'shared',
   'unshared',
+  'tool-added',
+  'tool-changed',
+  'tool-removed',
+  'account-set',
+  'account-cleared',
 ]
 
 /** One line of a space's activity, newest first (PROF-SPACE-006). */
@@ -135,6 +146,8 @@ export interface SpaceActivityItem {
   at: string
   kind: SpaceActivityKind
   member?: { name: string }
+  /** the source a change of the space's tools concerns (PROF-TOOL-006) */
+  tool?: { source: string; title: string }
   by?: { name: string }
 }
 
@@ -294,6 +307,9 @@ export function spaceActivityOf(body: unknown): SpaceActivityPage {
         at: a.at as string,
         kind: a.kind as SpaceActivityKind,
         ...(obj(a.member).name ? { member: { name: str(obj(a.member).name) } } : {}),
+        ...(typeof obj(a.tool).source === 'string'
+          ? { tool: { source: str(obj(a.tool).source), title: str(obj(a.tool).title, str(obj(a.tool).source)) } }
+          : {}),
         ...(obj(a.by).name ? { by: { name: str(obj(a.by).name) } } : {}),
       })
     )
@@ -442,12 +458,19 @@ export function lawfulBasisKeyOf(basis: string): 'contract' | 'consent' | 'legit
         : 'other'
 }
 
-/** The segments of a space's page (UI-CONV-031): the owner's three more, on the web. */
-export type SpaceSegment = 'conversations' | 'memories' | 'about' | 'members' | 'settings' | 'activity'
+/**
+ * The segments of a space's page (UI-CONV-031): the owner's three more on the web, and Tools among them against an
+ * agent that serves the tools of profile 3.4 (UI-CONV-050, PROF-DESC-009).
+ */
+export type SpaceSegment = 'conversations' | 'memories' | 'about' | 'members' | 'tools' | 'settings' | 'activity'
 
-export function spaceSegmentsOf(space: Pick<SpaceInfo, 'kind' | 'role'>): SpaceSegment[] {
+export function spaceSegmentsOf(
+  space: Pick<SpaceInfo, 'kind' | 'role'>,
+  agent: { tools?: boolean } = {}
+): SpaceSegment[] {
   const base: SpaceSegment[] = ['conversations', 'memories', 'about']
-  return space.role === 'owner' && space.kind !== 'personal' ? [...base, 'members', 'settings', 'activity'] : base
+  if (space.role !== 'owner' || space.kind === 'personal') return base
+  return [...base, 'members', ...(agent.tools ? (['tools'] as const) : []), 'settings', 'activity']
 }
 
 /**

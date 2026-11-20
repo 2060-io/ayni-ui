@@ -8,6 +8,8 @@ export type SyncMessage =
   | { kind: 'action'; sessionId: string; action: unknown; actionId: string }
   | { kind: 'action-ack'; actionId: string; ok: boolean; error?: string }
   | { kind: 'leader'; sessionId: string; tabId: string }
+  /** a change of a space's tools applied or was dropped (`ayni.space.tools.changed`), seen by the tab that streams */
+  | { kind: 'tools-changed'; agentDid: string; change: unknown }
 
 export interface SyncBus {
   tabId: string

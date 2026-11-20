@@ -6,6 +6,7 @@ import type {
   PrincipalDisplay,
   SessionState,
 } from '@ayni.org/ayni-agui-profile'
+import type { MessageSource } from './tools.js'
 
 export type TrustStatus = 'trusted' | 'untrusted' | 'unverified'
 
@@ -146,6 +147,11 @@ export type TranscriptMessage =
        * (PROF-STREAM-011), from history from `metadata.modelVisible` (PROF-HIST-013). Absent: the AI received it.
        */
       modelVisible?: false
+      /**
+       * the sources of the tool results the turn that wrote this reply read, with whose account (PROF-TOOL-010), from
+       * history: an empty list for a reply that used none; absent for a reply received live and not read back yet
+       */
+      sources?: MessageSource[]
     }
   | {
       id: string

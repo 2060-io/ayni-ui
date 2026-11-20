@@ -6,6 +6,7 @@
 import {
   type AgentRecord,
   CONTROLLER_KIND_ICON,
+  type ConversationSource,
   flagOf,
   HOME_DESIGN,
   hasOtherSpace,
@@ -33,6 +34,7 @@ import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 import { DevicesDialog } from './Devices.js'
 import { CreateSpaceDialog, SpaceRows, spaceTitle } from './SpaceParts.js'
+import { ShareSourcesDialog } from './Tools.js'
 import { useDismiss } from './useDismiss.js'
 
 const D = HOME_DESIGN.column
@@ -383,6 +385,8 @@ export function ConversationRow({
   const ofSpace = !!space && space.kind !== 'personal'
   const spaceName = space ? spaceTitle(space, t) : ''
   const [menu, setMenu] = useState(false)
+  // the sources of the conversation's tool results, shown before it is shared (UI-CONV-048)
+  const [shareSources, setShareSources] = useState<ConversationSource[] | null>(null)
   const rowRef = useRef<HTMLDivElement>(null)
   useDismiss(
     menu,
@@ -457,7 +461,18 @@ export function ConversationRow({
             {t('column.rename')}
           </button>
           {s.conversationId && ofSpace && (s.shared || space.rules.handover) && space.state === 'active' ? (
-            <button type="button" role="menuitem" onClick={() => act(() => hub.setShared(s.sessionId, !s.shared))}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() =>
+                act(async () => {
+                  if (s.shared) return hub.setShared(s.sessionId, false)
+                  // against an agent that serves tools, where the results came from is shown first (UI-CONV-048)
+                  const answer = await hub.requestShare(s.sessionId)
+                  if (answer !== 'shared') setShareSources(answer)
+                })
+              }
+            >
               {s.shared ? t('spaces.stopSharing') : t('spaces.share', { space: spaceName })}
             </button>
           ) : null}
@@ -494,6 +509,18 @@ export function ConversationRow({
             </button>
           ) : null}
         </div>
+      ) : null}
+      {shareSources ? (
+        <ShareSourcesDialog
+          space={spaceName}
+          agentName={agent?.name ?? ''}
+          sources={shareSources}
+          onCancel={() => setShareSources(null)}
+          onShare={() => {
+            setShareSources(null)
+            act(() => hub.setShared(s.sessionId, true))
+          }}
+        />
       ) : null}
     </div>
   )

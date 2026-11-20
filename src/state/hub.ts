@@ -11,6 +11,7 @@ import {
   type BrandConfig,
   BroadcastSyncBus,
   type ControllerRecord,
+  type ConversationSource,
   changedConversation,
   clientDescription,
   addAgent as coreAddAgent,
@@ -43,15 +44,23 @@ import {
   type SpacePatch,
   type SpaceSegment,
   type Spaces,
+  type SpaceTool,
+  type SpaceToolAnswer,
+  type SpaceToolsChange,
   type SyncBus,
   type SyncMessage,
+  spaceToolsChangeOf,
+  type ToolRule,
   type Transcript,
   type TranscriptMessage,
   taken,
   takesQueue,
+  takesTools,
   turnToDelete,
   unreadFrom,
   type VoiceMeasures,
+  withAllowanceEnded,
+  withDecided,
   withoutOrphans,
   withRestored,
   withUsageFrom,
@@ -140,6 +149,11 @@ export interface Snapshot {
   memoryFor: { agentDid: string; memoryId?: string; preferenceKey?: string; spaceId?: string } | null
   /** moves when the person deletes a memory or a preference: what lists them reads them again */
   memoriesVersion: number
+  /**
+   * the changes of spaces' tools the agent announced, newest last (`ayni.space.tools.changed`, UI-CONV-050): a panel
+   * that waits for the owner's phone finds its own by `changeId`; a list of tools reads again when one comes
+   */
+  toolChanges: { agentDid: string; change: SpaceToolsChange; n: number }[]
 }
 
 type Listener = () => void
@@ -195,6 +209,7 @@ export class Hub {
       sharedFor: null,
       memoryFor: null,
       memoriesVersion: 0,
+      toolChanges: [],
     }
   }
 
@@ -309,6 +324,9 @@ export class Hub {
         if (m.ok) p.resolve()
         else p.reject(new Error(m.error ?? 'failed'))
       }
+    } else if (m.kind === 'tools-changed') {
+      // another tab streams the session that heard it
+      this.noteToolsChange(m.agentDid, m.change, false)
     } else if (m.kind === 'leader' && m.tabId !== this.bus?.tabId) {
       this.set({ leaders: { ...this.snapshot.leaders, [m.sessionId]: false } })
     }
@@ -1578,6 +1596,8 @@ export class Hub {
       if (signals.includes('conversations') && !(await this.applyUnread(next.agentDid, event)))
         void this.syncConversations(next.agentDid).catch(() => undefined)
       if (signals.includes('identified')) await this.markIdentified(next.agentDid)
+      // a change of a space's tools applied or was dropped: the owner's screens that wait for it follow (UI-CONV-050)
+      if (signals.includes('tools') && event.type === 'CUSTOM') this.noteToolsChange(next.agentDid, event.value, true)
       this.set({})
       this.updateTitle()
       this.bus?.post({ kind: 'transcript', sessionId })
@@ -1826,6 +1846,21 @@ export class Hub {
       await client.run(sessionId, token, { runId, action: action.action }, () => undefined, controller.signal)
       return
     }
+    // a decision on a confirmation is taken while the turn waits for it, and never starts a turn (PROF-TOOL-008): it
+    // neither waits for the run in progress nor blocks it; the card takes the status the agent answers
+    if (action.decision && action.action?.kind === 'approval.decide') {
+      const approvalId = action.action.approvalId
+      const end = await client.run(
+        sessionId,
+        token,
+        { runId, action: action.action },
+        () => undefined,
+        controller.signal
+      )
+      const status = end.approvalId === approvalId ? end.status : undefined
+      if (status) await this.patchTranscript(sessionId, (t) => withDecided(t, approvalId, status))
+      return
+    }
     // against an agent that takes it, a message sent while a run is in progress waits (UI-CONV-025); against any
     // other, one run at a time (UI-CONV-003)
     const queues = takesQueue(this.snapshot.agents.find((a) => a.did === session.agentDid)?.descriptor.features)
@@ -2004,11 +2039,23 @@ export class Hub {
     }
   }
 
+  private readonly usageReads = new Map<string, Promise<boolean>>()
+
   /**
-   * The memories and preferences a reply used (UI-CONV-034) are only in history (PROF-HIST-011): for a reply received
-   * live, history is read back, newest page first, until it holds the reply. True when it was found.
+   * The memories and preferences a reply used (UI-CONV-034), and the sources of its tools (UI-CONV-047), are only in
+   * history (PROF-HIST-011, PROF-TOOL-010): for a reply received live, history is read back, newest page first, until
+   * it holds the reply. True when it was found. One read at a time per reply, whatever asks for it.
    */
-  public async readUsage(sessionId: string, messageId: string, maxPages = 10): Promise<boolean> {
+  public readUsage(sessionId: string, messageId: string, maxPages = 10): Promise<boolean> {
+    const key = `${sessionId}:${messageId}`
+    const inFlight = this.usageReads.get(key)
+    if (inFlight) return inFlight
+    const read = this.readUsageNow(sessionId, messageId, maxPages).finally(() => this.usageReads.delete(key))
+    this.usageReads.set(key, read)
+    return read
+  }
+
+  private async readUsageNow(sessionId: string, messageId: string, maxPages: number): Promise<boolean> {
     const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
     if (session?.state !== 'bound' || !session.sessionToken) return false
     const { client, token } = this.clientOf(session)
@@ -2244,6 +2291,162 @@ export class Hub {
     return this.withAgent(agentDid, (client, token) => client.aboutMe(token))
   }
 
+  // ---- tools, phase 1 (UI-CONV-045..051, UI-APPR-006; profile 3.4 §3.10, §6, §8) ---------------------------------
+
+  /** Whether the agent serves the tools of profile 3.4 (PROF-DESC-009): nothing of tools is shown or asked without it. */
+  public takesTools(agentDid: string): boolean {
+    return takesTools(this.snapshot.agents.find((a) => a.did === agentDid)?.descriptor.features)
+  }
+
+  /**
+   * Keeps a stream of the agent open while a change of a space's tools waits for the owner's phone (UI-CONV-050,
+   * PROF-TOOL-006): `ayni.space.tools.changed` reaches only the sessions whose stream is open. A session already
+   * streamed here or in another tab does; else the latest bound one is streamed, ahead of the budget, and a paired
+   * browser with none bound gets one quietly. Checked again every few seconds; returns what lets it go.
+   */
+  public holdStream(agentDid: string): () => void {
+    const ensure = async () => {
+      const bound = () =>
+        this.snapshot.sessions
+          .filter((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
+          .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+      if (bound().some((s) => this.snapshot.leaders[s.sessionId] !== undefined)) return
+      if (!bound().length) await this.refresh(agentDid).catch(() => undefined)
+      const session = bound()[0]
+      if (session && this.snapshot.leaders[session.sessionId] === undefined) void this.lead(session.sessionId, true)
+    }
+    void ensure()
+    const timer = setInterval(() => void ensure(), 5000)
+    return () => clearInterval(timer)
+  }
+
+  /** The tools of a space: every source to its owner, the `ready` ones to a member (PROF-TOOL-001). */
+  public spaceTools(agentDid: string, spaceId: string): Promise<SpaceTool[]> {
+    return this.withAgent(agentDid, (client, token) => client.spaceTools(token, spaceId))
+  }
+
+  /** The owner adds a source, or switches an `off` one back on; it waits for the owner's phone (PROF-TOOL-002). */
+  public addSpaceTool(
+    agentDid: string,
+    spaceId: string,
+    input: { source: string; bindings?: Record<string, string>; calls?: Record<string, ToolRule> }
+  ): Promise<SpaceToolAnswer> {
+    return this.withAgent(agentDid, (client, token) => client.addSpaceTool(token, spaceId, input))
+  }
+
+  /** The owner changes bindings and rules: at once when it only narrows, else on the phone (PROF-TOOL-003). */
+  public patchSpaceTool(
+    agentDid: string,
+    spaceId: string,
+    source: string,
+    patch: { bindings?: Record<string, string>; calls?: Record<string, ToolRule> }
+  ): Promise<SpaceToolAnswer> {
+    return this.withAgent(agentDid, (client, token) => client.patchSpaceTool(token, spaceId, source, patch))
+  }
+
+  /**
+   * The owner sets or replaces the space's account (PROF-TOOL-004, UI-CONV-050). The token goes to the agent and
+   * nowhere else: no store, no draft, no log, no notice of this page holds it.
+   */
+  public setSpaceToolAccount(
+    agentDid: string,
+    spaceId: string,
+    source: string,
+    secret: string
+  ): Promise<SpaceToolAnswer> {
+    return this.withAgent(agentDid, (client, token) => client.setSpaceToolAccount(token, spaceId, source, secret))
+  }
+
+  public clearSpaceToolAccount(agentDid: string, spaceId: string, source: string): Promise<SpaceTool> {
+    return this.withAgent(agentDid, (client, token) => client.clearSpaceToolAccount(token, spaceId, source))
+  }
+
+  public removeSpaceTool(agentDid: string, spaceId: string, source: string): Promise<SpaceTool> {
+    return this.withAgent(agentDid, (client, token) => client.removeSpaceTool(token, spaceId, source))
+  }
+
+  /** The owner withdraws the change that waits for the phone (PROF-TOOL-005). */
+  public withdrawSpaceToolChange(agentDid: string, spaceId: string, source: string): Promise<void> {
+    return this.withAgent(agentDid, (client, token) => client.withdrawSpaceToolChange(token, spaceId, source))
+  }
+
+  /** Records a change of a space's tools the agent announced (PROF-TOOL-006), and tells the other tabs. */
+  private noteToolsChange(agentDid: string, value: unknown, broadcast: boolean): void {
+    const change = spaceToolsChangeOf(value)
+    if (!change) return
+    const last = this.snapshot.toolChanges[this.snapshot.toolChanges.length - 1]
+    // every bound session of the owner hears it: one is enough
+    const same =
+      !!last &&
+      last.agentDid === agentDid &&
+      last.change.spaceId === change.spaceId &&
+      last.change.source === change.source &&
+      last.change.changeId === change.changeId &&
+      last.change.outcome === change.outcome
+    if (same) return
+    const n = (last?.n ?? 0) + 1
+    this.set({ toolChanges: [...this.snapshot.toolChanges.slice(-19), { agentDid, change, n }] })
+    if (broadcast) this.bus?.post({ kind: 'tools-changed', agentDid, change })
+  }
+
+  /**
+   * The answer on a confirmation card (UI-CONV-045, PROF-TOOL-008): Allow, Allow for this conversation, Refuse. It is
+   * sent while the reply waits for it; a failure reaches the caller, which says the answer was not sent.
+   */
+  public async decideConfirmation(
+    sessionId: string,
+    approvalId: string,
+    decision: 'approve' | 'reject',
+    scope?: 'conversation'
+  ): Promise<void> {
+    const action = { kind: 'approval.decide', approvalId, decision, ...(scope ? { scope } : {}) } as AyniAction
+    await this.dispatch(sessionId, { type: 'run', action, decision: true })
+  }
+
+  /** Stop allowing (UI-CONV-046, PROF-TOOL-012): the next call of that tool in the conversation asks again. */
+  public async stopAllowing(sessionId: string, approvalId: string): Promise<void> {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!session?.conversationId) throw new Error('conversation not known to the agent yet')
+    const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
+    await client.endAllowance(token, session.conversationId, approvalId)
+    await this.patchTranscript(sessionId, (t) => withAllowanceEnded(t, approvalId))
+  }
+
+  /**
+   * Before sharing a conversation with its space (UI-CONV-048, PROF-TOOL-011): against an agent that serves tools, the
+   * sources of the tool results it holds. With none, or against another agent, the conversation is shared at once
+   * (`shared`); with some, they are returned, for the person to decide; when they cannot be read nothing is shared
+   * and the error says so.
+   */
+  public async requestShare(sessionId: string): Promise<'shared' | ConversationSource[]> {
+    const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!session?.conversationId) throw new Error('conversation not known to the agent yet')
+    if (this.takesTools(session.agentDid)) {
+      let sources: ConversationSource[]
+      try {
+        const { client, token } = await this.tokenFor(session.agentDid, session.conversationId)
+        sources = await client.conversationSources(token, session.conversationId)
+      } catch {
+        throw new Error(i18next.t('tools.share.unreadable'))
+      }
+      if (sources.length) return sources
+    }
+    await this.setShared(sessionId, true)
+    return 'shared'
+  }
+
+  /** A change of one conversation's transcript, stored and shown, and told to the other tabs. */
+  private patchTranscript(sessionId: string, change: (t: Transcript) => Transcript): Promise<void> {
+    return this.serial(async () => {
+      const t = (await this.store.getTranscript(sessionId)) ?? emptyTranscript(sessionId)
+      const next = change(t)
+      if (next === t) return
+      await this.store.putTranscript(next)
+      this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
+      this.bus?.post({ kind: 'transcript', sessionId })
+    })
+  }
+
   /** "What <agent> keeps about you" (UI-CONV-033): from the agent's menu, the conversation's, the trust card. */
   public openKeeps(agentDid: string): void {
     this.set({ view: 'keeps', keepsFor: agentDid, trustFor: null, inspect: null })
@@ -2326,7 +2529,8 @@ export interface ResumeTarget {
 }
 
 type LocalAction =
-  | { type: 'run'; text?: string; action?: AyniAction; replyTo?: ReplyQuote }
+  /** `decision`: an answer on a confirmation card, sent while the turn waits for it (PROF-TOOL-008) */
+  | { type: 'run'; text?: string; action?: AyniAction; replyTo?: ReplyQuote; decision?: boolean }
   /** `runId`: the run the person saw in progress when they pressed Stop */
   | { type: 'cancel'; runId?: string }
 

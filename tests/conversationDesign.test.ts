@@ -228,6 +228,119 @@ describe('the stylesheet follows the shared conversation design', () => {
     }
   })
 
+  it('the exact action of a tool call, on the card of its confirmation and of its approval (UI-CONV-045, UI-APPR-006)', () => {
+    const c = D.toolCard
+    const C = CONVERSATION_COLORS.toolCard
+    const source = rule('.tool-card .tool-source')
+    expect(source['font-size']).toBe(px(c.sourceFontSize))
+    expect(source.color).toBe(role(C.source))
+    const title = rule('.tool-card .tool-title')
+    expect(title['font-size']).toBe(px(c.titleFontSize))
+    expect(title['font-weight']).toBe(String(c.titleWeight))
+    expect(title.color).toBe(role(C.title))
+    const account = rule('.tool-card .tool-account')
+    expect(account['font-size']).toBe(px(c.accountFontSize))
+    expect(account.color).toBe(role(C.account))
+    expect(rule('.tool-fields').gap).toBe(px(c.fieldsGap))
+    const label = rule('.card.tool-card .tool-field dt')
+    expect(label['font-size']).toBe(px(c.labelFontSize))
+    expect(label.color).toBe(role(C.label))
+    // every value whole, with its line breaks: nothing cut, folded or hidden
+    const value = rule('.card.tool-card .tool-field dd')
+    expect(value['font-size']).toBe(px(c.valueFontSize))
+    expect(value.color).toBe(role(C.value))
+    expect(value['white-space']).toBe('pre-wrap')
+    expect(value['overflow-wrap']).toBe('anywhere')
+    expect(value.overflow).toBeUndefined()
+    expect(value['max-height']).toBeUndefined()
+    expect(value['text-overflow']).toBeUndefined()
+    expect(rule('.card.tool-card .tool-field dd.mono-value')['font-size']).toBe(px(c.monoFontSize))
+    expect(rule('.tool-lock').color).toBe(role(C.lock))
+    const outcome = rule('.tool-outcome')
+    expect(outcome['font-size']).toBe(px(c.outcomeFontSize))
+    expect(outcome['font-weight']).toBe(String(c.outcomeWeight))
+    expect(outcome.color).toBe(role(C.outcome))
+    const error = rule('.tool-error')
+    expect(error.background).toBe(`color-mix(in srgb, ${role(C.error)} ${pct(c.errorTint)}, var(--surface))`)
+    expect(error.color).toBe(role(C.errorText))
+  })
+
+  it('the amber notice of untrusted content, before the fields (UI-CONV-045)', () => {
+    const n = D.untrustedNotice
+    const C = CONVERSATION_COLORS.untrustedNotice
+    const notice = rule('.untrusted-notice')
+    expect(notice.padding).toBe(`${px(n.paddingY)} ${px(n.paddingX)}`)
+    expect(notice['border-radius']).toBe(px(n.radius))
+    expect(notice.border).toBe(`${px(n.borderWidth)} solid ${role(C.border)}`)
+    expect(notice.background).toBe(`color-mix(in srgb, ${role(C.tint)} ${pct(n.tint)}, var(--surface))`)
+    expect(notice.color).toBe(role(C.text))
+    expect(notice['font-size']).toBe(px(n.fontSize))
+    expect(notice.gap).toBe(px(n.gap))
+    expect(rule('.untrusted-icon').color).toBe(role(C.icon))
+  })
+
+  it('the colours of tools read on both palettes, chosen or by the system (UI-CONV-045..050)', () => {
+    const token = (name: string) => {
+      const value = new RegExp(`--${name}: (#[0-9a-f]{6});`).exec(css)?.[1]
+      if (!value) throw new Error(`no --${name}`)
+      return value
+    }
+    const block = (selector: string) => {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return new RegExp(`${escaped} \\{([^}]*)\\}`).exec(css)?.[1] ?? ''
+    }
+    // the roles a card and the Tools segment paint with: each dark block takes all of them from the dark palette;
+    // warning and danger are one colour in both themes
+    const roles = ['bg', 'surface', 'text', 'muted', 'border', 'accent'] as const
+    const system = block('@media (prefers-color-scheme: dark) {\n  :root:not([data-theme="light"])')
+    const chosen = block(':root[data-theme="dark"]')
+    for (const dark of [system, chosen])
+      for (const r of roles) expect(dark, `--${r} in a dark block`).toContain(`--${r}: var(--dark-${r});`)
+    for (const r of ['warning', 'danger']) {
+      expect(system).not.toContain(`--${r}:`)
+      expect(chosen).not.toContain(`--${r}:`)
+    }
+    const rgb = (c: string) =>
+      c.startsWith('#')
+        ? [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16))
+        : (c.match(/\d+/g) ?? []).map(Number)
+    const blend = (a: string, share: number, b: string) => {
+      const [x, y] = [rgb(a), rgb(b)]
+      return `rgb(${x.map((v, i) => Math.round(v * share + (y[i] as number) * (1 - share))).join(', ')})`
+    }
+    const C = CONVERSATION_COLORS
+    for (const scheme of ['light', 'dark']) {
+      const of = (r: string) => (r === 'warning' || r === 'danger' ? token(r) : token(`${scheme}-${r}`))
+      const card = of('surface')
+      // the card: the source, the labels, the account and the lock muted; the title and the values in the text colour
+      for (const r of ['source', 'account', 'label', 'lock'] as const)
+        expect(contrast(of(C.toolCard[r]), card), `${scheme}: ${r}`).toBeGreaterThanOrEqual(4.5)
+      for (const r of ['title', 'value', 'outcome'] as const)
+        expect(contrast(of(C.toolCard[r]), card), `${scheme}: ${r}`).toBeGreaterThanOrEqual(7)
+      const errorGround = blend(of(C.toolCard.error), D.toolCard.errorTint, card)
+      expect(contrast(of(C.toolCard.errorText), errorGround), `${scheme}: error`).toBeGreaterThanOrEqual(4.5)
+      // the amber notice: its words, its icon and its edge
+      const notice = blend(of(C.untrustedNotice.tint), D.untrustedNotice.tint, card)
+      expect(contrast(of(C.untrustedNotice.text), notice), `${scheme}: notice words`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(of(C.untrustedNotice.icon), notice), `${scheme}: notice icon`).toBeGreaterThanOrEqual(3)
+      expect(contrast(of(C.untrustedNotice.border), card), `${scheme}: notice edge`).toBeGreaterThanOrEqual(3)
+      // the Tools segment, on the page's ground: the change that waits, the red of Remove, a field's error
+      const ground = of('bg')
+      const pending = blend(of('accent'), 0.1, ground)
+      expect(contrast(of('text'), pending), `${scheme}: waiting words`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(of('accent'), pending), `${scheme}: waiting icon`).toBeGreaterThanOrEqual(3)
+      const red = blend(of('danger'), 0.6, of('text'))
+      expect(contrast(red, blend(of('danger'), 0.08, ground)), `${scheme}: Remove`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(red, ground), `${scheme}: field error icon`).toBeGreaterThanOrEqual(3)
+    }
+    // the stylesheet paints them so
+    expect(rule('.tool-pending').background).toBe('color-mix(in srgb, var(--accent) 10%, var(--bg))')
+    expect(rule('.tool-pending').color).toBe('var(--text)')
+    expect(rule('.btn.tool-remove').color).toBe('color-mix(in srgb, var(--danger) 60%, var(--text))')
+    expect(rule('.btn.tool-remove').background).toBe('color-mix(in srgb, var(--danger) 8%, var(--bg))')
+    expect(rule('.field-error-icon').color).toBe('color-mix(in srgb, var(--danger) 60%, var(--text))')
+  })
+
   it('the English wording is the shared one', () => {
     for (const [key, text] of Object.entries(CONVERSATION_COPY))
       expect((en.conversation as Record<string, unknown>)[key], key).toBe(text)

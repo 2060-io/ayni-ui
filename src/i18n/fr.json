@@ -233,7 +233,11 @@
       "EXPIRED": "Expirée"
     },
     "grantUntil": "Accordé jusqu'à {{time}}",
-    "expires": "Expire {{time}}"
+    "expires": "Expire {{time}}",
+    "asksYou": "{{requester}} demande votre approbation",
+    "waitingFor": "En attente de l'approbation de {{approver}}",
+    "waiting": "En attente d'approbation",
+    "cancel": "Annuler"
   },
   "elevation": {
     "title": "Demander un accès",
@@ -342,6 +346,7 @@
     "outcome": "Résultat",
     "reactions": "Réactions",
     "steps": "Ce que l’agent a fait",
+    "sources": "Sources",
     "record": "Enregistrement",
     "messageId": "Id du message",
     "sessionId": "Session",
@@ -521,6 +526,7 @@
       "memories": "Vos souvenirs",
       "about": "À propos",
       "members": "Membres",
+      "tools": "Outils",
       "settings": "Réglages",
       "activity": "Activité"
     },
@@ -648,6 +654,11 @@
       "rules-changed": "{{by}} a changé les règles",
       "shared": "{{by}} a partagé une conversation",
       "unshared": "{{by}} a cessé de partager une conversation",
+      "tool-added": "{{by}} a ajouté {{tool}}",
+      "tool-changed": "{{by}} a changé les réglages de {{tool}}",
+      "tool-removed": "{{by}} a retiré {{tool}}",
+      "account-set": "{{by}} a défini le compte de {{tool}}",
+      "account-cleared": "{{by}} a retiré le compte de {{tool}}",
       "someone": "Quelqu'un",
       "empty": "Pas encore d'activité.",
       "more": "Activité précédente"
@@ -753,5 +764,121 @@
     "empty": "Pas encore de modification.",
     "more": "Modifications précédentes",
     "notAdmin": "Seuls les titulaires du rôle d'administration peuvent lire ceci."
+  },
+  "tools": {
+    "aboutTitle": "Outils que {{agent}} utilise dans cet espace",
+    "account": {
+      "space": "Utilise le compte de l'espace",
+      "agent": "Utilise le compte de {{agent}}"
+    },
+    "effect": {
+      "read": "Lit",
+      "write": "Écrit",
+      "delete": "Supprime",
+      "external": "Envoie hors de votre organisation"
+    },
+    "rule": {
+      "none": "S'exécute sans demander",
+      "confirm": "Vous demande d'abord",
+      "approval": "Requiert l'approbation de {{owner}}"
+    },
+    "ownerRule": {
+      "none": "S'exécute sans demander",
+      "confirm": "Demande d'abord à la personne",
+      "approval": "Requiert votre approbation",
+      "off": "Désactivé dans cet espace"
+    },
+    "stepUp": {
+      "device": ", puis une vérification sur votre téléphone",
+      "face-match": ", puis une vérification du visage",
+      "document": ", puis une vérification du passeport"
+    },
+    "state": {
+      "notAdded": "Non ajouté",
+      "needsSetup": "À configurer",
+      "ready": "Prêt",
+      "off": "Désactivé",
+      "waiting": "En attente de votre téléphone"
+    },
+    "missingAccount": "compte",
+    "empty": "Le modèle de cet espace ne propose aucun outil.",
+    "add": "Ajouter",
+    "addTo": "Ajouter à {{space}}",
+    "back": "Tous les outils",
+    "settings": "Réglages de l'outil",
+    "setByAgent": "Fixé par {{agent}}",
+    "notSet": "Non défini",
+    "badValue": "Cette valeur n'a pas la forme attendue par {{agent}}.",
+    "pinnedByPack": "{{agent}} fixe cette valeur.",
+    "save": "Enregistrer",
+    "saved": "Enregistré",
+    "accountTitle": "Compte",
+    "accountSetBy": "Défini par {{name}} le {{date}}",
+    "paste": "Collez le {{label}}",
+    "replace": "Remplacer",
+    "badToken": "{{agent}} n'accepte pas ce {{label}}.",
+    "removeAccount": "Retirer le compte",
+    "removeAccountConfirm": "Retirer le compte ? {{tool}} cesse de fonctionner dans cet espace jusqu'à ce qu'un nouveau soit défini.",
+    "asks": "Ce que demande chaque outil",
+    "looserThanPack": "{{agent}} n'autorise pas de règle plus souple pour cet outil.",
+    "who": "Qui peut l'utiliser",
+    "onlyMembers": "Seulement les personnes de {{organization}}",
+    "guests": "Aussi les invités d'autres organisations",
+    "remove": "Retirer de {{space}}",
+    "removeConfirm": "Retirer {{tool}} de {{space}} ? Son compte et ses réglages sont supprimés.",
+    "confirmOnPhone": "Confirmez sur votre téléphone · Code {{code}}",
+    "timeLeft": "Reste {{time}}",
+    "withdraw": "Retirer",
+    "declined": "Non confirmé sur votre téléphone. Rien n'a changé.",
+    "expired": "Non confirmé à temps. Rien n'a changé.",
+    "withdrawn": "Retiré. Rien n'a changé.",
+    "phoneNeeded": "Votre téléphone doit être connecté à {{agent}} pour confirmer ce changement.",
+    "changePending": "Un changement de cet outil attend déjà votre téléphone.",
+    "notAdded": "Ajoutez d'abord l'outil à l'espace.",
+    "alreadyAdded": "Cet outil est déjà dans l'espace.",
+    "notOwner": "Seul le propriétaire de l'espace change ses outils.",
+    "noSpaceAccount": "Cet outil n'utilise aucun compte de l'espace.",
+    "personalSpace": "Personnel n'a pas d'outils d'un espace.",
+    "notFound": "Cet outil n'est pas proposé dans cet espace.",
+    "card": {
+      "label": "Confirmation : {{title}}, {{source}}",
+      "accountSpace": "Avec le compte de {{space}}",
+      "accountAgent": "Avec le compte de {{agent}}",
+      "untrusted": "Cette réponse a lu du contenu venu de l'extérieur de votre organisation : {{sources}}. Vérifiez l'action avant de l'autoriser.",
+      "pinned": "Fixé par {{agent}}",
+      "allow": "Autoriser",
+      "allowConversation": "Autoriser pour cette conversation",
+      "refuse": "Refuser",
+      "notSent": "Votre réponse n'a pas été envoyée. Réessayez.",
+      "allowed": "Autorisé",
+      "allowedConversation": "Autorisé pour cette conversation",
+      "stopped": "Autorisé pour cette conversation · Arrêté",
+      "stopAllowing": "Ne plus autoriser",
+      "notStopped": "L'autorisation n'a pas été arrêtée. Réessayez.",
+      "refused": "Refusé",
+      "expired": "Pas de réponse à temps",
+      "cancelled": "Non exécuté",
+      "erased": "Les détails ont été supprimés avec votre message."
+    },
+    "sources": {
+      "space": "{{source}}, le compte de l'espace",
+      "agent": "{{source}}, le compte de {{agent}}"
+    },
+    "share": {
+      "title": "Partager avec {{space}} ?",
+      "holds": "Cette conversation contient des résultats lus depuis :",
+      "space_one": "{{source}}, avec le compte de l'espace · {{count}} résultat",
+      "space_other": "{{source}}, avec le compte de l'espace · {{count}} résultats",
+      "space_many": "{{source}}, avec le compte de l'espace · {{count}} résultats",
+      "agent_one": "{{source}}, avec le compte de {{agent}} · {{count}} résultat",
+      "agent_other": "{{source}}, avec le compte de {{agent}} · {{count}} résultats",
+      "agent_many": "{{source}}, avec le compte de {{agent}} · {{count}} résultats",
+      "none_one": "{{source}} · {{count}} résultat",
+      "none_other": "{{source}} · {{count}} résultats",
+      "none_many": "{{source}} · {{count}} résultats",
+      "members": "Les membres de {{space}} liront les réponses qui les ont utilisés.",
+      "share": "Partager",
+      "unreadable": "Les sources de cette conversation n'ont pas pu être lues. Rien n'a été partagé."
+    }
   }
 }
