@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.19.0](https://github.com/2060-io/ayni-ui/compare/v0.18.0...v0.19.0) (2026-11-20)
+
+
+### Features
+
+* **core:** the tools of a space, the confirmation of a tool call and the sources of replies, profile 3.4 (core 0.5.0) ([203aa7d](https://github.com/2060-io/ayni-ui/commit/203aa7da5d04b72cd9e7de19a0d387709facbab5))
+* **tools:** the owner's Tools segment, the confirmation card, the approval of a tool call and the sources before sharing ([aa0fdca](https://github.com/2060-io/ayni-ui/commit/aa0fdca5cb1c9326f14f3a0e3cac194e67db0edf))
+* **tools:** tools phase 1, the Tools segment, the confirmation card, the approval of a tool call and sources (profile 3.4) ([181557b](https://github.com/2060-io/ayni-ui/commit/181557bf592fe804be30e5495cc37b0d02591a3e))
+
+
+### Bug Fixes
+
+* **core:** tools in the words of UI-CONV-052; step-ups after their tools; the requester's displayName ([cf22761](https://github.com/2060-io/ayni-ui/commit/cf227610919d9a0ab9dac75f6467c1047ca290e0))
+* **tools:** align with the settled spec: two Saves, narrowing while a change waits, the stream held, UI-CONV-052 ([97681c0](https://github.com/2060-io/ayni-ui/commit/97681c04d77265914b088f510fadc4e5e795df07))
+
 ## [0.18.0](https://github.com/2060-io/ayni-ui/compare/v0.17.0...v0.18.0) (2026-11-20)
 
 
