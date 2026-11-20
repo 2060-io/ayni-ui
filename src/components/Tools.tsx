@@ -52,17 +52,20 @@ export function ToolActionView({
   action,
   agentName,
   untrusted,
+  titled = true,
 }: {
   action: ToolAction
   agentName: string
   untrusted?: string[]
+  /** false when the card already gave the action's title a line of its own (UI-APPR-006) */
+  titled?: boolean
 }) {
   const { t } = useTranslation()
   const account = accountLine(action, agentName, t)
   return (
     <>
       <div className="tool-source">{action.source.title}</div>
-      <h3 className="tool-title">{action.title}</h3>
+      {titled ? <h3 className="tool-title">{action.title}</h3> : null}
       {account ? <div className="tool-account">{account}</div> : null}
       {untrusted && !action.erased ? (
         <div className="untrusted-notice" role="note">
@@ -216,8 +219,10 @@ export function ConfirmationCard({
 
 /**
  * The approval of a tool call (UI-APPR-006, PROF-TOOL-009): the exact action as the confirmation card shows it, and
- * the space. To the approver, "<requester> asks to <action> in <space>" with Approve and Reject and the optional
- * note; to the requester, "Waiting for <approver>'s approval" with Cancel. It follows `ayni.approval.update`.
+ * the space. To the approver, "<requester> asks for your approval", then the action's title and the space's, each on
+ * a line of its own, with Approve and Reject and the optional note; to the requester, "Waiting for <owner>'s approval"
+ * for a tool of a space, "Waiting for approval" for any other, with Cancel. No title's case is changed to fit it in a
+ * sentence. It follows `ayni.approval.update`.
  */
 export function ToolApprovalCard({
   sessionId,
@@ -243,9 +248,7 @@ export function ToolApprovalCard({
     ? snap.spaces[agent?.did ?? '']?.spaces.find((x) => x.id === space.id)?.owner.name || undefined
     : undefined
   const heading = content.canDecide
-    ? space
-      ? t('approval.asksIn', { requester, action: action.title, space: space.title })
-      : t('approval.asks', { requester, action: action.title })
+    ? t('approval.asksYou', { requester })
     : owner
       ? t('approval.waitingFor', { approver: owner })
       : t('approval.waiting')
@@ -253,8 +256,9 @@ export function ToolApprovalCard({
   return (
     <section className="card tool-card tool-approval" data-status={status} aria-label={heading}>
       <div className="tool-approval-head">{heading}</div>
-      {space && !content.canDecide ? <div className="tool-account">{`${t('spaces.in')} ${space.title}`}</div> : null}
-      <ToolActionView action={action} agentName={agentName} />
+      <h3 className="tool-title">{action.title}</h3>
+      {space ? <div className="tool-approval-space">{space.title}</div> : null}
+      <ToolActionView action={action} agentName={agentName} titled={false} />
       <div className="row">
         <span>{t('approval.title')}</span>
         <span>{t(`approval.status.${status}`)}</span>
@@ -405,11 +409,18 @@ export function ShareSourcesDialog({
   )
 }
 
-/** A group of a source's tools in About (UI-CONV-049): "Asks you first: Add a note, Add a task". */
-function groupWords(group: ToolRuleGroup, owner: string, t: Tr): string {
-  const rule = t(`tools.rule.${group.rule}`, { owner })
-  const stepUp = group.stepUp ? t(`tools.stepUp.${group.stepUp}`) : ''
-  return `${rule}: ${group.titles.join(', ')}${stepUp}`
+/**
+ * A group of a source's tools in About (UI-CONV-049): the rule's words, a colon, and the titles, each followed by its
+ * step-up ("Needs Jonas Weber's approval: Delete note, then a check on your phone"). The space's owner reads "Needs
+ * your approval", never their own name.
+ */
+function groupWords(group: ToolRuleGroup, space: Pick<SpaceInfo, 'owner' | 'role'>, t: Tr): string {
+  const rule =
+    group.rule === 'approval' && space.role === 'owner'
+      ? t('tools.ownerRule.approval')
+      : t(`tools.rule.${group.rule}`, { owner: space.owner.name })
+  const titles = group.tools.map((x) => `${x.title}${x.stepUp ? t(`tools.stepUp.${x.stepUp}`) : ''}`)
+  return `${rule}: ${titles.join(', ')}`
 }
 
 /** The tools of a space as its members read them, live: re-read when a change of them is announced. */
@@ -485,9 +496,9 @@ export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceI
               {groups.length ? (
                 <span className="about-tool-rules">
                   {groups.map((g, i) => (
-                    <span key={`${g.rule}-${g.stepUp ?? ''}`}>
+                    <span key={g.rule}>
                       {i ? ' · ' : ''}
-                      {groupWords(g, space.owner.name, t)}
+                      {groupWords(g, space, t)}
                     </span>
                   ))}
                 </span>

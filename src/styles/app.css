@@ -3170,7 +3170,12 @@ mark.hit.current {
 .tool-approval-head {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+}
+/* the approver's lines: the action's title, then the space's, each on a line of its own (UI-APPR-006) */
+.tool-approval-space {
+  font-size: 13px;
+  color: var(--muted);
 }
 .tool-fields {
   display: flex;

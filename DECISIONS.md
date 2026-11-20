@@ -377,8 +377,13 @@
       `CONVERSATION_COLORS.withheldBubble` and `.memoryChip`, `CONVERSATION_COPY.withheld` and `.withheldInfo`,
       `MESSAGES_WITHHELD`, `withWithheld`, `isWithheld`), for the app to draw the same.
 39. **Tools, phase 1** (2026-11-20; ayni-spec #99: agent D96 to D100, AG-UI profile 3.4; UI-CONV-031 amended,
-    UI-SESS-018, UI-CONV-045 to UI-CONV-051, UI-APPR-006). Built against the spec while the agent and the app were
-    built at the same time, with scripted fakes of the agent.
+    UI-SESS-018, UI-CONV-045 to UI-CONV-052, UI-APPR-006). Built against the spec while the agent and the app were
+    built at the same time, with scripted fakes of the agent; then aligned with the spec's answers to the questions of
+    the three implementations (its commits of 2026-11-20 that add UI-CONV-052).
+    - **Words.** Every outcome, refusal, the time left (`4:32 left`, read again every second, never below `0:00`), the
+      needs-setup line, the members' heading and the lines of an approval are the table of UI-CONV-052, word for word,
+      in `TOOLS_COPY`; a refusal that names a `field` is shown at it, any other under the control that sent the
+      request.
     - **Against which agent.** Everything of tools is shown and asked only of an agent that declares `features.tools`
       (PROF-DESC-009): the Tools segment, the tools in About, the sources read before sharing, the sources read back
       from history. Every session this browser creates says `client.profileVersion: "3.4"`, to every agent, so that the
@@ -397,19 +402,30 @@
     - **Stop allowing** calls `DELETE /conversations/{id}/allowances/{approvalId}` and marks the card at once; another
       device's `allowanceEnded` reaches it through the update.
     - **The approval of a tool call** keeps the approval card's status, note, Approve, Reject, and shows the action as
-      the confirmation card does. To the approver its head is "<requester> asks to <action> in <space>"; to the
-      requester "Waiting for <owner>'s approval", the owner's name read from the person's list of spaces, "In <space>",
-      and Cancel. The action's title is put in as the agent wrote it.
+      the confirmation card does. Its head is "<requester> asks for your approval" (`requester.displayName`) to the
+      approver, and to the requester "Waiting for <owner>'s approval" for a tool of a space, the owner's name read from
+      the person's list of spaces, else "Waiting for approval", with Cancel. Then the action's title and the space's,
+      each on a line of its own, for both; no title's case is changed, and the title is not repeated below.
     - **The owner's Tools segment.** Between Members and Settings. A row per source with its state ("Needs setup:
-      Workspace, account"); Add on a source not added or off opens its panel, where its settings and rules are chosen
-      before "Add to <space>" sends them together. The panel's parts, in the spec's order; the settings and the token
-      each have their Save, and a rule applies as it is chosen (stricter at once, looser on the phone). While a change
-      waits, the code, the time left and Withdraw take the place of the Save of the part that asked (at the top of the
-      panel for one found waiting when it opens), every other granting control is disabled (the agent would answer
-      `409 change-pending`), and the fields keep what the owner is confirming. A change ends on the
-      `ayni.space.tools.changed` that names it and was heard after it started waiting; the list is then read again.
-      Removing the account and removing the tool ask in the page, never in a browser dialog. Remove is red: the danger
-      colour mixed 60 % with the text colour, which reads on both grounds (9.47:1 light, 5.48:1 dark).
+      Workspace, account"); Add on a source not added or off opens its panel. The panel's parts, in the spec's order;
+      Account shows for a space's account only once the source is added. Two Saves: the Save of the settings, at the
+      end of What each tool asks, sends the bindings and the rules changed in one request (for a source not added it is
+      "Add to <space>"), and the Save of the account sends the token. A rule is chosen, not sent, until the settings are
+      saved. A step-up is said after its tool's title, never after the rule. While a change waits, the code, the time
+      left and Withdraw take the place of the Save that sent it (at the top of the panel for one found waiting when it
+      opens), the fields keep what the owner is confirming, and only what narrows stays open: the bindings, the token
+      and the rules looser than the one in force are disabled (the agent would answer `409 change-pending`), while a
+      stricter rule, Remove account and Remove from <space> apply at once and the change goes on waiting. A change ends
+      on the `ayni.space.tools.changed` that names it and was heard after it started waiting; the list is then read
+      again; Withdraw, or the agent dropping it, reads "Withdrawn. Nothing changed." Removing the account and removing
+      the tool ask in the page, never in a browser dialog. Remove is red: the danger colour mixed 60 % with the text
+      colour, which reads on both grounds (9.47:1 light, 5.48:1 dark).
+    - **The stream while a change waits.** `ayni.space.tools.changed` reaches only sessions whose stream is open
+      (PROF-TOOL-006), so while the segment shows a change that waits, `holdStream` makes sure a session of the agent is
+      streamed, here or in another tab: the latest bound one, ahead of the stream budget, and one opened quietly on a
+      paired browser with none bound; checked again every five seconds until the change ends.
+    - **About.** The tools grouped by rule, each title followed by its step-up; the owner reads "Needs your
+      approval", never their own name.
     - **The token.** An uncontrolled `type="password"` field with autocomplete, autocorrect, spell checking and the
       common password managers turned off; its value is read once when Save is pressed and the field is emptied right
       then, before the request leaves, even when the token is refused locally. It is never in React state, the store,

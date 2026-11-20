@@ -38,7 +38,7 @@ const confirmation = (over: Record<string, unknown> = {}, action: Record<string,
   kind: 'confirmation',
   status: 'PENDING',
   expiresAt: at(-5),
-  requester: { name: 'Ana Ríos' },
+  requester: { displayName: 'Ana Ríos', role: 'sales' },
   tool: 'create-note',
   action: {
     title: 'Add a note',
@@ -348,9 +348,13 @@ describe('the approval of a tool call (UI-APPR-006)', () => {
       ]
     )
     const c = card() as HTMLElement
-    expect(c.querySelector('.tool-approval-head')?.textContent).toBe(
-      'Ana Ríos asks to Post on LinkedIn in Communication'
-    )
+    // the heading, then the action's title and the space's, each on a line of its own, no case changed
+    const lines = (el: HTMLElement) =>
+      [...el.querySelectorAll('.tool-approval-head, .tool-title, .tool-approval-space, .tool-source')].map(
+        (x) => x.textContent
+      )
+    expect(lines(c)).toEqual(['Ana Ríos asks for your approval', 'Post on LinkedIn', 'Communication', 'LinkedIn'])
+    expect(c.querySelectorAll('.tool-title')).toHaveLength(1)
     expect(c.querySelector('.tool-field dd')?.textContent).toBe('We are hiring.\nThree roles in Rotterdam.')
     expect(c.querySelector('.tool-account')?.textContent).toBe('With the account of Communication')
     expect(c.querySelector('input[aria-label="Note (optional)"]')).toBeTruthy()
@@ -369,13 +373,20 @@ describe('the approval of a tool call (UI-APPR-006)', () => {
     })
     const c = card() as HTMLElement
     expect(c.querySelector('.tool-approval-head')?.textContent).toBe("Waiting for Jonas Weber's approval")
-    expect(c.textContent).toContain('In Communication')
+    expect(c.querySelector('.tool-title')?.textContent).toBe('Post on LinkedIn')
+    expect(c.querySelector('.tool-approval-space')?.textContent).toBe('Communication')
     expect(c.querySelector('.tool-field dd')?.textContent).toBe('We are hiring.\nThree roles in Rotterdam.')
     expect(byText(c, 'button', 'Cancel')).toBeTruthy()
     expect(byText(c, 'button', 'Approve')).toBeUndefined()
     await update(hub, { approvalId: 'apr_2', status: 'APPROVED', decidedBy: 'Jonas Weber' })
     await until(() => byText(card() as HTMLElement, '.row span', 'Approved'))
     expect(byText(card() as HTMLElement, 'button', 'Cancel')).toBeUndefined()
+  })
+
+  it("tells the requester of a tool that is no space's that it waits for approval, without naming anyone", async () => {
+    const { card } = await conversation([cardMessage(approval({ own: true, space: undefined }))])
+    expect(card()?.querySelector('.tool-approval-head')?.textContent).toBe('Waiting for approval')
+    expect(card()?.querySelector('.tool-approval-space')).toBeNull()
   })
 
   it('an approval with no action is the card it always was', async () => {

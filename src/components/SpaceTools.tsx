@@ -1,9 +1,11 @@
 /**
- * The owner's Tools segment of a space (UI-CONV-050, UI-CONV-049; profile 3.4 §3.10; agent D97, D98): every source the
- * space's template names, with its state in words, and for each a panel with its settings, its account, what each of
- * its tools asks, who can use it, and Remove. A change that grants something waits for the owner's phone: the panel
- * shows the code and the time left, follows `ayni.space.tools.changed`, and can withdraw it. The token of a space's
- * account is typed in a masked field that is never prefilled, is emptied as its request leaves, and is kept nowhere.
+ * The owner's Tools segment of a space (UI-CONV-050, UI-CONV-049, UI-CONV-052; profile 3.4 §3.10; agent D97, D98):
+ * every source the space's template names, with its state in words, and for each a panel with its settings, its
+ * account, what each of its tools asks, who can use it, and Remove. The settings (bindings and rules) and the account
+ * are saved by two Saves. A change that grants something waits for the owner's phone: its Save becomes the code and
+ * the time left, a stream stays open so that `ayni.space.tools.changed` reaches this page, and it can be withdrawn; a
+ * change that only narrows applies at once, also while another waits. The token of a space's account is typed in a
+ * masked field that is never prefilled, is emptied as its request leaves, and is kept nowhere.
  */
 import {
   type AgentRecord,
@@ -11,6 +13,7 @@ import {
   canAdd,
   changeOutcomeKeyOf,
   isAdded,
+  loosens,
   missingOf,
   type PendingToolChange,
   ProfileError,
@@ -33,10 +36,14 @@ import { useSpaceTools } from './Tools.js'
 
 type T = (key: string, options?: Record<string, unknown>) => string
 
-/** The part of the panel a request came from: its answer, its wait and its refusal are shown there. */
-type From = 'add' | 'bindings' | 'account' | 'rules' | 'loaded'
+/**
+ * The control a request came from, under which its answer, its wait and its refusal are shown (UI-CONV-052): the Save
+ * of the settings (Add, for a source not added), the Save of the account, Remove; `loaded` for a change found waiting
+ * when the panel opened.
+ */
+type From = 'settings' | 'account' | 'remove' | 'loaded'
 
-/** A row's state in words (UI-CONV-050): "Needs setup" followed by what is missing. */
+/** A row's state in words (UI-CONV-050, UI-CONV-052): "Needs setup: Workspace, account". */
 function stateWords(tool: SpaceTool, t: T): string {
   const state = toolRowStateOf(tool)
   const words = t(`tools.state.${state}`)
@@ -58,9 +65,13 @@ function useNow(on: boolean): number {
 }
 
 export function ToolsSegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
+  const hub = useHub()
   const { t } = useTranslation()
   const { tools, error, reload, setTool } = useSpaceTools(agent, space, true)
   const [open, setOpen] = useState<string | null>(null)
+  // while a change shown here waits for the phone, a stream stays open for its outcome (UI-CONV-050, PROF-TOOL-006)
+  const waiting = !!tools?.some((x) => x.pending)
+  useEffect(() => (waiting ? hub.holdStream(agent.did) : undefined), [waiting, agent.did, hub])
   const tool = tools?.find((x) => x.source === open)
   if (tool)
     return (
@@ -108,17 +119,27 @@ export function ToolsSegment({ agent, space }: { agent: AgentRecord; space: Spac
   )
 }
 
-/** What waits, what was answered, or why it was refused, in the part of the panel the request came from. */
+/** What waits, what was answered, or why it was refused, under the control the request came from. */
 interface PanelState {
-  /** `since`: the last change of tools heard when this one started waiting; only a later one can end it */
-  waiting: { change: PendingToolChange; from: From; since: number } | null
-  outcome: { from: From; key: 'saved' | 'declined' | 'expired' } | null
+  /**
+   * `since`: the last change of tools heard when this one started waiting, only a later one can end it; `rules` and
+   * `values`: what the owner is confirming on the phone, which the fields keep meanwhile
+   */
+  waiting: {
+    change: PendingToolChange
+    from: From
+    since: number
+    rules?: Record<string, ToolRule>
+    values?: Record<string, string>
+  } | null
+  outcome: { from: From; key: 'saved' | 'declined' | 'expired' | 'withdrawn' } | null
   error: { from: From; text: string } | null
 }
 
 /**
- * A source's panel (UI-CONV-050), in this order: Settings of the tool, Account, What each tool asks, Who can use it,
- * Remove from <space>. A source not added offers Add to <space>, which sends its settings and rules with it.
+ * A source's panel (UI-CONV-050), in this order: Settings of the tool, Account (once the source is added), What each
+ * tool asks, Who can use it, Remove from <space>. The Save of the settings, after what each tool asks, sends the
+ * bindings and the rules together; for a source not added it is Add to <space>.
  */
 function ToolPanel({
   agent,
@@ -148,10 +169,10 @@ function ToolPanel({
       string,
       ToolRule
     >
+  const heardLast = () => snap.toolChanges[snap.toolChanges.length - 1]?.n ?? 0
   const [values, setValues] = useState<Record<string, string>>(ownerValues)
   const [rules, setRules] = useState<Record<string, ToolRule>>(toolRules)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const heardLast = () => snap.toolChanges[snap.toolChanges.length - 1]?.n ?? 0
   const [state, setState] = useState<PanelState>({
     waiting: tool.pending ? { change: tool.pending, from: 'loaded', since: heardLast() } : null,
     outcome: null,
@@ -163,12 +184,12 @@ function ToolPanel({
   const tokenRef = useRef<HTMLInputElement>(null)
   const now = useNow(!!state.waiting)
 
-  // what the agent says the tool is now, once a change applied or the list was read again; while a change waits, the
-  // fields keep what the owner is confirming on the phone
+  // what the agent says the tool is now, once a change applied or the list was read again; while settings wait for
+  // the phone, the fields keep what the owner is confirming
   useEffect(() => {
-    if (state.waiting) return
-    setValues(ownerValues())
-    setRules(toolRules())
+    const kept = state.waiting?.from === 'settings' ? state.waiting : undefined
+    setValues({ ...ownerValues(), ...(kept?.values ?? {}) })
+    setRules({ ...toolRules(), ...(kept?.rules ?? {}) })
   }, [tool])
 
   // the change that waits for the phone ends when the agent says so (`ayni.space.tools.changed`, PROF-TOOL-006)
@@ -185,15 +206,25 @@ function ToolPanel({
   useEffect(() => {
     if (!heard) return
     const key = changeOutcomeKeyOf(heard.change.outcome)
-    setState((s) => ({ waiting: null, error: null, outcome: key && s.waiting ? { from: s.waiting.from, key } : null }))
+    setState((s) => ({ waiting: null, error: null, outcome: s.waiting ? { from: s.waiting.from, key } : null }))
     onReload()
   }, [heard?.n])
 
-  const answered = (answer: SpaceToolAnswer, from: From) => {
-    onTool(answer.tool)
+  /** The changed values and rules a request sends, kept while it waits. */
+  const answered = (
+    answer: SpaceToolAnswer,
+    from: From,
+    sent: { rules?: Record<string, ToolRule>; values?: Record<string, string> } = {}
+  ) => {
     if (answer.status === 202 && answer.tool.pending)
-      setState({ waiting: { change: answer.tool.pending, from, since: heardLast() }, outcome: null, error: null })
-    else setState({ waiting: null, outcome: { from, key: 'saved' }, error: null })
+      setState({
+        waiting: { change: answer.tool.pending, from, since: heardLast(), ...sent },
+        outcome: null,
+        error: null,
+      })
+    // applied at once: a change that waits meanwhile, of another control, goes on waiting
+    else setState((s) => ({ waiting: s.waiting, outcome: { from, key: 'saved' }, error: null }))
+    onTool(answer.tool)
   }
 
   const refused = (e: unknown, from: From) => {
@@ -216,19 +247,23 @@ function ToolPanel({
       const text =
         r.reason === 'phoneNeeded'
           ? t('tools.phoneNeeded', { agent: agent.name })
-          : r.reason === 'other' || r.reason === 'personalSpace' || r.reason === 'noSpaceAccount'
+          : r.reason === 'other'
             ? e.message
             : t(`tools.${r.reason}`)
       setState((s) => ({ ...s, error: { from, text } }))
     }
   }
 
-  const send = async (from: From, request: () => Promise<SpaceToolAnswer>) => {
+  const send = async (
+    from: From,
+    request: () => Promise<SpaceToolAnswer>,
+    sent?: { rules?: Record<string, ToolRule>; values?: Record<string, string> }
+  ) => {
     setBusy(true)
     setFieldErrors({})
     setState((s) => ({ ...s, outcome: null, error: null }))
     try {
-      answered(await request(), from)
+      answered(await request(), from, sent)
     } catch (e) {
       refused(e, from)
     } finally {
@@ -251,27 +286,43 @@ function ToolPanel({
     return Object.keys(errors).length ? null : out
   }
 
-  const add = () => {
-    const bindings = checkedBindings(false)
-    if (!bindings) return
-    const calls = Object.fromEntries(
+  /** The rules chosen that differ from those in force. */
+  const changedRules = () =>
+    Object.fromEntries(
       tool.tools
-        .filter((x) => x.name && rules[x.name] !== x.rule)
-        .map((x) => [x.name as string, rules[x.name as string]])
+        .filter((x) => x.name && rules[x.name] && rules[x.name] !== x.rule)
+        .map((x) => [x.name as string, rules[x.name as string] as ToolRule])
     )
-    void send('add', () =>
-      hub.addSpaceTool(agent.did, space.id, {
-        source: tool.source,
-        ...(Object.keys(bindings).length ? { bindings } : {}),
-        ...(Object.keys(calls).length ? { calls } : {}),
-      })
-    )
-  }
 
-  const saveBindings = () => {
-    const bindings = checkedBindings(true)
-    if (!bindings || !Object.keys(bindings).length) return
-    void send('bindings', () => hub.patchSpaceTool(agent.did, space.id, tool.source, { bindings }))
+  /** The Save of the settings (UI-CONV-050): the bindings and the rules in one request; Add for a source not added. */
+  const saveSettings = () => {
+    const bindings = checkedBindings(!adding)
+    if (!bindings) return
+    const calls = changedRules()
+    const sent = { rules: calls, values: bindings }
+    if (adding) {
+      void send(
+        'settings',
+        () =>
+          hub.addSpaceTool(agent.did, space.id, {
+            source: tool.source,
+            ...(Object.keys(bindings).length ? { bindings } : {}),
+            ...(Object.keys(calls).length ? { calls } : {}),
+          }),
+        sent
+      )
+      return
+    }
+    if (!Object.keys(bindings).length && !Object.keys(calls).length) return
+    void send(
+      'settings',
+      () =>
+        hub.patchSpaceTool(agent.did, space.id, tool.source, {
+          ...(Object.keys(bindings).length ? { bindings } : {}),
+          ...(Object.keys(calls).length ? { calls } : {}),
+        }),
+      sent
+    )
   }
 
   const saveToken = () => {
@@ -287,57 +338,42 @@ function ToolPanel({
     void send('account', () => hub.setSpaceToolAccount(agent.did, space.id, tool.source, secret))
   }
 
-  const chooseRule = (name: string, rule: ToolRule) => {
-    setRules((r) => ({ ...r, [name]: rule }))
-    // not added yet: the rules go with Add; added: a stricter rule applies at once, a looser one waits for the phone
-    if (adding) return
-    void send('rules', () => hub.patchSpaceTool(agent.did, space.id, tool.source, { calls: { [name]: rule } }))
-  }
-
-  const clearAccount = async () => {
+  /** A change that only narrows applies at once, also while another waits (PROF-TOOL-003). */
+  const narrow = async (from: From, request: () => Promise<SpaceTool>, then?: () => void) => {
     setConfirming(null)
     setBusy(true)
+    setState((s) => ({ ...s, outcome: null, error: null }))
     try {
-      onTool(await hub.clearSpaceToolAccount(agent.did, space.id, tool.source))
-      setState({ waiting: null, outcome: { from: 'account', key: 'saved' }, error: null })
+      onTool(await request())
+      if (then) then()
+      else setState((s) => ({ waiting: s.waiting, outcome: { from, key: 'saved' }, error: null }))
     } catch (e) {
-      refused(e, 'account')
+      refused(e, from)
     } finally {
       setBusy(false)
     }
   }
 
-  const remove = async () => {
-    setConfirming(null)
-    setBusy(true)
-    try {
-      onTool(await hub.removeSpaceTool(agent.did, space.id, tool.source))
-      onBack()
-    } catch (e) {
-      refused(e, 'loaded')
-      setBusy(false)
-    }
-  }
-
   const withdraw = async () => {
+    const from = state.waiting?.from ?? 'loaded'
     setBusy(true)
     try {
       await hub.withdrawSpaceToolChange(agent.did, space.id, tool.source)
     } catch (e) {
       // nothing waits any more: the change ended meanwhile
       if (!(e instanceof ProfileError && e.status === 404)) {
-        refused(e, state.waiting?.from ?? 'loaded')
+        refused(e, from)
         setBusy(false)
         return
       }
     }
-    setState({ waiting: null, outcome: null, error: null })
+    setState({ waiting: null, outcome: { from, key: 'withdrawn' }, error: null })
     setBusy(false)
     onReload()
   }
 
   const waiting = !!state.waiting
-  /** In place of the Save of the part that asked: the code and the time left, the outcome, or the refusal. */
+  /** In place of the Save that sent it: the code and the time left; then the outcome; or the refusal (UI-CONV-052). */
   const status = (from: From) => (
     <>
       {state.waiting?.from === from ? (
@@ -378,6 +414,24 @@ function ToolPanel({
   const account = tool.account
   const date = (iso: string | null | undefined) =>
     iso ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(iso)) : ''
+  // while a change waits, only what narrows can be sent: a binding, a token or a looser rule would be refused
+  const grantsLocked = waiting && !adding
+  const hasSettings = adding || ownerBindings.length > 0 || tool.tools.some((x) => x.name)
+  const settingsSave = hasSettings ? (
+    <div className="tool-actions">
+      {state.waiting?.from === 'settings' ? null : (
+        <button
+          type="button"
+          className={adding ? 'btn primary settings-save' : 'btn settings-save'}
+          disabled={busy || (adding && waiting)}
+          onClick={saveSettings}
+        >
+          {adding ? t('tools.addTo', { space: title }) : t('tools.save')}
+        </button>
+      )}
+      {status('settings')}
+    </div>
+  ) : null
 
   return (
     <div className="tool-panel">
@@ -407,7 +461,7 @@ function ToolPanel({
                 <input
                   className="input"
                   value={values[b.name] ?? ''}
-                  disabled={waiting}
+                  disabled={grantsLocked}
                   autoComplete="off"
                   spellCheck={false}
                   aria-invalid={fieldErrors[b.name] ? true : undefined}
@@ -417,96 +471,89 @@ function ToolPanel({
               </label>
             )
           )}
-          {added && ownerBindings.length ? (
-            <div className="tool-actions">
-              {state.waiting?.from === 'bindings' ? null : (
-                <button type="button" className="btn" disabled={busy || waiting} onClick={saveBindings}>
-                  {t('tools.save')}
-                </button>
-              )}
-              {status('bindings')}
-            </div>
-          ) : null}
+          {tool.tools.length ? null : settingsSave}
         </section>
       ) : null}
 
-      {account.kind !== 'none' ? (
+      {account.kind === 'agent' ? (
         <section className="space-section tool-section" aria-label={t('tools.accountTitle')}>
           <h4 className="section-label">{t('tools.accountTitle')}</h4>
-          {account.kind === 'agent' ? (
-            <p className="rule-line">{t('tools.account.agent', { agent: agent.name })}</p>
-          ) : (
-            <>
-              <div className="tool-account-status">
-                <span>{account.label}</span>
-                <span className="muted small">
-                  {account.set
-                    ? t('tools.accountSetBy', { name: account.setBy?.name ?? '', date: date(account.setAt) })
-                    : t('tools.notSet')}
-                </span>
+          <p className="rule-line">{t('tools.account.agent', { agent: agent.name })}</p>
+        </section>
+      ) : account.kind === 'space' && added ? (
+        // a space's account, once the source is added (UI-CONV-050): before, the agent would answer `409 not-added`
+        <section className="space-section tool-section" aria-label={t('tools.accountTitle')}>
+          <h4 className="section-label">{t('tools.accountTitle')}</h4>
+          <div className="tool-account-status">
+            <span>{account.label}</span>
+            <span className="muted small">
+              {account.set
+                ? t('tools.accountSetBy', { name: account.setBy?.name ?? '', date: date(account.setAt) })
+                : t('tools.notSet')}
+            </span>
+          </div>
+          <label className="field">
+            <span className="sr-only">{account.label}</span>
+            <input
+              ref={tokenRef}
+              className="input"
+              type="password"
+              name={`token-${tool.source}`}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-1p-ignore="true"
+              data-lpignore="true"
+              placeholder={t('tools.paste', { label: account.label })}
+              disabled={waiting}
+              aria-invalid={fieldErrors.token ? true : undefined}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  saveToken()
+                }
+              }}
+            />
+            {fieldError('token')}
+          </label>
+          <div className="tool-actions">
+            {state.waiting?.from === 'account' ? null : (
+              <button type="button" className="btn" disabled={busy || waiting} onClick={saveToken}>
+                {account.set ? t('tools.replace') : t('tools.save')}
+              </button>
+            )}
+            {account.set ? (
+              <button
+                type="button"
+                className="btn tool-remove"
+                disabled={busy}
+                onClick={() => setConfirming('account')}
+              >
+                {t('tools.removeAccount')}
+              </button>
+            ) : null}
+            {status('account')}
+          </div>
+          {confirming === 'account' ? (
+            <div className="box tool-confirm" role="alertdialog" aria-label={t('tools.removeAccount')}>
+              <span>{t('tools.removeAccountConfirm', { tool: tool.title })}</span>
+              <div className="tool-actions">
+                <button type="button" className="btn" onClick={() => setConfirming(null)}>
+                  {t('app.cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="btn tool-remove"
+                  onClick={() =>
+                    void narrow('account', () => hub.clearSpaceToolAccount(agent.did, space.id, tool.source))
+                  }
+                >
+                  {t('tools.removeAccount')}
+                </button>
               </div>
-              {added ? (
-                <>
-                  <label className="field">
-                    <span className="sr-only">{account.label}</span>
-                    <input
-                      ref={tokenRef}
-                      className="input"
-                      type="password"
-                      name={`token-${tool.source}`}
-                      autoComplete="off"
-                      autoCorrect="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
-                      data-1p-ignore="true"
-                      data-lpignore="true"
-                      placeholder={t('tools.paste', { label: account.label })}
-                      disabled={waiting}
-                      aria-invalid={fieldErrors.token ? true : undefined}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          saveToken()
-                        }
-                      }}
-                    />
-                    {fieldError('token')}
-                  </label>
-                  <div className="tool-actions">
-                    {state.waiting?.from === 'account' ? null : (
-                      <button type="button" className="btn" disabled={busy || waiting} onClick={saveToken}>
-                        {account.set ? t('tools.replace') : t('tools.save')}
-                      </button>
-                    )}
-                    {account.set ? (
-                      <button
-                        type="button"
-                        className="btn tool-remove"
-                        disabled={busy}
-                        onClick={() => setConfirming('account')}
-                      >
-                        {t('tools.removeAccount')}
-                      </button>
-                    ) : null}
-                    {status('account')}
-                  </div>
-                  {confirming === 'account' ? (
-                    <div className="box tool-confirm" role="alertdialog" aria-label={t('tools.removeAccount')}>
-                      <span>{t('tools.removeAccountConfirm', { tool: tool.title })}</span>
-                      <div className="tool-actions">
-                        <button type="button" className="btn" onClick={() => setConfirming(null)}>
-                          {t('app.cancel')}
-                        </button>
-                        <button type="button" className="btn tool-remove" onClick={() => void clearAccount()}>
-                          {t('tools.removeAccount')}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-            </>
-          )}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -520,7 +567,11 @@ function ToolPanel({
               return (
                 <li key={name} className="tool-rule-row">
                   <span className="tool-rule-name">
-                    <span>{x.title}</span>
+                    {/* the step-up is the agent-pack's: said after the title, not chosen (UI-CONV-049) */}
+                    <span>
+                      {x.title}
+                      {x.stepUp ? <span className="tool-step-up">{t(`tools.stepUp.${x.stepUp}`)}</span> : null}
+                    </span>
                     <span className="muted small">{t(`tools.effect.${x.effect}`)}</span>
                   </span>
                   <span className="tool-rule-choice">
@@ -528,29 +579,28 @@ function ToolPanel({
                       className="input"
                       aria-label={x.title}
                       value={current}
-                      disabled={busy || waiting || !x.name}
+                      disabled={busy || !x.name || (adding && waiting)}
                       aria-invalid={fieldErrors[`calls.${name}`] ? true : undefined}
-                      onChange={(e) => chooseRule(name, e.target.value as ToolRule)}
+                      onChange={(e) => setRules((r) => ({ ...r, [name]: e.target.value as ToolRule }))}
                     >
                       {ruleChoicesFor(x).map((r) => (
-                        <option key={r} value={r}>
+                        // while a change waits, a rule looser than the one in force would be refused
+                        <option key={r} value={r} disabled={grantsLocked && loosens(r, x.rule)}>
                           {t(`tools.ownerRule.${r}`)}
                         </option>
                       ))}
                     </select>
-                    {/* the step-up is the agent-pack's: said in words, not chosen (UI-CONV-049) */}
-                    {x.stepUp && current !== 'off' ? (
-                      <span className="tool-step-up">{t(`tools.stepUp.${x.stepUp}`)}</span>
-                    ) : null}
                   </span>
                   {fieldError(`calls.${name}`)}
                 </li>
               )
             })}
           </ul>
-          {status('rules')}
+          {settingsSave}
         </section>
-      ) : null}
+      ) : tool.bindings.length ? null : (
+        settingsSave
+      )}
 
       <section className="space-section tool-section" aria-label={t('tools.who')}>
         <h4 className="section-label">{t('tools.who')}</h4>
@@ -559,20 +609,12 @@ function ToolPanel({
         </p>
       </section>
 
-      {adding ? (
-        <div className="tool-actions">
-          {state.waiting?.from === 'add' ? null : (
-            <button type="button" className="btn primary" disabled={busy || waiting} onClick={add}>
-              {t('tools.addTo', { space: title })}
-            </button>
-          )}
-          {status('add')}
-        </div>
-      ) : added ? (
+      {added ? (
         <div className="tool-actions">
           <button type="button" className="btn tool-remove" disabled={busy} onClick={() => setConfirming('remove')}>
             {t('tools.remove', { space: title })}
           </button>
+          {status('remove')}
         </div>
       ) : null}
       {confirming === 'remove' ? (
@@ -582,7 +624,11 @@ function ToolPanel({
             <button type="button" className="btn" onClick={() => setConfirming(null)}>
               {t('app.cancel')}
             </button>
-            <button type="button" className="btn tool-remove" onClick={() => void remove()}>
+            <button
+              type="button"
+              className="btn tool-remove"
+              onClick={() => void narrow('remove', () => hub.removeSpaceTool(agent.did, space.id, tool.source), onBack)}
+            >
               {t('tools.remove', { space: title })}
             </button>
           </div>

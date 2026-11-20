@@ -2298,6 +2298,28 @@ export class Hub {
     return takesTools(this.snapshot.agents.find((a) => a.did === agentDid)?.descriptor.features)
   }
 
+  /**
+   * Keeps a stream of the agent open while a change of a space's tools waits for the owner's phone (UI-CONV-050,
+   * PROF-TOOL-006): `ayni.space.tools.changed` reaches only the sessions whose stream is open. A session already
+   * streamed here or in another tab does; else the latest bound one is streamed, ahead of the budget, and a paired
+   * browser with none bound gets one quietly. Checked again every few seconds; returns what lets it go.
+   */
+  public holdStream(agentDid: string): () => void {
+    const ensure = async () => {
+      const bound = () =>
+        this.snapshot.sessions
+          .filter((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
+          .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+      if (bound().some((s) => this.snapshot.leaders[s.sessionId] !== undefined)) return
+      if (!bound().length) await this.refresh(agentDid).catch(() => undefined)
+      const session = bound()[0]
+      if (session && this.snapshot.leaders[session.sessionId] === undefined) void this.lead(session.sessionId, true)
+    }
+    void ensure()
+    const timer = setInterval(() => void ensure(), 5000)
+    return () => clearInterval(timer)
+  }
+
   /** The tools of a space: every source to its owner, the `ready` ones to a member (PROF-TOOL-001). */
   public spaceTools(agentDid: string, spaceId: string): Promise<SpaceTool[]> {
     return this.withAgent(agentDid, (client, token) => client.spaceTools(token, spaceId))
