@@ -1,3 +1,5 @@
+import { PROFILE_VERSION } from './tools.js'
+
 export * from './agents.js'
 export * from './appLinks.js'
 export * from './contextFigure.js'
@@ -19,23 +21,29 @@ export * from './spacesCopy.js'
 export * from './sse.js'
 export * from './store.js'
 export * from './sync.js'
+export * from './tools.js'
+export * from './toolsCopy.js'
 export * from './trust.js'
 export * from './types.js'
 export * from './voiceNote.js'
 
-export const CLIENT = { name: 'ayni-ui', version: '3.3.0' } as const
+export const CLIENT = { name: 'ayni-ui', version: '3.4.0' } as const
 
 /**
  * The client description sent at session creation (PROF-SESS-014): a 3.1 agent gets `platform: web` and the
- * browser as `description`; a 3.0 agent gets the browser as the free-text platform it expects.
+ * browser as `description`; a 3.0 agent gets the browser as the free-text platform it expects. Every session says
+ * which version of the profile this client implements (`profileVersion`, PROF-SESS-016): the agent asks the
+ * confirmations of tool calls only of sessions of 3.4 or later.
  */
 export function clientDescription(
   profileVersion: string | undefined,
   browser: string
-): { name: string; version: string; platform: string; description?: string } {
+): { name: string; version: string; platform: string; description?: string; profileVersion: string } {
   const [major, minor] = (profileVersion ?? '3.0').split('.').map(Number)
   const supportsDescription = major > 3 || (major === 3 && (minor ?? 0) >= 1)
-  return supportsDescription ? { ...CLIENT, platform: 'web', description: browser } : { ...CLIENT, platform: browser }
+  return supportsDescription
+    ? { ...CLIENT, platform: 'web', description: browser, profileVersion: PROFILE_VERSION }
+    : { ...CLIENT, platform: browser, profileVersion: PROFILE_VERSION }
 }
 
 export const CLOSURE_REASON_KEYS: Record<string, string> = {
