@@ -1,7 +1,8 @@
 /**
  * A space's page, in the main pane where a conversation opens (UI-CONV-031): its header, then Conversations, Your
- * memories and About; for its owner, on the web, Members, Settings and Activity (UI-CONV-040, UI-CONV-041). A space
- * the person left says so, and offers no new conversation (UI-CONV-043).
+ * memories and About; for its owner, on the web, Members, Tools, Settings and Activity (UI-CONV-040, UI-CONV-050,
+ * UI-CONV-041), Tools against an agent that serves them. A space the person left says so, and offers no new
+ * conversation (UI-CONV-043).
  */
 import {
   type AgentRecord,
@@ -22,6 +23,8 @@ import { ConversationRow } from './Column.js'
 import { MemoryList } from './Memories.js'
 import { ActivitySegment, MembersSegment, SettingsSegment } from './SpaceAdmin.js'
 import { languageName, membersLong, organizationNameOf, SpaceIcon, spaceTitle, useSpaceDetail } from './SpaceParts.js'
+import { ToolsSegment } from './SpaceTools.js'
+import { AboutTools } from './Tools.js'
 
 export function SpacePage() {
   const snap = useSnapshot()
@@ -47,7 +50,7 @@ export function SpacePage() {
     )
   const title = spaceTitle(space, t)
   const kind = t(`spaces.kind.${space.kind}`)
-  const segments = spaceSegmentsOf(space)
+  const segments = spaceSegmentsOf(space, { tools: hub.takesTools(agent.did) })
   const segment: SpaceSegment = segments.includes(ref.segment) ? ref.segment : 'conversations'
   const left = space.state === 'left'
   return (
@@ -96,6 +99,8 @@ export function SpacePage() {
           <AboutSegment agent={agent} space={space} />
         ) : segment === 'members' ? (
           <MembersSegment agent={agent} space={space} />
+        ) : segment === 'tools' ? (
+          <ToolsSegment agent={agent} space={space} />
         ) : segment === 'settings' ? (
           <SettingsSegment agent={agent} space={space} />
         ) : (
@@ -214,7 +219,7 @@ function MemoriesSegment({ agent, space }: { agent: AgentRecord; space: SpaceInf
 
 /**
  * About (UI-CONV-031): the purpose with its owner's name, the brief, the language, the rules in plain words, the
- * members, and what managers do not see.
+ * members, the tools the agent uses in the space (UI-CONV-049), and what managers do not see.
  */
 function AboutSegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const { t, i18n } = useTranslation()
@@ -291,6 +296,7 @@ function AboutSegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }
           </ul>
         ) : null}
       </section>
+      <AboutTools agent={agent} space={space} />
       <div className="callout">
         <EyeOff size={17} aria-hidden="true" className="callout-icon" />
         <span>{t('spaces.managers')}</span>

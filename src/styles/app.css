@@ -3144,3 +3144,336 @@ mark.hit.current {
 .sheet button[role="menuitem"].danger svg {
   color: var(--danger);
 }
+
+/* ---- tools, phase 1 (UI-CONV-045..051, UI-APPR-006) -------------------------------------------------------------- */
+
+/* the exact action of a tool call on the transcript's card: confirmation and approval (CONVERSATION_DESIGN.toolCard) */
+.card.tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tool-card .tool-source {
+  font-size: 12px;
+  color: var(--muted);
+}
+.tool-card .tool-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.tool-card .tool-account {
+  font-size: 13px;
+  color: var(--muted);
+}
+.tool-approval-head {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.tool-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0 0;
+}
+.card.tool-card .tool-field dt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+/* the value whole, with its line breaks: nothing cut or folded (UI-CONV-045) */
+.card.tool-card .tool-field dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.card.tool-card .tool-field dd.mono-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+}
+.tool-lock {
+  display: inline-flex;
+  color: var(--muted);
+}
+.tool-erased {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.tool-outcome {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.tool-outcome-icon {
+  flex: none;
+  color: var(--muted);
+}
+.tool-outcome .stop-allowing {
+  margin-left: 6px;
+  font-weight: 400;
+}
+.tool-error {
+  font-size: 13px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+/* the amber notice of untrusted content, before the fields (CONVERSATION_DESIGN.untrustedNotice) */
+.untrusted-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  color: var(--text);
+  font-size: 13px;
+}
+.untrusted-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--warning);
+}
+
+/* the owner's Tools segment (UI-CONV-050) */
+.tool-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.tool-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  text-align: left;
+}
+.tool-row-main:hover {
+  background: var(--surface);
+}
+.tool-row-main .space-text {
+  flex: 1;
+  min-width: 0;
+}
+.tool-row-chevron {
+  flex: none;
+  color: var(--muted);
+}
+.tool-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tool-panel-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.tool-panel-title {
+  margin: 6px 0 0;
+  font-size: 17px;
+}
+.tool-panel-description {
+  margin: 0;
+  font-size: 13.5px;
+}
+.tool-fixed {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.tool-fixed-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+.tool-account-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.tool-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* a change that waits for the owner's phone: the code and the time left */
+.tool-pending {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--bg));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+  color: var(--text);
+  font-size: 14px;
+}
+.tool-pending-icon {
+  flex: none;
+  color: var(--accent);
+}
+.tool-pending-text {
+  flex: 1;
+  min-width: 0;
+}
+.tool-change-outcome {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.tool-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tool-rule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 4px 12px;
+  align-items: center;
+}
+.tool-rule-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 14px;
+}
+.tool-rule-choice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13.5px;
+}
+.tool-rule-choice .input {
+  width: auto;
+  max-width: 100%;
+}
+.field-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.tool-rule-row .field-error {
+  grid-column: 1 / -1;
+}
+.field-error-icon {
+  flex: none;
+  color: color-mix(in srgb, var(--danger) 60%, var(--text));
+}
+/* Remove account, Remove from <space>: red that reads on both grounds */
+.btn.tool-remove {
+  color: color-mix(in srgb, var(--danger) 60%, var(--text));
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg));
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--bg));
+}
+.tool-confirm {
+  font-size: 14px;
+}
+@media (max-width: 600px) {
+  .tool-rule-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* the tools of a space in About (UI-CONV-031, UI-CONV-049) */
+.about-tool-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.about-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.about-tool-title {
+  font-weight: 600;
+}
+.about-tool-account {
+  font-size: 13px;
+  color: var(--muted);
+}
+.about-tool-rules {
+  font-size: 13.5px;
+}
+
+/* before a conversation is shared (UI-CONV-048) */
+.share-holds,
+.share-members {
+  margin: 0;
+  font-size: 14px;
+}
+.share-sources {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+/* a reply's Info in a conversation shared with a space (UI-CONV-047) */
+.shared-info {
+  align-self: center;
+  color: var(--muted);
+}
+.shared-info-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 12px;
+  font-size: 14px;
+}
+.info-term {
+  color: var(--muted);
+}
+.info-desc {
+  margin: 0;
+}

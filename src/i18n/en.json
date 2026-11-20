@@ -233,7 +233,12 @@
       "EXPIRED": "Expired"
     },
     "grantUntil": "Granted until {{time}}",
-    "expires": "Expires {{time}}"
+    "expires": "Expires {{time}}",
+    "asks": "{{requester}} asks to {{action}}",
+    "asksIn": "{{requester}} asks to {{action}} in {{space}}",
+    "waitingFor": "Waiting for {{approver}}'s approval",
+    "waiting": "Waiting for approval",
+    "cancel": "Cancel"
   },
   "elevation": {
     "title": "Request access",
@@ -342,6 +347,7 @@
     "outcome": "Outcome",
     "reactions": "Reactions",
     "steps": "What the agent did",
+    "sources": "Sources",
     "record": "Record",
     "messageId": "Message id",
     "sessionId": "Session",
@@ -521,6 +527,7 @@
       "memories": "Your memories",
       "about": "About",
       "members": "Members",
+      "tools": "Tools",
       "settings": "Settings",
       "activity": "Activity"
     },
@@ -648,6 +655,11 @@
       "rules-changed": "{{by}} changed the rules",
       "shared": "{{by}} shared a conversation",
       "unshared": "{{by}} stopped sharing a conversation",
+      "tool-added": "{{by}} added {{tool}}",
+      "tool-changed": "{{by}} changed the settings of {{tool}}",
+      "tool-removed": "{{by}} removed {{tool}}",
+      "account-set": "{{by}} set the account of {{tool}}",
+      "account-cleared": "{{by}} removed the account of {{tool}}",
       "someone": "Someone",
       "empty": "No activity yet.",
       "more": "Earlier activity"
@@ -741,5 +753,115 @@
     "empty": "No change yet.",
     "more": "Earlier changes",
     "notAdmin": "Only the holders of the admin role read this."
+  },
+  "tools": {
+    "aboutTitle": "Tools {{agent}} uses in this space",
+    "account": {
+      "space": "Uses the space's account",
+      "agent": "Uses {{agent}}'s account"
+    },
+    "effect": {
+      "read": "Reads",
+      "write": "Writes",
+      "delete": "Deletes",
+      "external": "Sends outside your organization"
+    },
+    "rule": {
+      "none": "Runs without asking",
+      "confirm": "Asks you first",
+      "approval": "Needs {{owner}}'s approval"
+    },
+    "ownerRule": {
+      "none": "Runs without asking",
+      "confirm": "Asks the person first",
+      "approval": "Needs your approval",
+      "off": "Off in this space"
+    },
+    "stepUp": {
+      "device": ", then a check on your phone",
+      "face-match": ", then a face check",
+      "document": ", then a passport check"
+    },
+    "state": {
+      "notAdded": "Not added",
+      "needsSetup": "Needs setup",
+      "ready": "Ready",
+      "off": "Off",
+      "waiting": "Waiting for your phone"
+    },
+    "missingAccount": "account",
+    "empty": "The template of this space offers no tools.",
+    "add": "Add",
+    "addTo": "Add to {{space}}",
+    "back": "All tools",
+    "settings": "Settings of the tool",
+    "setByAgent": "Set by {{agent}}",
+    "notSet": "Not set",
+    "badValue": "This value is not in the form {{agent}} expects.",
+    "pinnedByPack": "{{agent}} sets this value.",
+    "save": "Save",
+    "saved": "Saved",
+    "accountTitle": "Account",
+    "accountSetBy": "Set by {{name}} on {{date}}",
+    "paste": "Paste the {{label}}",
+    "replace": "Replace",
+    "badToken": "{{agent}} does not take this {{label}}.",
+    "removeAccount": "Remove account",
+    "removeAccountConfirm": "Remove the account? {{tool}} stops working in this space until a new one is set.",
+    "asks": "What each tool asks",
+    "looserThanPack": "{{agent}} does not allow a looser rule for this tool.",
+    "who": "Who can use it",
+    "onlyMembers": "Only people of {{organization}}",
+    "guests": "Also guests from other organizations",
+    "remove": "Remove from {{space}}",
+    "removeConfirm": "Remove {{tool}} from {{space}}? Its account and settings are deleted.",
+    "confirmOnPhone": "Confirm on your phone · Code {{code}}",
+    "timeLeft": "{{time}} left",
+    "withdraw": "Withdraw",
+    "declined": "Not confirmed on your phone. Nothing changed.",
+    "expired": "Not confirmed in time. Nothing changed.",
+    "phoneNeeded": "Your phone must be connected to {{agent}} to confirm this change.",
+    "changePending": "Another change of this tool waits for your phone.",
+    "notAdded": "Add the tool to the space first.",
+    "alreadyAdded": "This tool is already in the space.",
+    "notOwner": "Only the owner of the space changes its tools.",
+    "notFound": "This tool is no longer offered in the space.",
+    "card": {
+      "label": "Confirmation: {{title}}, {{source}}",
+      "accountSpace": "With the account of {{space}}",
+      "accountAgent": "With {{agent}}'s account",
+      "untrusted": "This reply read content from outside your organization: {{sources}}. Check the action before you allow it.",
+      "pinned": "Set by {{agent}}",
+      "allow": "Allow",
+      "allowConversation": "Allow for this conversation",
+      "refuse": "Refuse",
+      "notSent": "Your answer was not sent. Try again.",
+      "allowed": "Allowed",
+      "allowedConversation": "Allowed for this conversation",
+      "stopped": "Allowed for this conversation · Stopped",
+      "stopAllowing": "Stop allowing",
+      "notStopped": "The allowance was not stopped. Try again.",
+      "refused": "Refused",
+      "expired": "Not answered in time",
+      "cancelled": "Not run",
+      "erased": "The details were deleted with your message."
+    },
+    "sources": {
+      "space": "{{source}}, the space's account",
+      "agent": "{{source}}, {{agent}}'s account"
+    },
+    "share": {
+      "title": "Share with {{space}}?",
+      "holds": "This conversation holds results read from:",
+      "space_one": "{{source}}, with the space's account · {{count}} result",
+      "space_other": "{{source}}, with the space's account · {{count}} results",
+      "agent_one": "{{source}}, with {{agent}}'s account · {{count}} result",
+      "agent_other": "{{source}}, with {{agent}}'s account · {{count}} results",
+      "none_one": "{{source}} · {{count}} result",
+      "none_other": "{{source}} · {{count}} results",
+      "members": "The members of {{space}} will read the replies that used them.",
+      "share": "Share",
+      "unreadable": "The sources of this conversation could not be read. Nothing was shared."
+    }
   }
 }

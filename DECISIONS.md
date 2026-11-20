@@ -376,5 +376,52 @@
     - The values, roles and English words are the core's (0.4.1: `CONVERSATION_DESIGN.withheld` and `.memoryChip`,
       `CONVERSATION_COLORS.withheldBubble` and `.memoryChip`, `CONVERSATION_COPY.withheld` and `.withheldInfo`,
       `MESSAGES_WITHHELD`, `withWithheld`, `isWithheld`), for the app to draw the same.
-39. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+39. **Tools, phase 1** (2026-11-20; ayni-spec #99: agent D96 to D100, AG-UI profile 3.4; UI-CONV-031 amended,
+    UI-SESS-018, UI-CONV-045 to UI-CONV-051, UI-APPR-006). Built against the spec while the agent and the app were
+    built at the same time, with scripted fakes of the agent.
+    - **Against which agent.** Everything of tools is shown and asked only of an agent that declares `features.tools`
+      (PROF-DESC-009): the Tools segment, the tools in About, the sources read before sharing, the sources read back
+      from history. Every session this browser creates says `client.profileVersion: "3.4"`, to every agent, so that the
+      agent asks it the confirmations of tool calls.
+    - **The confirmation card.** The transcript's card (`.card`), on the agent's side, in its place in the reply: the
+      source in small muted words, the action's title in bold, the account line, then every field, label above value,
+      whole, with its line breaks (`white-space: pre-wrap`), indented JSON in a monospaced face, pinned fields first
+      with a lock (and "Set by <agent>" for screen readers). The amber notice comes before the fields: the warning
+      colour at 12 % over the card, a 1 px edge and an icon in it, the words in the text colour, since amber text does
+      not reach 4.5:1 on the dark ground. Allow is the primary button; Allow for this conversation and Refuse are plain
+      buttons (no red: the danger colour does not read on the dark card). The answer is an `approval.decide` run sent
+      at once, beside the turn that waits (it neither waits for it nor blocks it), from whichever tab leads the session;
+      the card takes the status the decision run answers, and every later `ayni.approval.update`. A card already decided
+      never goes back to waiting. While a pending card is the transcript's last item no working indicator shows, and
+      Stop stays, as it does during any run.
+    - **Stop allowing** calls `DELETE /conversations/{id}/allowances/{approvalId}` and marks the card at once; another
+      device's `allowanceEnded` reaches it through the update.
+    - **The approval of a tool call** keeps the approval card's status, note, Approve, Reject, and shows the action as
+      the confirmation card does. To the approver its head is "<requester> asks to <action> in <space>"; to the
+      requester "Waiting for <owner>'s approval", the owner's name read from the person's list of spaces, "In <space>",
+      and Cancel. The action's title is put in as the agent wrote it.
+    - **The owner's Tools segment.** Between Members and Settings. A row per source with its state ("Needs setup:
+      Workspace, account"); Add on a source not added or off opens its panel, where its settings and rules are chosen
+      before "Add to <space>" sends them together. The panel's parts, in the spec's order; the settings and the token
+      each have their Save, and a rule applies as it is chosen (stricter at once, looser on the phone). While a change
+      waits, the code, the time left and Withdraw take the place of the Save of the part that asked (at the top of the
+      panel for one found waiting when it opens), every other granting control is disabled (the agent would answer
+      `409 change-pending`), and the fields keep what the owner is confirming. A change ends on the
+      `ayni.space.tools.changed` that names it and was heard after it started waiting; the list is then read again.
+      Removing the account and removing the tool ask in the page, never in a browser dialog. Remove is red: the danger
+      colour mixed 60 % with the text colour, which reads on both grounds (9.47:1 light, 5.48:1 dark).
+    - **The token.** An uncontrolled `type="password"` field with autocomplete, autocorrect, spell checking and the
+      common password managers turned off; its value is read once when Save is pressed and the field is emptied right
+      then, before the request leaves, even when the token is refused locally. It is never in React state, the store,
+      a draft, a notice or a log; a test checks the page, the snapshot and the store for it.
+    - **Sources.** A reply's Info lists them ("Relaticle CRM, the space's account · Web search, <agent>'s account");
+      for a reply received live they are read back from history, one read shared with the memories' read. A reply
+      read from history with no `sources` used no tool and shows none. In a conversation shared with the space each
+      reply gets an Info button that opens the same list in a dialog. Before Share with <space>, the sources are read;
+      none shares at once, some open "Share with <space>?", and a failed read shares nothing and says so.
+    - **Several tabs.** The tab that hears `ayni.space.tools.changed` tells the others over the tab bus.
+    - The values, roles and English words are the core's (0.5.0: `CONVERSATION_DESIGN.toolCard` and
+      `.untrustedNotice`, `CONVERSATION_COLORS.toolCard` and `.untrustedNotice`, `TOOLS_COPY`), for the app to draw
+      the same.
+40. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

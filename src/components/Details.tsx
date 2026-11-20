@@ -1,4 +1,7 @@
-/** The side sheet (UI-SHELL-014): message info (UI-CONV-019), with the memories a reply used (UI-CONV-034). */
+/**
+ * The side sheet (UI-SHELL-014): message info (UI-CONV-019), with the memories a reply used (UI-CONV-034) and the
+ * sources of its tools (UI-CONV-047).
+ */
 import { isWithheld, quoteLabel } from '@ayni.org/ayni-ui-core'
 import { Copy, Lock, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +10,7 @@ import { useHub, useSnapshot } from '../state/useHub.js'
 import { UsedMemories } from './Memories.js'
 import { plainText } from './MessageActions.js'
 import { spaceOfSession } from './SpaceParts.js'
+import { MessageSources } from './Tools.js'
 
 /** What the UI knows about one message: time, outcome, the steps behind a reply, reactions, ids. */
 export function MessageInfo() {
@@ -64,6 +68,7 @@ export function MessageInfo() {
               <dd className="muted">{quoteLabel(m.replyTo, (kind) => t(`conversation.media.${kind}`))}</dd>
             </>
           ) : null}
+          {agent ? <MessageSources sessionId={session.sessionId} message={m} agent={agent} /> : null}
           {reactions.length ? (
             <>
               <dt>{t('details.reactions')}</dt>

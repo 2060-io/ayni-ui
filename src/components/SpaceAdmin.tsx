@@ -632,7 +632,7 @@ function Transfer({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   )
 }
 
-/** Activity (UI-CONV-041): newest first; who did what, never the value of a field. */
+/** Activity (UI-CONV-041, UI-CONV-051): newest first; who did what, never the value of a field nor a token. */
 export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
   const { t, i18n } = useTranslation()
@@ -662,7 +662,11 @@ export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: S
             <li key={`${a.at}-${i}`}>
               <span className="time">{formatTime(a.at, i18n.language)}</span>
               <span>
-                {t(`spaces.activity.${a.kind}`, { by: a.by?.name ?? someone, member: a.member?.name ?? someone })}
+                {t(`spaces.activity.${a.kind}`, {
+                  by: a.by?.name ?? someone,
+                  member: a.member?.name ?? someone,
+                  tool: a.tool?.title ?? someone,
+                })}
               </span>
             </li>
           ))}

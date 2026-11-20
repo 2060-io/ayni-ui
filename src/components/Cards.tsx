@@ -3,12 +3,13 @@
  * (UI-CONV-004/006/021, UI-APPR-*, UI-CAP-*).
  */
 import type { ApprovalActivity, CapabilityActivity, FlowActivity, MenuActivity } from '@ayni.org/ayni-agui-profile'
-import { isClosedFlow, type SessionRecord } from '@ayni.org/ayni-ui-core'
+import { isClosedFlow, type SessionRecord, toolApprovalOf } from '@ayni.org/ayni-ui-core'
 import { BadgeCheck, Smartphone } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub } from '../state/useHub.js'
+import { ToolApprovalCard } from './Tools.js'
 
 export function MenuCard({ sessionId, menu }: { sessionId: string; menu: MenuActivity }) {
   const hub = useHub()
@@ -39,6 +40,18 @@ export function MenuCard({ sessionId, menu }: { sessionId: string; menu: MenuAct
 }
 
 export function ApprovalCard({
+  sessionId,
+  approval,
+}: {
+  sessionId: string
+  approval: Partial<ApprovalActivity> & { approvalId?: string; text?: string; grantExpiresAt?: string }
+}) {
+  // the approval of a tool call shows the exact action (UI-APPR-006, PROF-TOOL-009)
+  if (toolApprovalOf(approval)) return <ToolApprovalCard sessionId={sessionId} content={approval as never} />
+  return <PlainApprovalCard sessionId={sessionId} approval={approval} />
+}
+
+function PlainApprovalCard({
   sessionId,
   approval,
 }: {
