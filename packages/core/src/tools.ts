@@ -1,6 +1,6 @@
 /**
  * Tools, phase 1 (AG-UI profile 3.4: §3.10, §6, §8, PROF-TOOL-001..013, PROF-DESC-009, PROF-SESS-016; agent D96 to
- * D100; UI-CONV-045..051, UI-APPR-006). A space's tools as its members read them and its owner manages them, a change
+ * D100; UI-CONV-045..052, UI-APPR-006). A space's tools as its members read them and its owner manages them, a change
  * that grants something confirmed on the owner's phone; the confirmation card of a tool call and the exact action on
  * the approval of one; the sources a reply used and those a conversation holds. The wire types are written here until
  * the profile package of 3.4 is the one every client has; the rules a screen follows are here too, so that the
@@ -352,28 +352,27 @@ export function tokenFits(account: Pick<SpaceToolAccount, 'pattern'>, token: str
 /** One group of a source's tools in About (UI-CONV-049): the tools of one rule and one step-up, by their titles. */
 export interface ToolRuleGroup {
   rule: Exclude<ToolRule, 'off'>
-  stepUp: ToolStepUp | null
-  titles: string[]
+  /** in the agent's order, each with its step-up, which is named after its title, never after the rule's words */
+  tools: { title: string; stepUp: ToolStepUp | null }[]
 }
 
 /**
- * A source's tools in About, grouped by rule (UI-CONV-049): the loosest rule first, and within a rule the tools with
- * no step-up first; a tool whose rule is `off` is not shown.
+ * A source's tools in About, grouped by rule (UI-CONV-049): the loosest rule first, each group's tools in the agent's
+ * order, each with its own step-up; a tool whose rule is `off` is not shown.
  */
 export function ruleGroupsOf(tool: Pick<SpaceTool, 'tools'>): ToolRuleGroup[] {
   const groups: ToolRuleGroup[] = []
   for (const item of tool.tools) {
     if (item.rule === 'off') continue
     const rule = item.rule
-    let group = groups.find((g) => g.rule === rule && g.stepUp === item.stepUp)
+    let group = groups.find((g) => g.rule === rule)
     if (!group) {
-      group = { rule, stepUp: item.stepUp, titles: [] }
+      group = { rule, tools: [] }
       groups.push(group)
     }
-    group.titles.push(item.title)
+    group.tools.push({ title: item.title, stepUp: item.stepUp })
   }
-  const stepRank = (s: ToolStepUp | null) => (s === null ? -1 : STEP_UPS.indexOf(s))
-  return groups.sort((a, b) => strictnessOf(a.rule) - strictnessOf(b.rule) || stepRank(a.stepUp) - stepRank(b.stepUp))
+  return groups.sort((a, b) => strictnessOf(a.rule) - strictnessOf(b.rule))
 }
 
 /** The tools a space's About shows (UI-CONV-031): its `ready` sources only. */
@@ -381,22 +380,24 @@ export function readyToolsOf(tools: readonly SpaceTool[]): SpaceTool[] {
   return tools.filter((t) => t.state === 'ready')
 }
 
-/** The time left before a pending change expires, as `m:ss`; `0:00` once past. */
+/** The time left before a pending change expires, as `m:ss` (UI-CONV-052); never below `0:00`. */
 export function timeLeftOf(expiresAt: string, now: number): string {
   const ms = Date.parse(expiresAt) - now
   const seconds = Number.isFinite(ms) ? Math.max(0, Math.ceil(ms / 1000)) : 0
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-/** What the owner is told of a change once it applied or was dropped (UI-CONV-050); nothing for one withdrawn. */
-export function changeOutcomeKeyOf(outcome: SpaceToolsChange['outcome']): 'saved' | 'declined' | 'expired' | null {
+/** What the owner is told of a change once it applied or was dropped (UI-CONV-050, UI-CONV-052). */
+export function changeOutcomeKeyOf(
+  outcome: SpaceToolsChange['outcome']
+): 'saved' | 'declined' | 'expired' | 'withdrawn' {
   return outcome === 'applied'
     ? 'saved'
     : outcome === 'declined' || outcome === 'failed'
       ? 'declined'
       : outcome === 'expired'
         ? 'expired'
-        : null
+        : 'withdrawn'
 }
 
 /** Where a refusal of a change of a space's tools is shown (UI-CONV-050): at the field it names, or for the panel. */
@@ -485,10 +486,9 @@ export function isConfirmation(content: unknown): boolean {
 const statusOf = (v: unknown): ApprovalStatus =>
   v === 'APPROVED' || v === 'REJECTED' || v === 'CANCELLED' || v === 'EXPIRED' ? v : 'PENDING'
 
-/** The person who asked, as an approval names them: `displayName` (profile 3.0), or `name` (§6 of 3.4). */
+/** The person who asked, as an approval names them (`requester.displayName`, PROF-TOOL-007, PROF-TOOL-009). */
 export function requesterNameOf(content: unknown): string {
-  const r = obj(obj(content).requester)
-  return str(r.displayName, str(r.name))
+  return str(obj(obj(content).requester).displayName)
 }
 
 /** A confirmation card as the agent gives it; null for an activity that is not one, or one with no action. */

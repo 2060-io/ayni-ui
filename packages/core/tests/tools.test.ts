@@ -74,7 +74,7 @@ const CARD = {
   kind: 'confirmation',
   status: 'PENDING',
   expiresAt: '2026-11-20T10:10:00Z',
-  requester: { name: 'Ana Ríos' },
+  requester: { displayName: 'Ana Ríos', role: 'sales' },
   tool: 'create-note',
   action: {
     title: 'Add a note',
@@ -218,12 +218,33 @@ describe("the owner's rules (UI-CONV-050, agent D98)", () => {
     expect(tokenFits({}, 'x'.repeat(4097))).toBe(false)
   })
 
-  it('groups the tools by rule in About, loosest first, without those `off` (UI-CONV-049)', () => {
+  it('groups the tools by rule in About, loosest first, each with its own step-up, without those `off` (UI-CONV-049)', () => {
     expect(ruleGroupsOf(crm)).toEqual([
-      { rule: 'none', stepUp: null, titles: ['Get company', 'List companies'] },
-      { rule: 'confirm', stepUp: null, titles: ['Add a note'] },
-      { rule: 'approval', stepUp: 'device', titles: ['Delete note'] },
+      {
+        rule: 'none',
+        tools: [
+          { title: 'Get company', stepUp: null },
+          { title: 'List companies', stepUp: null },
+        ],
+      },
+      { rule: 'confirm', tools: [{ title: 'Add a note', stepUp: null }] },
+      { rule: 'approval', tools: [{ title: 'Delete note', stepUp: 'device' }] },
     ])
+    // a step-up belongs to its tool, not to its group
+    const archive = {
+      name: 'archive',
+      title: 'Archive note',
+      effect: 'write' as const,
+      rule: 'approval' as const,
+      stepUp: null,
+    }
+    expect(ruleGroupsOf({ tools: [...crm.tools, archive] })[2]).toEqual({
+      rule: 'approval',
+      tools: [
+        { title: 'Delete note', stepUp: 'device' },
+        { title: 'Archive note', stepUp: null },
+      ],
+    })
     expect(readyToolsOf([crm, { ...crm, source: 'x', state: 'setup' }]).map((t) => t.source)).toEqual(['relaticle'])
   })
 
@@ -235,7 +256,7 @@ describe("the owner's rules (UI-CONV-050, agent D98)", () => {
     expect(changeOutcomeKeyOf('declined')).toBe('declined')
     expect(changeOutcomeKeyOf('failed')).toBe('declined')
     expect(changeOutcomeKeyOf('expired')).toBe('expired')
-    expect(changeOutcomeKeyOf('cancelled')).toBeNull()
+    expect(changeOutcomeKeyOf('cancelled')).toBe('withdrawn')
   })
 
   it("puts each refusal where it belongs: at the field it names, or the panel's", () => {
@@ -338,6 +359,8 @@ describe('the confirmation card (UI-CONV-045, UI-CONV-046, PROF-TOOL-007)', () =
     expect(toolApprovalOf(CARD)).toBeNull()
     expect(requesterNameOf(approval)).toBe('Ana Ríos')
     expect(requesterNameOf(CARD)).toBe('Ana Ríos')
+    // `requester` is `{ displayName, role }` (PROF-TOOL-009)
+    expect(requesterNameOf({ requester: { name: 'Ana Ríos' } })).toBe('')
   })
 })
 

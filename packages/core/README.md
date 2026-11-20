@@ -74,13 +74,13 @@ to the card it names, where it is (status, scope, end of an allowance), signals 
 | Surface | Functions |
 | --- | --- |
 | The owner's Tools segment (UI-CONV-050, UI-CONV-049) | `takesTools` (`features.tools`), `spaceSegmentsOf(space, { tools })`, `toolRowStateOf`, `missingOf`, `canAdd`, `isAdded`, `ruleChoicesFor` (no looser than the agent-pack's), `loosens`, `bindingValueFits`, `tokenFits`, `timeLeftOf`, `changeOutcomeKeyOf`, `toolRefusalOf` (at the field a `422` names, or the panel's) |
-| The tools in About (UI-CONV-031, UI-CONV-049) | `readyToolsOf`, `ruleGroupsOf` (by rule, loosest first, `off` left out) |
+| The tools in About (UI-CONV-031, UI-CONV-049) | `readyToolsOf`, `ruleGroupsOf` (by rule, loosest first, each tool with its own step-up, `off` left out) |
 | The confirmation card (UI-CONV-045, UI-CONV-046) | `isConfirmation`, `confirmationOf`, `confirmationOutcomeOf`, `canStopAllowing`, `looksLikeJson`, `fieldsInOrder`, `awaitsConfirmation` (no working indicator under a card that waits), `withApprovalUpdate`, `withDecided`, `withAllowanceEnded` |
 | The approval of a tool call (UI-APPR-006) | `toolApprovalOf`, `requesterNameOf` |
 | Sources (UI-CONV-047, UI-CONV-048) | `sourcesOf` (undefined for a reply received live, not read back yet), `withUsageFrom` (history's sources too) |
 
-The English wording of tools is `TOOLS_COPY`, the words of UI-CONV-049 among them, keyed by its path in the
-translation files.
+The English wording of tools is `TOOLS_COPY`, the words of UI-CONV-049 and the table of UI-CONV-052 among them,
+keyed by its path in the translation files.
 
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

@@ -1,8 +1,9 @@
 /**
- * The English wording of tools, phase 1 (UI-CONV-031, UI-CONV-045..051, UI-APPR-006; AG-UI profile 3.4), written once
+ * The English wording of tools, phase 1 (UI-CONV-031, UI-CONV-045..052, UI-APPR-006; AG-UI profile 3.4), written once
  * for the browser and the Ayni app: the browser's English translation file must say the same (a test compares them),
- * and the app starts from these (APP-CONV-046..051). Keys are paths in the translation file; `{{name}}` marks what the
- * screen puts in. The words of accounts, effects and rules are those of UI-CONV-049.
+ * and the app starts from these (APP-CONV-046..052). Keys are paths in the translation file; `{{name}}` marks what the
+ * screen puts in. The words of accounts, effects and rules are those of UI-CONV-049; those of outcomes, refusals, the
+ * time left, the needs-setup line and the lines of an approval are the table of UI-CONV-052.
  */
 export const TOOLS_COPY = {
   'spaces.segments.tools': 'Tools',
@@ -11,8 +12,7 @@ export const TOOLS_COPY = {
   'spaces.activity.tool-removed': '{{by}} removed {{tool}}',
   'spaces.activity.account-set': '{{by}} set the account of {{tool}}',
   'spaces.activity.account-cleared': '{{by}} removed the account of {{tool}}',
-  'approval.asks': '{{requester}} asks to {{action}}',
-  'approval.asksIn': '{{requester}} asks to {{action}} in {{space}}',
+  'approval.asksYou': '{{requester}} asks for your approval',
   'approval.waitingFor': "Waiting for {{approver}}'s approval",
   'approval.waiting': 'Waiting for approval',
   'details.sources': 'Sources',
@@ -69,12 +69,15 @@ export const TOOLS_COPY = {
   'tools.withdraw': 'Withdraw',
   'tools.declined': 'Not confirmed on your phone. Nothing changed.',
   'tools.expired': 'Not confirmed in time. Nothing changed.',
+  'tools.withdrawn': 'Withdrawn. Nothing changed.',
   'tools.phoneNeeded': 'Your phone must be connected to {{agent}} to confirm this change.',
-  'tools.changePending': 'Another change of this tool waits for your phone.',
+  'tools.changePending': 'A change of this tool is already waiting for your phone.',
   'tools.notAdded': 'Add the tool to the space first.',
   'tools.alreadyAdded': 'This tool is already in the space.',
   'tools.notOwner': 'Only the owner of the space changes its tools.',
-  'tools.notFound': 'This tool is no longer offered in the space.',
+  'tools.noSpaceAccount': 'This tool uses no account of the space.',
+  'tools.personalSpace': 'Personal has no tools of a space.',
+  'tools.notFound': 'This tool is not offered in this space.',
   'tools.card.label': 'Confirmation: {{title}}, {{source}}',
   'tools.card.accountSpace': 'With the account of {{space}}',
   'tools.card.accountAgent': "With {{agent}}'s account",
