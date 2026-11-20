@@ -439,5 +439,31 @@
     - The values, roles and English words are the core's (0.5.0: `CONVERSATION_DESIGN.toolCard` and
       `.untrustedNotice`, `CONVERSATION_COLORS.toolCard` and `.untrustedNotice`, `TOOLS_COPY`), for the app to draw
       the same.
-40. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+40. **A link lists the person's conversations and spaces at once** (2026-11-20, found by Fabrice on devnet: "When I
+    link the web (ui), the conversation list is not updated"; UI-SESS-019). He linked the browser again with his
+    phone. The agent bound it as a device of the person his phone is, and the phone listed his five conversations and
+    his two spaces; the browser showed one row, the session the link bound, titled "New conversation" with the time of
+    the link and holding the history of "Obtain badge with email", and no spaces.
+    - **Cause.** The list (and the spaces read with it), the sibling of a new session, the devices and every call of
+      `withAgent` went through the first record of the agent that read `bound`, in the order the store keeps them
+      (IndexedDB: by session id), never through the session the link had just bound. A record of an earlier binding
+      came first: a session the agent closed while the browser was away, one it superseded, one of the guest the
+      person was before. Its token was refused (or it listed another Principal's conversations), the failure was
+      swallowed (`.catch(() => undefined)` at every call site, and `loadSpacesWith` kept quiet on anything but a 404),
+      and the record stayed bound here, so every reading after it failed the same way. Only the refresh handled a 410,
+      and threw on a 401.
+    - **The latest binding.** The agent is asked through the bound session made last (`boundOf`); the list is read
+      through the session named when there is one: the one a link just bound, the one whose stream just attached.
+    - **A refused token is retired.** A 401, 404 or 410 to the list, to a session's status or to the opening of a
+      sibling (401 or 410 to the other calls, where a 404 answers about what was asked for) closes the record here and
+      forgets its token, which is never sent again; the next binding is asked. The conversation keeps its row,
+      read-only until it is opened again.
+    - **A link puts the earlier bindings right.** When the phone binds a provisional session, another Principal's
+      records (a different name or backing identity than the new binding shows) leave with their transcripts, their
+      tokens unused; every other bound session of the agent is asked its status, and one the agent refuses is retired.
+      The list and the spaces are then read through the session the link bound, and read again after one and two
+      seconds when that fails.
+    - **Said, not swallowed.** A listing or a spaces reading that fails is logged (`console.warn`, the hub's one log
+      line), never shown to the person.
+41. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

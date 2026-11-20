@@ -651,6 +651,104 @@ export class Hub {
     return { client: this.client(agent), token: session.sessionToken }
   }
 
+  /**
+   * The bound sessions of the agent, the latest binding first (UI-SESS-019). A record of an earlier binding, which
+   * the agent may have closed or superseded while this tab was away, or which is another Principal's, is never the
+   * first one asked merely because the store keeps it first.
+   */
+  private boundSessions(agentDid: string): SessionRecord[] {
+    return this.snapshot.sessions
+      .filter((s) => s.agentDid === agentDid && s.state === 'bound' && !!s.sessionToken)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }
+
+  /** The session the agent is asked through: the latest binding (UI-SESS-019). */
+  private boundOf(agentDid: string): SessionRecord | undefined {
+    return this.boundSessions(agentDid)[0]
+  }
+
+  /**
+   * A record whose token the agent refuses (closed, superseded, unknown) is retired (UI-SESS-019): its token is
+   * forgotten and never sent again; the conversation it served keeps its row, read-only until it is opened again.
+   */
+  private async retire(session: SessionRecord, reason?: string): Promise<void> {
+    this.park(session.sessionId)
+    const current = await this.store.getSession(session.sessionId)
+    if (!current) {
+      this.set({ sessions: this.snapshot.sessions.filter((s) => s.sessionId !== session.sessionId) })
+      return
+    }
+    await this.saveSession({
+      ...current,
+      state: 'closed',
+      closedReason: (reason as SessionRecord['closedReason']) ?? current.closedReason ?? 'agent',
+      sessionToken: null,
+      binding: undefined,
+    })
+  }
+
+  /** Another Principal's record leaves with what it held (UI-SESS-019); `instead` takes its place on screen. */
+  private async forget(session: SessionRecord, instead: string): Promise<void> {
+    this.park(session.sessionId)
+    await this.serial(async () => {
+      await this.store.deleteSession(session.sessionId)
+      await this.store.deleteTranscript(session.sessionId)
+    })
+    const { [session.sessionId]: _gone, ...transcripts } = this.snapshot.transcripts
+    this.set({
+      transcripts,
+      sessions: this.snapshot.sessions.filter((s) => s.sessionId !== session.sessionId),
+      selectedSessionId:
+        this.snapshot.selectedSessionId === session.sessionId ? instead : this.snapshot.selectedSessionId,
+    })
+  }
+
+  /**
+   * The phone bound `session`: a link completed (UI-SESS-019). What this browser kept of an earlier binding is put
+   * right first. Another Principal's records (the guest the person was, someone else) leave with their transcripts,
+   * their tokens unused; every other bound session of the agent is asked whether it still holds, and one the agent
+   * refuses is retired. The list is then read through the session the link bound, at once, and read again a little
+   * later when that fails.
+   */
+  private async afterLink(session: SessionRecord): Promise<void> {
+    const { agentDid, principal } = session
+    for (const s of this.snapshot.sessions.filter(
+      (x) => x.agentDid === agentDid && x.sessionId !== session.sessionId
+    )) {
+      if (principal && s.principal && !samePrincipal(s.principal, principal)) {
+        await this.forget(s, session.sessionId)
+        continue
+      }
+      if (s.state !== 'bound' || !s.sessionToken) continue
+      try {
+        const { client, token } = this.clientOf(s)
+        const status = await client.status(s.sessionId, token)
+        if (status.state === 'closed') await this.retire(s, status.reason)
+        else if (principal && status.principal && !samePrincipal(status.principal, principal))
+          await this.forget(s, session.sessionId)
+      } catch (e) {
+        if (!refusesToken(e)) {
+          warn(`session ${s.sessionId} could not be checked after the link`, e)
+          continue
+        }
+        warn(`session ${s.sessionId} no longer holds after the link: retired`, e)
+        await this.retire(s, e.reason)
+      }
+    }
+    await this.reload()
+    this.bus?.post({ kind: 'changed', what: 'sessions' })
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await this.syncConversations(agentDid, session.sessionId)
+        return
+      } catch (e) {
+        warn(`the list of conversations could not be read after the link (attempt ${attempt} of 3)`, e)
+        if (attempt >= 3) return
+        await new Promise((r) => setTimeout(r, 1000 * attempt))
+      }
+    }
+  }
+
   public canConnect(agent: AgentRecord): boolean {
     return (
       agent.trust.result === 'trusted' ||
@@ -722,7 +820,7 @@ export class Hub {
     if (session.state === 'bound') {
       if (!reused) {
         await this.loadHistory(session.sessionId).catch(() => undefined)
-        await this.syncConversations(agentDid).catch(() => undefined)
+        await this.syncLogged(agentDid, session.sessionId)
       }
       if (resume?.text) await this.send(session.sessionId, resume.text)
     }
@@ -756,25 +854,35 @@ export class Hub {
         )
       : undefined
     if (live) return { session: live, reused: true }
-    const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
+    // the sibling of the latest binding (UI-SESS-019)
+    const bound = this.boundOf(agentDid)
     const locale = this.snapshot.prefs.locale ?? navigator.language
     const old = this.previousRecord(resume)
     const now = new Date().toISOString()
     let session: SessionRecord
     if (bound) {
       const { client, token } = this.clientOf(bound)
-      const created = await client.create(
-        clientDescription(agent.descriptor.profileVersion, platformDescription()),
-        locale,
-        token,
-        undefined,
-        resume?.sessionId,
-        undefined,
-        resume?.conversationId,
-        fresh,
-        false,
-        fresh ? spaceId : undefined
-      )
+      const created = await client
+        .create(
+          clientDescription(agent.descriptor.profileVersion, platformDescription()),
+          locale,
+          token,
+          undefined,
+          resume?.sessionId,
+          undefined,
+          resume?.conversationId,
+          fresh,
+          false,
+          fresh ? spaceId : undefined
+        )
+        .catch(async (e) => {
+          // a parent the agent no longer takes is retired, and the opening goes on without it
+          if (!refusesToken(e)) throw e
+          warn(`session ${bound.sessionId} was refused as the parent of a new session: retired`, e)
+          await this.retire(bound, e.reason)
+          return undefined
+        })
+      if (!created) return this.openNow(agentDid, resume, fresh, quiet, spaceId)
       session = {
         sessionId: created.sessionId,
         agentDid,
@@ -925,26 +1033,9 @@ export class Hub {
   private async refreshNow(agentDid: string): Promise<void> {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent || !this.canConnect(agent)) return
-    // a session the agent closed while this tab was away still reads as bound here: asking through it says so
-    for (const s of this.snapshot.sessions.filter(
-      (x) => x.agentDid === agentDid && x.state === 'bound' && x.sessionToken
-    )) {
-      try {
-        await this.syncConversations(agentDid)
-        break
-      } catch (e) {
-        if (!(e instanceof ProfileError && e.status === 410)) throw e
-        const current = await this.store.getSession(s.sessionId)
-        if (current)
-          await this.saveSession({
-            ...current,
-            state: 'closed',
-            closedReason: (e.reason as SessionRecord['closedReason']) ?? current.closedReason ?? 'agent',
-            sessionToken: null,
-            binding: undefined,
-          })
-      }
-    }
+    // a session the agent closed while this tab was away still reads as bound here: asking through it says so, and
+    // the reading retires it and goes on with the next (UI-SESS-019)
+    await this.syncConversations(agentDid)
     const mine = this.snapshot.sessions.filter((s) => s.agentDid === agentDid)
     const bound = mine.some((s) => s.state === 'bound' && s.sessionToken)
     const paired = !!agent.deviceHandle && !!agent.deviceSecret
@@ -974,12 +1065,37 @@ export class Hub {
    * The agent's list of the person's conversations (UI-SESS-011): titles and archived state come
    * from the agent; conversations opened elsewhere appear as records with no session yet; ones the
    * agent no longer lists (closed for good elsewhere) leave. Calls are serialized: several bound
-   * sessions ask for it at once, and a record one call drops must not be written back by another.
+   * sessions ask for it at once, and a record one call drops must not be written back by another. It is read through
+   * `via` when that session is bound (the one a link just bound, the one whose stream just attached), else through
+   * the latest binding; a session whose token the agent refuses is retired and the next one asked (UI-SESS-019).
    */
-  public syncConversations(agentDid: string): Promise<void> {
-    const next = this.syncing.then(() => this.syncConversationsNow(agentDid))
+  public syncConversations(agentDid: string, via?: string): Promise<void> {
+    const next = this.syncing.then(() => this.syncConversationsNow(agentDid, via))
     this.syncing = next.catch(() => undefined)
     return next
+  }
+
+  /** The list read again where nothing waits for it: a failure is said, not swallowed (UI-SESS-019). */
+  private syncLogged(agentDid: string, via?: string): Promise<void> {
+    return this.syncConversations(agentDid, via).catch((e) => warn('the list of conversations could not be read', e))
+  }
+
+  /** The agent's list through the first bound session that the agent takes; none when no bound session is left. */
+  private async listThrough(agentDid: string, via?: string) {
+    while (true) {
+      const candidates = this.boundSessions(agentDid)
+      const bound = candidates.find((s) => s.sessionId === via) ?? candidates[0]
+      if (!bound) return undefined
+      const { client, token } = this.clientOf(bound)
+      try {
+        const { conversations } = await client.conversations(token)
+        return { client, token, conversations }
+      } catch (e) {
+        if (!refusesToken(e)) throw e
+        warn(`the list of conversations was refused to session ${bound.sessionId}: retired, asking the next`, e)
+        await this.retire(bound, e.reason)
+      }
+    }
   }
 
   /** Runs after any list reconciliation in flight, so a stale list cannot overwrite what `fn` writes. */
@@ -992,11 +1108,10 @@ export class Hub {
     return next
   }
 
-  private async syncConversationsNow(agentDid: string): Promise<void> {
-    const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
-    if (!bound) return
-    const { client, token } = this.clientOf(bound)
-    const { conversations } = await client.conversations(token)
+  private async syncConversationsNow(agentDid: string, via?: string): Promise<void> {
+    const listing = await this.listThrough(agentDid, via)
+    if (!listing) return
+    const { client, token, conversations } = listing
     const listed = new Map(conversations.map((c) => [c.id, c]))
     await this.collapseConversations(agentDid)
     const local = await this.store.listSessions(agentDid)
@@ -1044,8 +1159,9 @@ export class Hub {
     }
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
-    // with the list, the spaces its conversations belong to (UI-CONV-028), and whether the admin view answers
-    await this.loadSpacesWith(agentDid, client, token)
+    // with the list, the spaces its conversations belong to (UI-CONV-028), through the same session (UI-SESS-019), and
+    // whether the admin view answers
+    await this.loadSpacesWith(agentDid, client, token).catch((e) => warn('the spaces could not be read', e))
     void this.probeAdmin(agentDid, client, token)
   }
 
@@ -1120,7 +1236,7 @@ export class Hub {
    * provisional session would only add a row and a binding screen.
    */
   private async tokenFor(agentDid: string, conversationId?: string): Promise<{ client: ProfileClient; token: string }> {
-    const bound = this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
+    const bound = this.boundOf(agentDid)
     if (bound) return this.clientOf(bound)
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     if (!agent?.deviceHandle || !agent.deviceSecret) throw new Error('link your phone first')
@@ -1148,7 +1264,7 @@ export class Hub {
       })
     })
     if (archived && this.snapshot.selectedSessionId === sessionId) this.selectAgent(session.agentDid)
-    void this.syncConversations(session.agentDid).catch(() => undefined)
+    void this.syncLogged(session.agentDid)
   }
 
   public async archiveAll(agentDid: string): Promise<void> {
@@ -1170,7 +1286,7 @@ export class Hub {
       await client.deleteConversation(token, session.conversationId)
     }
     await this.afterSync(() => this.closeConversation(sessionId, true))
-    void this.syncConversations(session.agentDid).catch(() => undefined)
+    void this.syncLogged(session.agentDid)
   }
 
   /** Whether an action on the agent can go through without the phone: a bound session, or a paired device. */
@@ -1202,7 +1318,7 @@ export class Hub {
 
   /** The paired browsers of this Principal with the agent (PROF-SESS-011). */
   public async listDevices(did: string) {
-    const bound = this.snapshot.sessions.find((s) => s.agentDid === did && s.state === 'bound' && s.sessionToken)
+    const bound = this.boundOf(did)
     if (!bound) return []
     const { client, token } = this.clientOf(bound)
     return (await client.devices(token)).devices
@@ -1211,7 +1327,7 @@ export class Hub {
   public async unlinkDevice(did: string, handle: string): Promise<void> {
     const agent = this.snapshot.agents.find((a) => a.did === did)
     if (agent?.deviceHandle === handle) return this.disconnectAgent(did)
-    const bound = this.snapshot.sessions.find((s) => s.agentDid === did && s.state === 'bound' && s.sessionToken)
+    const bound = this.boundOf(did)
     if (!bound) throw new Error('no bound conversation')
     const { client, token } = this.clientOf(bound)
     await client.revokeDevice(handle, { token })
@@ -1430,7 +1546,7 @@ export class Hub {
         // every time the stream attaches: what another device added to the conversation meanwhile, and what the
         // agent's stream can no longer replay (UI-CONV-022, PROF-HIST-007)
         if (status.state === 'bound') await this.catchUp(sessionId).catch(() => undefined)
-        if (status.state === 'bound') void this.syncConversations(session.agentDid).catch(() => undefined)
+        if (status.state === 'bound') void this.syncLogged(session.agentDid, sessionId)
         controller = new AbortController()
         this.streams.set(sessionId, controller)
         attempt = 0
@@ -1524,7 +1640,8 @@ export class Hub {
           void this.flushPending(session.sessionId)
           await this.adoptPairing(next)
           await this.reload()
-          await this.syncConversations(next.agentDid).catch(() => undefined)
+          // the phone bound it: a link completed (UI-SESS-019)
+          void this.afterLink(next)
         }
       } catch (e) {
         if (e instanceof ProfileError && e.status === 410) {
@@ -1587,14 +1704,16 @@ export class Hub {
         await this.loadHistoryNow(sessionId).catch((e) => this.notify('error', String((e as Error).message)))
         void this.flushPending(sessionId)
         await this.adoptPairing(next)
-        void this.syncConversations(next.agentDid).catch(() => undefined)
+        // bound from provisional is the phone's doing, a link that completed (UI-SESS-019); outside the queue
+        if (session.state === 'provisional') void this.afterLink(next)
+        else void this.syncLogged(next.agentDid, sessionId)
       }
       if (signals.includes('closed')) this.stopLeading(sessionId)
       // a conversation was renamed, archived or closed from another device: the column follows (UI-SESS-015).
       // When only what is unread in it changed (read on another device, a reply landed), the count is taken from
       // the event and the list is not read again (UI-SESS-017)
       if (signals.includes('conversations') && !(await this.applyUnread(next.agentDid, event)))
-        void this.syncConversations(next.agentDid).catch(() => undefined)
+        void this.syncLogged(next.agentDid, sessionId)
       if (signals.includes('identified')) await this.markIdentified(next.agentDid)
       // a change of a space's tools applied or was dropped: the owner's screens that wait for it follow (UI-CONV-050)
       if (signals.includes('tools') && event.type === 'CUSTOM') this.noteToolsChange(next.agentDid, event.value, true)
@@ -2096,6 +2215,9 @@ export class Hub {
       // an agent that serves no spaces: the person has Personal alone, as before spaces
       if (e instanceof ProfileError && e.status === 404)
         this.set({ spaces: { ...this.snapshot.spaces, [agentDid]: { spaces: [], templates: [] } } })
+      // a token the agent refuses is the caller's to retire (UI-SESS-019); anything else is said, and read again later
+      else if (e instanceof ProfileError && (e.status === 401 || e.status === 410)) throw e
+      else warn('the spaces could not be read', e)
     }
   }
 
@@ -2124,13 +2246,23 @@ export class Hub {
    * bound, a paired browser gets one quietly first (UI-SESS-016): what the person has on screen stays there.
    */
   private async withAgent<T>(agentDid: string, fn: (client: ProfileClient, token: string) => Promise<T>): Promise<T> {
-    const boundOf = () =>
-      this.snapshot.sessions.find((s) => s.agentDid === agentDid && s.state === 'bound' && s.sessionToken)
-    if (!boundOf()) await this.refresh(agentDid).catch(() => undefined)
-    const bound = boundOf()
-    if (!bound) throw new Error('link your phone first')
-    const { client, token } = this.clientOf(bound)
-    return fn(client, token)
+    // through the latest binding; a session whose token the agent refuses is retired and the next one asked
+    // (UI-SESS-019). A 404 is not counted: here it answers about what was asked for, not about the token
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (!this.boundOf(agentDid))
+        await this.refresh(agentDid).catch((e) => warn('no session could be opened without the phone', e))
+      const bound = this.boundOf(agentDid)
+      if (!bound) break
+      const { client, token } = this.clientOf(bound)
+      try {
+        return await fn(client, token)
+      } catch (e) {
+        if (!(e instanceof ProfileError && (e.status === 401 || e.status === 410))) throw e
+        warn(`session ${bound.sessionId} was refused: retired, asking the next`, e)
+        await this.retire(bound, e.reason)
+      }
+    }
+    throw new Error('link your phone first')
   }
 
   /** A space's page in the main pane (UI-CONV-031). */
@@ -2519,6 +2651,31 @@ function spaceFieldsOf(listed: unknown, record?: SessionRecord): Pick<SessionRec
   const spaceId = typeof c.spaceId === 'string' ? c.spaceId : record?.spaceId
   const shared = typeof c.shared === 'boolean' ? c.shared : record?.shared
   return { ...(spaceId ? { spaceId } : {}), ...(shared !== undefined ? { shared } : {}) }
+}
+
+/**
+ * The agent refuses the token itself (profile §9, UI-SESS-019): the session is closed or superseded (410), the token
+ * is unknown (401), or it is another session's (404). Such a token is never sent again.
+ */
+function refusesToken(e: unknown): e is ProfileError {
+  return e instanceof ProfileError && (e.status === 401 || e.status === 404 || e.status === 410)
+}
+
+type PrincipalShown = NonNullable<SessionRecord['principal']>
+
+/** Whether two bindings show the same Principal, as far as the agent shows one (its name and its backing identity). */
+function samePrincipal(a: PrincipalShown, b: PrincipalShown): boolean {
+  return (
+    a.displayName === b.displayName &&
+    a.backingIdentity?.kind === b.backingIdentity?.kind &&
+    a.backingIdentity?.name === b.backingIdentity?.name
+  )
+}
+
+/** A failure out of the person's sight is said, never swallowed (UI-SESS-019): a list the agent refused, say. */
+function warn(message: string, error: unknown): void {
+  // biome-ignore lint/suspicious/noConsole: the hub's one log line, for failures the person is not shown
+  console.warn(`[ayni-ui] ${message}`, error)
 }
 
 /** What a new session continues: a local session, the agent's conversation, and text to send once bound. */
