@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.18.0](https://github.com/2060-io/ayni-ui/compare/v0.17.0...v0.18.0) (2026-11-20)
+
+
+### Features
+
+* **conversation:** a message the AI never received is an outline that says so; the memory line is a chip ([0cb231f](https://github.com/2060-io/ayni-ui/commit/0cb231f7cef97c0f67393532b25447d9d7ffd5c7))
+* **conversation:** a message the AI never received is an outline that says so; the memory line is a chip (UI-CONV-044, core 0.4.1) ([c7d981c](https://github.com/2060-io/ayni-ui/commit/c7d981cc472dc48b9844a69417da19a0c6f45858))
+* **core:** a message the AI never received, and the memory line as a chip, in the conversation design (core 0.4.1) ([8c349a7](https://github.com/2060-io/ayni-ui/commit/8c349a79450bc60b804c8e25c69ee50e6a55d0ea))
+
 ## [0.17.0](https://github.com/2060-io/ayni-ui/compare/v0.16.0...v0.17.0) (2026-11-19)
 
 
