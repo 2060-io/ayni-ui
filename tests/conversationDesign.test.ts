@@ -31,6 +31,29 @@ const px = (n: number) => `${n}px`
 const pct = (share: number) => `${Math.round(share * 100)}%`
 const role = (name: string) => `var(--${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)})`
 
+/** The relative luminance of a hex or rgb() colour (WCAG). */
+function luminance(colour: string): number {
+  const channels = colour.startsWith('#')
+    ? [1, 3, 5].map((i) => Number.parseInt(colour.slice(i, i + 2), 16))
+    : (colour.match(/\d+/g) ?? []).map(Number)
+  const [r, g, b] = channels.map((c) => {
+    const v = c / 255
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  }) as [number, number, number]
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+/** The contrast ratio of two colours (WCAG). */
+const contrast = (a: string, b: string) => {
+  const [x, y] = [luminance(a), luminance(b)]
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}
+/** `color-mix(in srgb, a share, b)`, as the browser computes it. */
+function mix(a: string, share: number, b: string): string {
+  const of = (hex: string) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
+  const [x, y] = [of(a), of(b)]
+  return `rgb(${x.map((c, i) => Math.round(c * share + (y[i] as number) * (1 - share))).join(', ')})`
+}
+
 describe('the stylesheet follows the shared conversation design', () => {
   it('the transcript', () => {
     const t = D.transcript
@@ -143,6 +166,66 @@ describe('the stylesheet follows the shared conversation design', () => {
     expect(latest.background).toBe(role(CONVERSATION_COLORS.latestButton.background))
     expect(latest.border).toBe(`1px solid ${role(CONVERSATION_COLORS.latestButton.border)}`)
     expect(latest.color).toBe(role(CONVERSATION_COLORS.latestButton.icon))
+  })
+
+  it('a message of the person the AI never received: no fill, an edge, the meta line in the accent (UI-CONV-044)', () => {
+    const w = rule('.msg.user.withheld')
+    expect(w.background).toBe('transparent')
+    expect(w.color).toBe(role(CONVERSATION_COLORS.withheldBubble.text))
+    expect(w.border).toBe(`${px(D.withheld.borderWidth)} solid ${role(CONVERSATION_COLORS.withheldBubble.border)}`)
+    // the shape is the person's bubble's: its radius and its tighter corner come from .msg and .msg.user
+    expect(w['border-radius']).toBeUndefined()
+    expect(w['border-bottom-right-radius']).toBeUndefined()
+    expect(rule('.msg.withheld .meta').color).toBe(role(CONVERSATION_COLORS.withheldBubble.meta))
+    expect(rule('.withheld-label').gap).toBe(px(D.withheld.iconGap))
+  })
+
+  it('the memory line is a centred chip with an edge that reads (UI-CONV-035)', () => {
+    const c = D.memoryChip
+    expect(rule('.memory-line')['align-self']).toBe('center')
+    const chip = rule('.memory-chip')
+    expect(chip.padding).toBe(`${px(c.paddingY)} ${px(c.paddingX)}`)
+    expect(chip['border-radius']).toBe(px(c.radius))
+    expect(chip.border).toBe(
+      `${px(c.borderWidth)} solid color-mix(in srgb, ${role(CONVERSATION_COLORS.memoryChip.border)} ${pct(c.borderShare)}, transparent)`
+    )
+    expect(chip.background).toBe('transparent')
+    expect(chip.color).toBe(role(CONVERSATION_COLORS.memoryChip.text))
+    expect(chip['font-size']).toBe(px(c.fontSize))
+    expect(chip.gap).toBe(px(c.gap))
+  })
+
+  it('the new colours read on both palettes, chosen or by the system (UI-CONV-035, UI-CONV-044)', () => {
+    // the palettes as the stylesheet defines them, and the roles each theme takes from them
+    const token = (name: string) => {
+      const value = new RegExp(`--${name}: (#[0-9a-f]{6});`).exec(css)?.[1]
+      if (!value) throw new Error(`no --${name}`)
+      return value
+    }
+    const block = (selector: string) => {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return new RegExp(`${escaped} \\{([^}]*)\\}`).exec(css)?.[1] ?? ''
+    }
+    const roles = ['bg', 'text', 'muted', 'accent'] as const
+    const system = block('@media (prefers-color-scheme: dark) {\n  :root:not([data-theme="light"])')
+    const chosen = block(':root[data-theme="dark"]')
+    for (const dark of [system, chosen])
+      for (const r of roles) expect(dark, `--${r} in a dark block`).toContain(`--${r}: var(--dark-${r});`)
+    for (const r of roles) expect(rule(':root')[`--${r}`]).toBe(`var(--light-${r})`)
+    for (const scheme of ['light', 'dark']) {
+      const of = (r: string) => token(`${scheme}-${r}`)
+      const ground = of('bg')
+      // the chip's edge, the muted colour at its share over the transcript's ground
+      const edge = mix(of(CONVERSATION_COLORS.memoryChip.border), D.memoryChip.borderShare, ground)
+      expect(contrast(edge, ground), `${scheme}: chip edge`).toBeGreaterThan(contrast(of('border'), ground) + 0.5)
+      expect(contrast(edge, ground), `${scheme}: chip edge`).toBeGreaterThanOrEqual(1.8)
+      expect(contrast(of(CONVERSATION_COLORS.memoryChip.text), ground), `${scheme}: chip words`).toBeGreaterThan(4.5)
+      // the withheld bubble has no fill: its text, its meta line and its edge stand on the ground
+      const w = CONVERSATION_COLORS.withheldBubble
+      expect(contrast(of(w.text), ground), `${scheme}: withheld text`).toBeGreaterThan(4.5)
+      expect(contrast(of(w.meta), ground), `${scheme}: withheld meta`).toBeGreaterThan(4.5)
+      expect(contrast(of(w.border), ground), `${scheme}: withheld edge`).toBeGreaterThan(3)
+    }
   })
 
   it('the English wording is the shared one', () => {

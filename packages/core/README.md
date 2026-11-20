@@ -16,7 +16,7 @@ The browser draws with CSS and the Ayni app with React Native styles. What the t
 
 | Surface | Design values and colour roles | What it shows |
 | --- | --- | --- |
-| A conversation | `CONVERSATION_DESIGN`, `CONVERSATION_COLORS` | `replyQuoteOf`, `reactionPillOf`, `plainText`, `progressOf` (the agent is working), `contextFigureOf` and `contextLineOf` (the context line under the message form), and its English wording (`CONVERSATION_COPY`) |
+| A conversation | `CONVERSATION_DESIGN`, `CONVERSATION_COLORS` | `replyQuoteOf`, `reactionPillOf`, `plainText`, `progressOf` (the agent is working), `contextFigureOf` and `contextLineOf` (the context line under the message form), `isWithheld` (a message of the person the AI never received, drawn as an outline: the reducer marks it from `ayni.messages.withheld` and from history's `metadata.modelVisible`), the memory line as a chip (`memoryChip`), and its English wording (`CONVERSATION_COPY`) |
 | The home page (rail and column) | `HOME_DESIGN`, `HOME_COLORS` | `TRUST_MARK`, `CONTROLLER_KIND_ICON`, `formatTime` |
 | The Proof of Trust | `PROOF_OF_TRUST_DESIGN`, `PROOF_OF_TRUST_COLORS` | `verdictOf`, `identityStepOf`, `accreditationLine`, `otherCredentialLine`, `claimRows`, and its English wording (`PROOF_OF_TRUST_COPY`) |
 

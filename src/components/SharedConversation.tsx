@@ -3,7 +3,7 @@
  * shared history, its author and when it was shared; no message form, and nothing that changes it.
  */
 import { ACTIVITY } from '@ayni.org/ayni-agui-profile'
-import { ProfileError, type TranscriptMessage, toTranscriptMessage } from '@ayni.org/ayni-ui-core'
+import { isWithheld, ProfileError, type TranscriptMessage, toTranscriptMessage } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, Eye } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +11,7 @@ import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { AttachmentLoader, AttachmentView } from './AttachmentView.js'
 import { FlowCard } from './Cards.js'
+import { WithheldLabel } from './Conversation.js'
 import { Markdown } from './Markdown.js'
 
 export function SharedConversationView() {
@@ -127,9 +128,13 @@ function ReadOnlyMessage({ m, author, agentName }: { m: TranscriptMessage; autho
   return (
     <article className={['row', theirs ? 'mine' : 'theirs'].join(' ')} aria-label={theirs ? author : agentName}>
       <div className="bubble-wrap">
-        <div className={`msg ${m.role}`}>
+        {/* a message of the author the AI never received is drawn as in their own transcript (UI-CONV-044) */}
+        <div className={['msg', m.role, isWithheld(m) ? 'withheld' : ''].filter(Boolean).join(' ')}>
           <span className="body">{m.role === 'assistant' ? <Markdown text={m.content} /> : m.content}</span>
-          <span className="meta">{formatTime(m.at, i18n.language)}</span>
+          <span className="meta">
+            {isWithheld(m) ? <WithheldLabel /> : null}
+            {formatTime(m.at, i18n.language)}
+          </span>
         </div>
       </div>
     </article>

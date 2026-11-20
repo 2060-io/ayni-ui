@@ -1,6 +1,6 @@
 /** The side sheet (UI-SHELL-014): message info (UI-CONV-019), with the memories a reply used (UI-CONV-034). */
-import { quoteLabel } from '@ayni.org/ayni-ui-core'
-import { Copy, X } from 'lucide-react'
+import { isWithheld, quoteLabel } from '@ayni.org/ayni-ui-core'
+import { Copy, Lock, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { nameOf } from '../emoji.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -42,6 +42,13 @@ export function MessageInfo() {
               ? t('details.fromAgent', { name: agent?.name ?? '' })
               : t('details.fromSystem')}
         </h3>
+        {isWithheld(m) ? (
+          // the service's code took it: the AI never received it (UI-CONV-044, D95)
+          <p className="withheld-note">
+            <Lock size={14} aria-hidden="true" className="withheld-lock" />
+            {t('conversation.withheldInfo')}
+          </p>
+        ) : null}
         <dl>
           <dt>{t('details.sent')}</dt>
           <dd>{when(m.at)}</dd>

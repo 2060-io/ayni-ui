@@ -4,6 +4,7 @@
  * writes them; the person deletes them, and changes one by telling the agent.
  */
 import {
+  CONVERSATION_DESIGN,
   type Memories,
   type MemoryInfo,
   type PreferenceInfo,
@@ -11,7 +12,7 @@ import {
   usageOf,
   usageSummaryOf,
 } from '@ayni.org/ayni-ui-core'
-import { ChevronRight, Lock, MessageSquare, Pencil, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { Bookmark, ChevronRight, Lock, MessageSquare, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -304,7 +305,10 @@ export function UsedMemories({
   )
 }
 
-/** The line after a reply whose turn added, changed or removed a memory (UI-CONV-035), opening its sheet. */
+/**
+ * The line after a reply whose turn added, changed or removed a memory (UI-CONV-035): a centred chip, the whole of it
+ * the button that opens the memory's sheet (`CONVERSATION_DESIGN.memoryChip`).
+ */
 export function MemoryLine({
   agentDid,
   agentName,
@@ -321,10 +325,10 @@ export function MemoryLine({
   const spaceId = typeof content.spaceId === 'string' && content.spaceId ? content.spaceId : undefined
   return (
     <div className="memory-line">
-      <button type="button" className="link" onClick={() => hub.openMemory({ agentDid, memoryId, spaceId })}>
-        <Pencil size={13} aria-hidden="true" />
+      <button type="button" className="memory-chip" onClick={() => hub.openMemory({ agentDid, memoryId, spaceId })}>
+        <Bookmark size={CONVERSATION_DESIGN.memoryChip.iconSize} aria-hidden="true" />
         {t('memories.updated', { agent: agentName })}
-        <ChevronRight size={13} aria-hidden="true" />
+        <ChevronRight size={CONVERSATION_DESIGN.memoryChip.iconSize} aria-hidden="true" />
       </button>
     </div>
   )

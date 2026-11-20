@@ -353,5 +353,28 @@
       endpoint and event of §3.6 to §3.9 and §8 that the branch serves read as the core expects. The agent answers
       `space-left`, so `left-space` is no longer read; it gives the template bounds as the spec now writes them
       (`rules` with `default`, `min`/`max`, `allowed`, PROF-SPACE-001), so the bounds are no longer a gap.
-38. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+38. **A message the AI never received; the memory line as a chip** (2026-11-19, Fabrice chose design A of three
+    mockups; UI-CONV-044, UI-CONV-035 amended, PROF-STREAM-011, PROF-HIST-013, D95). Built against ayni-spec #97 while
+    the agent side was being built at the same time.
+    - **The bubble.** A message of the person that the service's code took (the address and the code of an email
+      check) is the person's bubble in its shape, with no fill, so the transcript's ground shows through, a 1.5 px
+      edge in the accent and the text in the text colour. Its meta line, in the accent, reads a lock, then
+      `Not shared with the AI · 10:42`; the words are text, so screen readers read them, and the lock is hidden from
+      them. Its Info says "Only the service's code read this. It was not shared with the AI." A reply quote and the
+      search marks in it are drawn as on the agent's bubble, since the person's own colours need the fill. A
+      conversation shared with a space shows its author's such message the same way. What the service's code wrote
+      stays an ordinary bubble of the agent.
+    - **How the browser knows.** Live, `ayni.messages.withheld` names the messages as an erasure does: by the
+      agent's ids and by the ids the clients gave what they sent (`clientIds`); a bubble already drawn turns into
+      the outline. From history, `metadata.modelVisible: false`, which a message already held takes too. An event of
+      another conversation is ignored, a replayed message stays marked, and only the person's text messages are
+      marked.
+    - **The memory chip.** "<agent> updated a memory" is a centred chip: a pill with a 1 px edge, a bookmark, the
+      words in the muted colour and a chevron; the whole chip opens the memory's sheet. Its edge is the muted colour
+      at 45 % over a transparent ground: the border colour hardly shows on the dark ground (1.28:1) and faintly on
+      white (1.24:1); the edge reads at 2.42:1 and 1.83:1, and the words at 7.37:1 and 4.83:1.
+    - The values, roles and English words are the core's (0.4.1: `CONVERSATION_DESIGN.withheld` and `.memoryChip`,
+      `CONVERSATION_COLORS.withheldBubble` and `.memoryChip`, `CONVERSATION_COPY.withheld` and `.withheldInfo`,
+      `MESSAGES_WITHHELD`, `withWithheld`, `isWithheld`), for the app to draw the same.
+39. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

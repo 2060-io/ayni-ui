@@ -140,6 +140,12 @@ export type TranscriptMessage =
       usedMemories?: string[]
       /** the names of the person's preferences the turn was given (PROF-HIST-011), from history */
       usedPreferences?: string[]
+      /**
+       * false on a message of the person that the AI never received: the service's code took it, as it takes the
+       * address and the code of an email check (UI-CONV-044, D95). Live from `ayni.messages.withheld`
+       * (PROF-STREAM-011), from history from `metadata.modelVisible` (PROF-HIST-013). Absent: the AI received it.
+       */
+      modelVisible?: false
     }
   | {
       id: string

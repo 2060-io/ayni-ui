@@ -159,6 +159,8 @@
     "thinking": "Réflexion…",
     "context": "Contexte {{used}} / {{max}}",
     "contextCached": "Contexte {{used}} / {{max}} · {{cached}} en cache",
+    "withheld": "Non partagé avec l'IA",
+    "withheldInfo": "Seul le code du service a lu ceci. Cela n'a pas été partagé avec l'IA.",
     "media": {
       "image": "Photo",
       "voice": "Note vocale",

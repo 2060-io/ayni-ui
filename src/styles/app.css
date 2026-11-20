@@ -761,6 +761,21 @@ fieldset.quick {
 .msg .meta .waiting {
   font-style: italic;
 }
+/* a message of the person the AI never received (UI-CONV-044, D95): the person's bubble in its shape, with no fill
+   (the transcript's ground shows through) and an edge in the accent; its meta line in the accent, a lock first */
+.msg.user.withheld {
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--accent);
+}
+.msg.withheld .meta {
+  color: var(--accent);
+}
+.withheld-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
 .quote {
   display: flex;
   flex-direction: column;
@@ -784,6 +799,14 @@ fieldset.quick {
 }
 .msg.user .quote-who {
   color: inherit;
+}
+/* a message of the person the AI never received has no fill: its quote is drawn as on the agent's bubble */
+.msg.user.withheld .quote {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.msg.user.withheld .quote-who {
+  color: var(--accent);
 }
 .quote-text {
   white-space: nowrap;
@@ -1345,6 +1368,19 @@ label.field {
   font-size: 14px;
   color: var(--text);
 }
+.info-card .withheld-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+.withheld-lock {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
 .info-card dl {
   margin: 0;
   display: grid;
@@ -1647,6 +1683,14 @@ mark.hit.current {
 .msg.user mark.hit.current {
   background: var(--accent-contrast);
   color: var(--accent);
+}
+/* and its search marks too (UI-CONV-044) */
+.msg.user.withheld mark.hit {
+  background: color-mix(in srgb, var(--warning) 35%, transparent);
+}
+.msg.user.withheld mark.hit.current {
+  background: var(--warning);
+  color: #fff;
 }
 .conv-row .matches {
   justify-self: end;
@@ -2669,10 +2713,25 @@ mark.hit.current {
   border-top: 1px solid var(--border);
 }
 
-/* "<agent> updated a memory", after the reply of its turn (UI-CONV-035) */
+/* "<agent> updated a memory", after the reply of its turn (UI-CONV-035): a centred chip that opens the memory; its
+   edge is the muted colour at a share, which reads on the white ground and on the dark one */
 .memory-line {
   align-self: center;
+}
+.memory-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--muted) 45%, transparent);
+  background: transparent;
+  color: var(--muted);
   font-size: 12.5px;
+  line-height: 1.2;
+}
+.memory-chip:hover {
+  border-color: var(--muted);
 }
 .link {
   color: var(--accent);

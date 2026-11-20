@@ -51,6 +51,47 @@ export function withoutErased(transcript: Transcript, messageIds: readonly strin
   return { ...transcript, messages: transcript.messages.filter((m) => !named(m)), reactions }
 }
 
+/**
+ * Messages of the person that the AI never received: the service's code took them, as it takes the address and the
+ * code of an email check (PROF-STREAM-011, D95). Sent while the run is on, as soon as the code takes the message.
+ * Named here until the profile package that lists it is the one every client has.
+ */
+export const MESSAGES_WITHHELD = 'ayni.messages.withheld'
+
+/**
+ * The ids an event names its messages by (PROF-STREAM-008, PROF-STREAM-011): the agent's (`messageIds`), and the ids
+ * the clients gave the messages they sent (`clientIds`), under which the sending device holds them until history
+ * names them (`mergeHistory`).
+ */
+export function namedMessageIds(value: unknown): string[] {
+  const v = (value ?? {}) as { messageIds?: unknown; clientIds?: unknown }
+  return [v.messageIds, v.clientIds].flatMap((list) =>
+    Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []
+  )
+}
+
+/** Whether a message is one of the person that the AI never received (UI-CONV-044, D95). */
+export function isWithheld(m: TranscriptMessage): boolean {
+  return m.role === 'user' && m.modelVisible === false
+}
+
+/**
+ * The transcript with the person's messages the service's code took marked as never received by the AI (UI-CONV-044,
+ * PROF-STREAM-011): a bubble already drawn filled turns into the outline. Only the person's text messages are marked;
+ * the messages the service's code wrote stay the agent's.
+ */
+export function withWithheld(transcript: Transcript, messageIds: readonly string[]): Transcript {
+  const withheld = new Set(messageIds)
+  const named = (m: TranscriptMessage) => m.role === 'user' && m.modelVisible !== false && withheld.has(m.id)
+  if (!transcript.messages.some(named)) return transcript
+  return {
+    ...transcript,
+    messages: transcript.messages.map((m) =>
+      m.role === 'user' && named(m) ? { ...m, modelVisible: false as const } : m
+    ),
+  }
+}
+
 /** The five closed states of a flow (flow profile §5.2). */
 export function isClosedFlow(state: unknown): boolean {
   return (
@@ -129,9 +170,18 @@ export function reduce(
       // a message already held comes again when a stream replays it after a reconnect: it keeps its time, so
       // it stays where it is in the transcript
       const held = t.messages.find((m) => m.id === id)
+      // and a message of the person the AI never received stays marked (UI-CONV-044)
+      const withheld = role === 'user' && !!held && isWithheld(held)
       t = {
         ...t,
-        messages: upsertMessage(t.messages, { id, role, content: '', at: held?.at ?? at, streaming: true }),
+        messages: upsertMessage(t.messages, {
+          id,
+          role,
+          content: '',
+          at: held?.at ?? at,
+          streaming: true,
+          ...(withheld ? { modelVisible: false as const } : {}),
+        }),
       }
       break
     }
@@ -255,10 +305,16 @@ export function reduce(
           // (UI-CONV-027, PROF-STREAM-008)
           const conversationId = typeof value.conversationId === 'string' ? value.conversationId : undefined
           // by the agent's ids, and by the ids the clients gave the messages they sent (`clientIds`)
-          const ids = [value.messageIds, value.clientIds].flatMap((list) =>
-            Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []
-          )
+          const ids = namedMessageIds(value)
           if (!conversationId || !s.conversationId || conversationId === s.conversationId) t = withoutErased(t, ids)
+          break
+        }
+        case MESSAGES_WITHHELD: {
+          // messages of the person the service's code took: the AI never received them, and their bubbles say so
+          // (UI-CONV-044, PROF-STREAM-011), named as an erasure names them
+          const conversationId = typeof value.conversationId === 'string' ? value.conversationId : undefined
+          if (!conversationId || !s.conversationId || conversationId === s.conversationId)
+            t = withWithheld(t, namedMessageIds(value))
           break
         }
         case MEMORY_UPDATED: {
@@ -357,6 +413,7 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     replyTo?: ReplyQuote
     usedMemories?: unknown
     usedPreferences?: unknown
+    modelVisible?: unknown
   }
   const at = meta.createdAt ?? now()
   if (m.role === 'activity') {
@@ -378,6 +435,8 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     interrupted: meta.completion === 'interrupted',
     replyTo: meta.replyTo,
     ...(role === 'assistant' ? usageFrom(meta) : {}),
+    // a message of the person the AI never received (PROF-HIST-013); absent, the AI received it
+    ...(role === 'user' && meta.modelVisible === false ? { modelVisible: false as const } : {}),
   }
 }
 
@@ -476,8 +535,21 @@ export function withUsageFrom(messages: TranscriptMessage[], page: Record<string
 }
 
 /**
+ * The person's messages held here that history says the AI never received (`metadata.modelVisible: false`,
+ * PROF-HIST-013): one sent from this device, or one whose live event this device missed, is marked as history reads
+ * it (UI-CONV-044).
+ */
+export function withWithheldFrom(messages: TranscriptMessage[], page: Record<string, unknown>[]): TranscriptMessage[] {
+  const ids = page
+    .filter((m) => m.role === 'user' && (m.metadata as { modelVisible?: unknown } | undefined)?.modelVisible === false)
+    .map((m) => String(m.id))
+  return ids.length ? withWithheld({ messages } as Transcript, ids).messages : messages
+}
+
+/**
  * Merges a history page (newest last) into the transcript without duplicates (UI-CONV-012, UI-PRIV-003). A message
- * already held takes what only history gives of it: the memories and preferences its reply used (PROF-HIST-011).
+ * already held takes what only history gives of it: the memories and preferences its reply used (PROF-HIST-011), and
+ * whether the AI received a message of the person (PROF-HIST-013).
  * With `read`, what the page no longer returns of the period it covers leaves (UI-CONV-037).
  */
 export function mergeHistory(
@@ -504,13 +576,16 @@ export function mergeHistory(
       const createdAt = (m.metadata as { createdAt?: unknown } | undefined)?.createdAt
       if (typeof createdAt === 'string') agentTimes.set(String(m.id), createdAt)
     }
-  const kept = withUsageFrom(
-    transcript.messages.map((m) => {
-      const renamed = ownIdOf.has(m.id) ? { ...m, id: ownIdOf.get(m.id) as string } : m
-      const time = agentTimes.get(renamed.id)
-      // a flow card keeps its place at the flow's open time (UI-CONV-021)
-      return time && time !== renamed.at && vanishable(renamed) ? { ...renamed, at: time } : renamed
-    }),
+  const kept = withWithheldFrom(
+    withUsageFrom(
+      transcript.messages.map((m) => {
+        const renamed = ownIdOf.has(m.id) ? { ...m, id: ownIdOf.get(m.id) as string } : m
+        const time = agentTimes.get(renamed.id)
+        // a flow card keeps its place at the flow's open time (UI-CONV-021)
+        return time && time !== renamed.at && vanishable(renamed) ? { ...renamed, at: time } : renamed
+      }),
+      page
+    ),
     page
   )
   const older = page.map(toTranscriptMessage).filter((m) => !known.has(m.id) && !renamedIds.has(m.id))

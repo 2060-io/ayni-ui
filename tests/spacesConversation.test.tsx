@@ -245,7 +245,7 @@ describe('the line "<agent> updated a memory" (UI-CONV-035)', () => {
     entryId: 'ent_1',
   }
 
-  it('shows after the reply of its turn, and opens the memory', async () => {
+  it('shows after the reply of its turn, as a chip that opens the memory', async () => {
     // live, the change can come before the reply's text
     const { hub, el } = await conversation({
       messages: [
@@ -259,7 +259,14 @@ describe('the line "<agent> updated a memory" (UI-CONV-035)', () => {
     const memory = children.findIndex((c) => c.classList.contains('memory-line'))
     expect(memory).toBe(reply + 1)
     expect(el.querySelector('.memory-line')?.textContent).toBe('Fleet support updated a memory')
-    await click(el.querySelector('.memory-line button'))
+    // the whole chip is the button: a bookmark, the words, a chevron
+    const chip = el.querySelector('.memory-line > button.memory-chip')
+    expect(chip?.textContent).toBe('Fleet support updated a memory')
+    expect([...(chip?.querySelectorAll('svg') ?? [])].map((s) => s.getAttribute('class'))).toEqual([
+      expect.stringContaining('lucide-bookmark'),
+      expect.stringContaining('lucide-chevron-right'),
+    ])
+    await click(chip)
     expect(hub.getSnapshot().memoryFor).toEqual({ agentDid: AGENT, memoryId: 'mem_1', spaceId: TRUCK.id })
   })
 
