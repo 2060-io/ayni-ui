@@ -3,6 +3,7 @@
  * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015/027, UI-CONV-045/046/047, UI-CAP-001, UI-APPR-002).
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
+import { CONNECTIONS_CHANGED } from './connections.js'
 import { withoutVoiceEchoes } from './mediaMessages.js'
 import { MEMORY_UPDATE, MEMORY_UPDATED, memoryLineOf } from './memories.js'
 import type { AgUiEvent } from './profileClient.js'
@@ -14,7 +15,17 @@ export interface Reduction {
   transcript: Transcript
   session: SessionRecord
   /** signals the shell reacts to (title, badge, sound) */
-  signals: ('message' | 'bound' | 'closed' | 'token' | 'approval' | 'identified' | 'conversations' | 'tools')[]
+  signals: (
+    | 'message'
+    | 'bound'
+    | 'closed'
+    | 'token'
+    | 'approval'
+    | 'identified'
+    | 'conversations'
+    | 'tools'
+    | 'connections'
+  )[]
 }
 
 export function emptyTranscript(sessionId: string): Transcript {
@@ -62,12 +73,13 @@ export const MESSAGES_WITHHELD = 'ayni.messages.withheld'
 /**
  * The ids an event names its messages by (PROF-STREAM-008, PROF-STREAM-011): the agent's (`messageIds`), and the ids
  * the clients gave the messages they sent (`clientIds`), under which the sending device holds them until history
- * names them (`mergeHistory`).
+ * names them (`mergeHistory`). `clientIds` has the length and the order of `messageIds`, with `""` for a message no
+ * client sent (the agent's reply to a message deleted with it): an empty id names nothing.
  */
 export function namedMessageIds(value: unknown): string[] {
   const v = (value ?? {}) as { messageIds?: unknown; clientIds?: unknown }
   return [v.messageIds, v.clientIds].flatMap((list) =>
-    Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []
+    Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string' && id !== '') : []
   )
 }
 
@@ -79,18 +91,78 @@ export function isWithheld(m: TranscriptMessage): boolean {
 /**
  * The transcript with the person's messages the service's code took marked as never received by the AI (UI-CONV-044,
  * PROF-STREAM-011): a bubble already drawn filled turns into the outline. Only the person's text messages are marked;
- * the messages the service's code wrote stay the agent's.
+ * the messages the service's code wrote stay the agent's. A message held back because it carried a credential
+ * (`credential`, agent D109) also takes the text the agent kept, in place of the one this device holds (`texts`, by
+ * the id the message is held under).
  */
-export function withWithheld(transcript: Transcript, messageIds: readonly string[]): Transcript {
+export function withWithheld(
+  transcript: Transcript,
+  messageIds: readonly string[],
+  credential?: { texts: Readonly<Record<string, string>> }
+): Transcript {
   const withheld = new Set(messageIds)
-  const named = (m: TranscriptMessage) => m.role === 'user' && m.modelVisible !== false && withheld.has(m.id)
+  const named = (m: TranscriptMessage) =>
+    m.role === 'user' &&
+    withheld.has(m.id) &&
+    (m.modelVisible !== false ||
+      (!!credential && (m.withheld !== 'credential' || credential.texts[m.id] !== undefined)))
   if (!transcript.messages.some(named)) return transcript
   return {
     ...transcript,
-    messages: transcript.messages.map((m) =>
-      m.role === 'user' && named(m) ? { ...m, modelVisible: false as const } : m
-    ),
+    messages: transcript.messages.map((m) => {
+      if (m.role !== 'user' || !named(m)) return m
+      if (!credential) return { ...m, modelVisible: false as const }
+      const kept = credential.texts[m.id]
+      return {
+        ...m,
+        modelVisible: false as const,
+        withheld: 'credential' as const,
+        ...(kept !== undefined ? { content: kept } : {}),
+      }
+    }),
   }
+}
+
+/**
+ * The text the agent kept of each message held back for a credential, by every id the event names it under
+ * (PROF-STREAM-011). `texts` is keyed by the agent's ids; the device that sent the message holds it under its own id
+ * until history names it. `clientIds[i]` is the client's id of `messageIds[i]`, `""` for a message no client sent, so
+ * a client's id takes the text of the agent's id at its place.
+ */
+export function withheldTextsOf(value: unknown): Record<string, string> {
+  const v = (value ?? {}) as { messageIds?: unknown; clientIds?: unknown; texts?: unknown }
+  const texts: Record<string, string> = {}
+  if (typeof v.texts !== 'object' || v.texts === null) return texts
+  for (const [id, text] of Object.entries(v.texts as Record<string, unknown>))
+    if (typeof text === 'string') texts[id] = text
+  const agentIds = Array.isArray(v.messageIds) ? (v.messageIds as unknown[]) : []
+  const clientIds = Array.isArray(v.clientIds) ? (v.clientIds as unknown[]) : []
+  clientIds.forEach((clientId, i) => {
+    const agentId = agentIds[i]
+    if (typeof clientId !== 'string' || !clientId || typeof agentId !== 'string') return
+    const text = texts[agentId]
+    if (text !== undefined && texts[clientId] === undefined) texts[clientId] = text
+  })
+  return texts
+}
+
+/**
+ * The session with what it shows of a message held back for a credential replaced by the text the agent kept: its
+ * title and its preview, made from the message as it was sent, and a text that waits for the session to bind
+ * (UI-CONV-044: the transcript, the store and the outbox).
+ */
+function sessionWithout(s: SessionRecord, held: readonly TranscriptMessage[], next: readonly TranscriptMessage[]) {
+  let out = s
+  for (const before of held) {
+    const after = next.find((m) => m.id === before.id)
+    if (!after || before.role === 'activity' || after.role === 'activity' || before.content === after.content) continue
+    const sent = before.content
+    const kept = after.content
+    if (sent && out.title && sent.startsWith(out.title)) out = { ...out, title: kept.slice(0, 60) }
+    if (sent && out.lastPreview && sent.startsWith(out.lastPreview)) out = { ...out, lastPreview: kept.slice(0, 120) }
+    if (out.pendingText === sent) out = { ...out, pendingText: undefined }
+  }
+  return out
 }
 
 /** The five closed states of a flow (flow profile §5.2). */
@@ -315,10 +387,16 @@ export function reduce(
         }
         case MESSAGES_WITHHELD: {
           // messages of the person the service's code took: the AI never received them, and their bubbles say so
-          // (UI-CONV-044, PROF-STREAM-011), named as an erasure names them
+          // (UI-CONV-044, PROF-STREAM-011), named as an erasure names them. One held back for a credential takes the
+          // text the agent kept, here and wherever this device wrote the text it sent (agent D109)
           const conversationId = typeof value.conversationId === 'string' ? value.conversationId : undefined
-          if (!conversationId || !s.conversationId || conversationId === s.conversationId)
-            t = withWithheld(t, namedMessageIds(value))
+          if (!conversationId || !s.conversationId || conversationId === s.conversationId) {
+            const ids = namedMessageIds(value)
+            const credential = value.reason === 'credential' ? { texts: withheldTextsOf(value) } : undefined
+            const before = t.messages.filter((m) => ids.includes(m.id))
+            t = withWithheld(t, ids, credential)
+            if (credential) s = sessionWithout(s, before, t.messages)
+          }
           break
         }
         case MEMORY_UPDATED: {
@@ -379,6 +457,12 @@ export function reduce(
           // (UI-CONV-050, PROF-TOOL-006); nothing of it enters the transcript
           signals.push('tools')
           break
+        case CONNECTIONS_CHANGED:
+          // one of the person's own accounts, or an attempt to connect one, changed: the shell reads Your accounts
+          // again and tells the screens that show them (UI-CONV-053, PROF-TOOL-019); nothing of it enters the
+          // transcript
+          signals.push('connections')
+          break
         case CUSTOM_EVENT.reaction: {
           // one reaction per person per message: an add replaces, a remove clears (PROF-RUN-010)
           const messageId = String(value.messageId)
@@ -433,6 +517,7 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     usedMemories?: unknown
     usedPreferences?: unknown
     modelVisible?: unknown
+    withheld?: unknown
     sources?: unknown
   }
   const at = meta.createdAt ?? now()
@@ -457,8 +542,12 @@ export function toTranscriptMessage(m: Record<string, unknown>): TranscriptMessa
     // what the reply used: the person's memories and preferences (PROF-HIST-011), the sources of its tools
     // (PROF-TOOL-010); a reply read from history that names no source used none
     ...(role === 'assistant' ? { ...usageFrom(meta), ...sourcesFrom(meta) } : {}),
-    // a message of the person the AI never received (PROF-HIST-013); absent, the AI received it
+    // a message of the person the AI never received (PROF-HIST-013); absent, the AI received it. One held back for a
+    // credential comes with the text the agent kept (agent D109)
     ...(role === 'user' && meta.modelVisible === false ? { modelVisible: false as const } : {}),
+    ...(role === 'user' && meta.modelVisible === false && meta.withheld === 'credential'
+      ? { withheld: 'credential' as const }
+      : {}),
   }
 }
 
@@ -560,13 +649,30 @@ export function withUsageFrom(messages: TranscriptMessage[], page: Record<string
 /**
  * The person's messages held here that history says the AI never received (`metadata.modelVisible: false`,
  * PROF-HIST-013): one sent from this device, or one whose live event this device missed, is marked as history reads
- * it (UI-CONV-044).
+ * it (UI-CONV-044). One held back for a credential (`metadata.withheld: "credential"`) takes the text history gives,
+ * the one the agent kept (agent D109).
  */
 export function withWithheldFrom(messages: TranscriptMessage[], page: Record<string, unknown>[]): TranscriptMessage[] {
-  const ids = page
-    .filter((m) => m.role === 'user' && (m.metadata as { modelVisible?: unknown } | undefined)?.modelVisible === false)
-    .map((m) => String(m.id))
-  return ids.length ? withWithheld({ messages } as Transcript, ids).messages : messages
+  const unseen = page.filter(
+    (m) => m.role === 'user' && (m.metadata as { modelVisible?: unknown } | undefined)?.modelVisible === false
+  )
+  if (!unseen.length) return messages
+  const isCredential = (m: Record<string, unknown>) =>
+    (m.metadata as { withheld?: unknown } | undefined)?.withheld === 'credential'
+  const plain = unseen.filter((m) => !isCredential(m)).map((m) => String(m.id))
+  const credential = unseen.filter(isCredential)
+  let out = plain.length ? withWithheld({ messages } as Transcript, plain).messages : messages
+  if (credential.length) {
+    const texts = Object.fromEntries(
+      credential.filter((m) => typeof m.content === 'string').map((m) => [String(m.id), m.content as string])
+    )
+    out = withWithheld(
+      { messages: out } as Transcript,
+      credential.map((m) => String(m.id)),
+      { texts }
+    ).messages
+  }
+  return out
 }
 
 /**

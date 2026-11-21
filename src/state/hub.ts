@@ -10,10 +10,16 @@ import {
   type AppLinkDestination,
   type BrandConfig,
   BroadcastSyncBus,
+  type Connection,
+  type ConnectionAttempt,
+  type ConnectionRef,
+  type ConnectionsChange,
   type ControllerRecord,
   type ConversationSource,
   changedConversation,
   clientDescription,
+  connectionKeyOf,
+  connectionsChangeOf,
   addAgent as coreAddAgent,
   countOccurrences,
   type DeviceStore,
@@ -54,6 +60,7 @@ import {
   type Transcript,
   type TranscriptMessage,
   taken,
+  takesConnections,
   takesQueue,
   takesTools,
   turnToDelete,
@@ -88,6 +95,8 @@ export type View =
   | 'admin'
   /** a conversation shared with a space, read-only (UI-CONV-038) */
   | 'shared'
+  /** Your accounts of an agent (UI-CONV-053, profile 3.5) */
+  | 'accounts'
 
 export interface Snapshot {
   ready: boolean
@@ -154,6 +163,18 @@ export interface Snapshot {
    * that waits for the owner's phone finds its own by `changeId`; a list of tools reads again when one comes
    */
   toolChanges: { agentDid: string; change: SpaceToolsChange; n: number }[]
+  /** the agent whose Your accounts is open (view `accounts`, UI-CONV-053), and the row it opened at */
+  accountsFor: { agentDid: string; focus?: ConnectionRef } | null
+  /**
+   * per agent: the person's own accounts as last read (PROF-TOOL-014), for Your accounts, the Connect cards and the
+   * owner's choice of a binding; read again on `ayni.connections.changed` and when the tab is in front again
+   */
+  connections: Record<string, Connection[] | undefined>
+  /**
+   * the changes of the person's own accounts the agent announced, newest last (`ayni.connections.changed`,
+   * UI-CONV-053): a row, a card or a sign-in that waits finds its outcome here
+   */
+  connectionChanges: { agentDid: string; change: ConnectionsChange; n: number }[]
 }
 
 type Listener = () => void
@@ -212,6 +233,9 @@ export class Hub {
       memoryFor: null,
       memoriesVersion: 0,
       toolChanges: [],
+      accountsFor: null,
+      connections: {},
+      connectionChanges: [],
     }
   }
 
@@ -329,6 +353,8 @@ export class Hub {
     } else if (m.kind === 'tools-changed') {
       // another tab streams the session that heard it
       this.noteToolsChange(m.agentDid, m.change, false)
+    } else if (m.kind === 'connections-changed') {
+      this.noteConnectionsChange(m.agentDid, m.change, false)
     } else if (m.kind === 'leader' && m.tabId !== this.bus?.tabId) {
       this.set({ leaders: { ...this.snapshot.leaders, [m.sessionId]: false } })
     }
@@ -436,6 +462,13 @@ export class Hub {
         return true
       case 'service': {
         const agent = this.snapshot.agents.find((a) => a.did === destination.did)
+        // Your accounts of that agent, where the agent sends the browser after a sign-in (PROF-LINK-004): the page,
+        // and nothing else, is taken from the link; the state is read from the agent
+        if (agent && destination.accounts && this.takesConnections(agent.did)) {
+          this.set(reset)
+          this.openAccounts(agent.did)
+          return true
+        }
         if (agent) {
           // its conversation when it is one, else its Proof of Trust (UI-LINK-001)
           const session = this.snapshot.sessions
@@ -1733,6 +1766,9 @@ export class Hub {
       if (signals.includes('identified')) await this.markIdentified(next.agentDid)
       // a change of a space's tools applied or was dropped: the owner's screens that wait for it follow (UI-CONV-050)
       if (signals.includes('tools') && event.type === 'CUSTOM') this.noteToolsChange(next.agentDid, event.value, true)
+      // one of the person's own accounts changed: Your accounts and the cards read it again (UI-CONV-053)
+      if (signals.includes('connections') && event.type === 'CUSTOM')
+        this.noteConnectionsChange(next.agentDid, event.value, true)
       this.set({})
       this.updateTitle()
       this.bus?.post({ kind: 'transcript', sessionId })
@@ -2593,6 +2629,139 @@ export class Hub {
       this.set({ transcripts: { ...this.snapshot.transcripts, [sessionId]: next } })
       this.bus?.post({ kind: 'transcript', sessionId })
     })
+  }
+
+  // ---- tools, phase 2: the person's own accounts (UI-CONV-053..058; profile 3.5 §3.11) ---------------------------
+
+  /** Whether the agent serves the person's own accounts (PROF-DESC-010): no Your accounts without it. */
+  public takesConnections(agentDid: string): boolean {
+    return takesConnections(this.snapshot.agents.find((a) => a.did === agentDid)?.descriptor.features)
+  }
+
+  /** Your accounts of an agent (UI-CONV-053), at a row when one is named (a Connect card, About); the page reads them. */
+  public openAccounts(agentDid: string, focus?: ConnectionRef): void {
+    this.set({
+      view: 'accounts',
+      accountsFor: { agentDid, ...(focus ? { focus } : {}) },
+      trustFor: null,
+      inspect: null,
+    })
+  }
+
+  /** The reads of Your accounts in flight, by agent: only the latest one's answer is kept. */
+  private readonly connectionReads = new Map<string, number>()
+
+  /** Reads the person's own accounts (PROF-TOOL-014) and keeps them for the screens that show them. */
+  public async loadConnections(agentDid: string): Promise<Connection[]> {
+    const n = (this.connectionReads.get(agentDid) ?? 0) + 1
+    this.connectionReads.set(agentDid, n)
+    const list = await this.withAgent(agentDid, (client, token) => client.connections(token))
+    if (this.connectionReads.get(agentDid) === n)
+      this.set({ connections: { ...this.snapshot.connections, [agentDid]: list } })
+    return list
+  }
+
+  /** The agents whose accounts a screen shows (Your accounts, a Connect card), with how many screens show them. */
+  private readonly watchedConnections = new Map<string, number>()
+  private watchingVisibility = false
+
+  /**
+   * Keeps the person's own accounts of an agent read while a screen shows them (UI-CONV-053, PROF-TOOL-019): again
+   * each time the tab comes back in front, a sign-in finished in another tab or on the phone among what changed (the
+   * screen reads them when it opens, and `ayni.connections.changed` reads them again). Returns what lets it go.
+   */
+  public watchConnections(agentDid: string): () => void {
+    this.watchedConnections.set(agentDid, (this.watchedConnections.get(agentDid) ?? 0) + 1)
+    if (!this.watchingVisibility && typeof document !== 'undefined') {
+      this.watchingVisibility = true
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return
+        for (const watched of this.watchedConnections.keys())
+          void this.loadConnections(watched).catch((e) => warn('Your accounts could not be read', e))
+      })
+    }
+    return () => {
+      const left = (this.watchedConnections.get(agentDid) ?? 1) - 1
+      if (left > 0) this.watchedConnections.set(agentDid, left)
+      else this.watchedConnections.delete(agentDid)
+    }
+  }
+
+  /** The row the agent answered, in place of the one held; the list is read again behind it. */
+  private keepConnection(agentDid: string, connection: Connection): void {
+    const held = this.snapshot.connections[agentDid]
+    if (held) {
+      const key = connectionKeyOf(connection)
+      const known = held.some((c) => connectionKeyOf(c) === key)
+      this.set({
+        connections: {
+          ...this.snapshot.connections,
+          [agentDid]: known ? held.map((c) => (connectionKeyOf(c) === key ? connection : c)) : [...held, connection],
+        },
+      })
+    }
+    void this.loadConnections(agentDid).catch((e) => warn('Your accounts could not be read', e))
+  }
+
+  /**
+   * Starts the sign-in of an account of OAuth (PROF-TOOL-015): the URL the tab opened at the press goes to. Nothing
+   * is asked on the phone. `spaceId` for a source of a space's template.
+   */
+  public async authorizeConnection(agentDid: string, source: string, spaceId?: string): Promise<ConnectionAttempt> {
+    const attempt = await this.withAgent(agentDid, (client, token) =>
+      client.authorizeConnection(token, source, spaceId)
+    )
+    void this.loadConnections(agentDid).catch((e) => warn('Your accounts could not be read', e))
+    return attempt
+  }
+
+  /** Ends a sign-in that waits (PROF-TOOL-015); its outcome, `cancelled`, also comes as an event. */
+  public async cancelConnectionAttempt(agentDid: string, attemptId: string): Promise<void> {
+    try {
+      await this.withAgent(agentDid, (client, token) => client.cancelConnectionAttempt(token, attemptId))
+    } finally {
+      void this.loadConnections(agentDid).catch((e) => warn('Your accounts could not be read', e))
+    }
+  }
+
+  /**
+   * Sets an account of fields, at once (PROF-TOOL-016, UI-CONV-055). The values go to the agent and nowhere else: no
+   * store, no draft, no log, no notice of this page holds them.
+   */
+  public async setConnectionAccount(
+    agentDid: string,
+    source: string,
+    values: Record<string, string>,
+    spaceId?: string
+  ): Promise<Connection> {
+    const connection = await this.withAgent(agentDid, (client, token) =>
+      client.setConnectionAccount(token, source, values, spaceId)
+    )
+    this.keepConnection(agentDid, connection)
+    return connection
+  }
+
+  /** Disconnects an account, at once (PROF-TOOL-017, UI-CONV-056). */
+  public async disconnectAccount(agentDid: string, accountId: string): Promise<Connection> {
+    const connection = await this.withAgent(agentDid, (client, token) => client.disconnectAccount(token, accountId))
+    this.keepConnection(agentDid, connection)
+    return connection
+  }
+
+  /**
+   * Records a change of the person's own accounts the agent announced (PROF-TOOL-019), tells the other tabs, and reads
+   * Your accounts again. Every bound session of the person hears it: one is enough.
+   */
+  private noteConnectionsChange(agentDid: string, value: unknown, broadcast: boolean): void {
+    const change = connectionsChangeOf(value)
+    if (!change) return
+    const last = this.snapshot.connectionChanges[this.snapshot.connectionChanges.length - 1]
+    if (last && last.agentDid === agentDid && JSON.stringify(last.change) === JSON.stringify(change)) return
+    const n = (last?.n ?? 0) + 1
+    this.set({ connectionChanges: [...this.snapshot.connectionChanges.slice(-19), { agentDid, change, n }] })
+    if (broadcast) this.bus?.post({ kind: 'connections-changed', agentDid, change })
+    if (this.takesConnections(agentDid))
+      void this.loadConnections(agentDid).catch((e) => warn('Your accounts could not be read', e))
   }
 
   /** "What <agent> keeps about you" (UI-CONV-033): from the agent's menu, the conversation's, the trust card. */

@@ -148,6 +148,13 @@ export type TranscriptMessage =
        */
       modelVisible?: false
       /**
+       * why the AI never received it, when it is not an email check: `credential`, a message held back because it
+       * carried a password or a key (agent D109). Its `content` is then the text the agent kept, each credential cut
+       * to its first four characters and `…`. Live from `ayni.messages.withheld` with `reason: "credential"`, from
+       * history from `metadata.withheld` (PROF-STREAM-011, PROF-HIST-013).
+       */
+      withheld?: 'credential'
+      /**
        * the sources of the tool results the turn that wrote this reply read, with whose account (PROF-TOOL-010), from
        * history: an empty list for a reply that used none; absent for a reply received live and not read back yet
        */

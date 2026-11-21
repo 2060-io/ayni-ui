@@ -1,7 +1,7 @@
 {
   "name": "@ayni.org/ayni-ui-core",
-  "version": "0.6.2",
-  "description": "Framework-independent core of the Ayni UI (UI-SHELL-004): agents and controllers, trust resolution, sessions and binding, the conversation reducer, spaces, memories and deletion within a window (profile 3.3), the tools of a space, the confirmation of a tool call and the sources of replies (profile 3.4), the local store and sync; shared by the browser UI and the Ayni app",
+  "version": "0.7.0",
+  "description": "Framework-independent core of the Ayni UI (UI-SHELL-004): agents and controllers, trust resolution, sessions and binding, the conversation reducer, spaces, memories and deletion within a window (profile 3.3), the tools of a space, the confirmation of a tool call and the sources of replies (profile 3.4), each person's own accounts and the Connect card (profile 3.5), the local store and sync; shared by the browser UI and the Ayni app",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

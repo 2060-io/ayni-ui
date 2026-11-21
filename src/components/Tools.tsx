@@ -7,6 +7,8 @@
 import {
   type AgentRecord,
   type ApprovalStatus,
+  accountLineOf,
+  accountSourceOf,
   CONVERSATION_DESIGN,
   type ConversationSource,
   canStopAllowing,
@@ -36,11 +38,31 @@ const D = CONVERSATION_DESIGN.toolCard
 
 type Tr = (key: string, options?: Record<string, unknown>) => string
 
-/** The account line of an action (UI-CONV-045): the space's, the agent's, or none. */
-function accountLine(action: ToolAction, agentName: string, t: Tr): string {
-  if (action.account.kind === 'space') return t('tools.card.accountSpace', { space: action.account.space?.title ?? '' })
-  if (action.account.kind === 'agent') return t('tools.card.accountAgent', { agent: agentName })
-  return ''
+/**
+ * The account line of an action (UI-CONV-045, UI-APPR-006, UI-CONV-058): the space's, the agent's, the person's own
+ * ("With your account <label>" on their card, "With <requester>'s own account" on an approver's), or none.
+ */
+function accountLine(
+  action: ToolAction,
+  agentName: string,
+  t: Tr,
+  viewer: 'own' | 'approver' = 'own',
+  requester = ''
+): string {
+  const line = accountLineOf(action.account, viewer)
+  if (!line) return ''
+  switch (line.key) {
+    case 'accountSpace':
+      return t('tools.card.accountSpace', { space: line.space })
+    case 'accountAgent':
+      return t('tools.card.accountAgent', { agent: agentName })
+    case 'accountYours':
+      return t('tools.card.accountYours', { label: line.label })
+    case 'accountRequester':
+      return t('tools.card.accountRequester', { requester })
+    default:
+      return t('tools.card.accountOwn')
+  }
 }
 
 /**
@@ -53,15 +75,20 @@ export function ToolActionView({
   agentName,
   untrusted,
   titled = true,
+  viewer = 'own',
+  requester = '',
 }: {
   action: ToolAction
   agentName: string
   untrusted?: string[]
   /** false when the card already gave the action's title a line of its own (UI-APPR-006) */
   titled?: boolean
+  /** whose card it is: the person who asked, or an approver, who reads whose own account it uses (UI-APPR-006) */
+  viewer?: 'own' | 'approver'
+  requester?: string
 }) {
   const { t } = useTranslation()
-  const account = accountLine(action, agentName, t)
+  const account = accountLine(action, agentName, t, viewer, requester)
   return (
     <>
       <div className="tool-source">{action.source.title}</div>
@@ -258,7 +285,13 @@ export function ToolApprovalCard({
       <div className="tool-approval-head">{heading}</div>
       <h3 className="tool-title">{action.title}</h3>
       {space ? <div className="tool-approval-space">{space.title}</div> : null}
-      <ToolActionView action={action} agentName={agentName} titled={false} />
+      <ToolActionView
+        action={action}
+        agentName={agentName}
+        titled={false}
+        viewer={content.canDecide && !content.own ? 'approver' : 'own'}
+        requester={requester}
+      />
       <div className="row">
         <span>{t('approval.title')}</span>
         <span>{t(`approval.status.${status}`)}</span>
@@ -327,10 +360,17 @@ export function ToolApprovalCard({
   )
 }
 
-/** One source a reply used, in the words of its Info (UI-CONV-047): with whose account, none for `none`. */
-export function sourceWords(source: MessageSource, agentName: string, t: Tr): string {
+/**
+ * One source a reply used, in the words of its Info (UI-CONV-047): with whose account, none for `none`. The person's
+ * own account is "your own account", and in a conversation shared with the space, its author's (`author`).
+ */
+export function sourceWords(source: MessageSource, agentName: string, t: Tr, author?: string): string {
   if (source.account === 'space') return t('tools.sources.space', { source: source.title })
   if (source.account === 'agent') return t('tools.sources.agent', { source: source.title, agent: agentName })
+  if (source.account === 'personal')
+    return author
+      ? t('tools.sources.personalOf', { source: source.title, author })
+      : t('tools.sources.personal', { source: source.title })
   return source.title
 }
 
@@ -342,10 +382,13 @@ export function MessageSources({
   sessionId,
   message,
   agent,
+  author,
 }: {
   sessionId?: string
   message: TranscriptMessage
   agent: AgentRecord
+  /** in a conversation shared with the space: its author, whose own accounts its replies read */
+  author?: string
 }) {
   const hub = useHub()
   const { t } = useTranslation()
@@ -359,14 +402,14 @@ export function MessageSources({
   return (
     <>
       <dt className="info-term">{t('details.sources')}</dt>
-      <dd className="info-desc sources">{sources.map((s) => sourceWords(s, agent.name, t)).join(' · ')}</dd>
+      <dd className="info-desc sources">{sources.map((s) => sourceWords(s, agent.name, t, author)).join(' · ')}</dd>
     </>
   )
 }
 
 /** One source a conversation holds, before sharing it (UI-CONV-048). */
 function shareLine(source: ConversationSource, agentName: string, t: Tr): string {
-  const kind = source.account.kind === 'space' ? 'space' : source.account.kind === 'agent' ? 'agent' : 'none'
+  const kind = source.account.kind
   return t(`tools.share.${kind}`, { source: source.title, agent: agentName, count: source.results })
 }
 
@@ -441,6 +484,10 @@ export function useSpaceTools(
   const [version, setVersion] = useState(0)
   const announced = snap.toolChanges.filter((c) => c.agentDid === agent.did && c.change.spaceId === space.id)
   const lastAnnounced = announced[announced.length - 1]?.n ?? 0
+  // the reader's own account connected or ended changes `connected`, and the owner's accounts the choices of a
+  // binding (PROF-TOOL-021): the list is read again
+  const accounts = snap.connectionChanges.filter((c) => c.agentDid === agent.did)
+  const lastAccount = accounts[accounts.length - 1]?.n ?? 0
   useEffect(() => {
     if (!wanted) return
     let live = true
@@ -455,7 +502,7 @@ export function useSpaceTools(
     return () => {
       live = false
     }
-  }, [agent.did, space.id, wanted, hub, lastAnnounced, version])
+  }, [agent.did, space.id, wanted, hub, lastAnnounced, lastAccount, version])
   return {
     tools: wanted ? tools : null,
     error,
@@ -486,7 +533,26 @@ export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceI
             <li key={tool.source} className="about-tool">
               <span className="about-tool-title">{tool.title}</span>
               {tool.description ? <span className="about-tool-description">{tool.description}</span> : null}
-              {tool.account.kind !== 'none' ? (
+              {tool.account.kind === 'personal' ? (
+                <>
+                  <span className="about-tool-account">{t('tools.account.personal')}</span>
+                  {/* the reader's own account of it, for this space; Connect opens Your accounts there (UI-CONV-049) */}
+                  <span className="about-tool-yours">
+                    {tool.account.connected ? t('tools.yourAccount.connected') : t('tools.yourAccount.notConnected')}
+                    {!tool.account.connected && hub.takesConnections(agent.did) ? (
+                      <button
+                        type="button"
+                        className="link about-tool-connect"
+                        onClick={() =>
+                          hub.openAccounts(agent.did, { source: accountSourceOf(tool), spaceId: space.id })
+                        }
+                      >
+                        {t('accounts.connect')}
+                      </button>
+                    ) : null}
+                  </span>
+                </>
+              ) : tool.account.kind !== 'none' ? (
                 <span className="about-tool-account">
                   {tool.account.kind === 'space'
                     ? t('tools.account.space')

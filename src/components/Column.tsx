@@ -255,6 +255,19 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
                 {t('column.keeps', { agent: agent.name })}
               </button>
             ) : null}
+            {hub.takesConnections(agent.did) && link.linked ? (
+              // the person's own accounts at external services (UI-CONV-053)
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  hub.openAccounts(agent.did)
+                }}
+              >
+                {t('accounts.menu')}
+              </button>
+            ) : null}
             {snap.admins[agent.did] ? (
               <button
                 type="button"
@@ -486,6 +499,18 @@ export function ConversationRow({
               }}
             >
               {t('column.keeps', { agent: agent.name })}
+            </button>
+          ) : null}
+          {agent && hub.takesConnections(agent.did) ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false)
+                hub.openAccounts(agent.did)
+              }}
+            >
+              {t('accounts.menu')}
             </button>
           ) : null}
           {s.conversationId ? (

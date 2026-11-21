@@ -170,7 +170,7 @@ function ReadOnlyMessage({ m, author, agent }: { m: TranscriptMessage; author: s
                 new Date(m.at)
               )}
             </dd>
-            <MessageSources message={m} agent={agent} />
+            <MessageSources message={m} agent={agent} author={author} />
           </dl>
         </Dialog>
       ) : null}

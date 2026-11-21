@@ -134,6 +134,20 @@ export const CONVERSATION_DESIGN = {
     gap: 8,
     tint: 0.12,
   },
+  /**
+   * The Connect card (UI-CONV-057, APP-CONV-057): the transcript's card, on the agent's side. The source's title in
+   * bold; its description and the binding in muted lines; then the state of the person's account in the text colour,
+   * with an icon before it (a check once connected, an alert in the warning colour for one to reconnect), and Connect
+   * or Reconnect. It holds no field.
+   */
+  connectCard: {
+    titleFontSize: 15,
+    titleWeight: 600,
+    descriptionFontSize: 13,
+    stateFontSize: 14,
+    iconSize: 15,
+    gap: 4,
+  },
 } as const
 
 export type ConversationDesign = typeof CONVERSATION_DESIGN
@@ -181,6 +195,15 @@ export const CONVERSATION_COLORS = {
   },
   /** the ground is `tint` at `untrustedNotice.tint` over the card's `surface` */
   untrustedNotice: { tint: 'warning', border: 'warning', icon: 'warning', text: 'text' },
+  /** the Connect card, on the transcript's card (`surface`); `reconnect`: the icon of an account to connect again */
+  connectCard: {
+    title: 'text',
+    description: 'muted',
+    binding: 'muted',
+    state: 'text',
+    icon: 'muted',
+    reconnect: 'warning',
+  },
 } as const satisfies Record<string, Record<string, ColorRole>>
 
 /** The side a message sits on, and the corner its bubble tightens. */

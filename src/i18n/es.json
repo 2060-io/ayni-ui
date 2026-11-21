@@ -215,7 +215,8 @@
       "unreachable": "No se pudo contactar con {{agent}}: el mensaje ha vuelto.",
       "refused": "{{agent}} no eliminó el mensaje: ha vuelto."
     },
-    "spaceLeft": "Ya no estás en {{space}}: esta conversación es de solo lectura."
+    "spaceLeft": "Ya no estás en {{space}}: esta conversación es de solo lectura.",
+    "withheldCredentialInfo": "Esto parecía una contraseña o una clave. {{agent}} no lo guardó ni se lo mostró a la IA. Para conectar una cuenta, abre Tus cuentas."
   },
   "approval": {
     "title": "Aprobación",
@@ -491,7 +492,8 @@
       "settingsBackup": "Ajustes › Copia de seguridad",
       "settingsDevices": "Dispositivos vinculados",
       "connect": "esta invitación",
-      "unknown": "esta página"
+      "unknown": "esta página",
+      "serviceAccounts": "Tus cuentas"
     }
   },
   "spaces": {
@@ -774,7 +776,8 @@
     "aboutTitle": "Herramientas que {{agent}} usa en este espacio",
     "account": {
       "space": "Usa la cuenta del espacio",
-      "agent": "Usa la cuenta de {{agent}}"
+      "agent": "Usa la cuenta de {{agent}}",
+      "personal": "Cada persona usa su propia cuenta"
     },
     "effect": {
       "read": "Lee",
@@ -864,11 +867,16 @@
       "refused": "Rechazado",
       "expired": "Sin respuesta a tiempo",
       "cancelled": "No se ejecutó",
-      "erased": "Los detalles se borraron con tu mensaje."
+      "erased": "Los detalles se borraron con tu mensaje.",
+      "accountYours": "Con tu cuenta {{label}}",
+      "accountOwn": "Con tu propia cuenta",
+      "accountRequester": "Con la propia cuenta de {{requester}}"
     },
     "sources": {
       "space": "{{source}}, la cuenta del espacio",
-      "agent": "{{source}}, la cuenta de {{agent}}"
+      "agent": "{{source}}, la cuenta de {{agent}}",
+      "personal": "{{source}}, tu propia cuenta",
+      "personalOf": "{{source}}, la propia cuenta de {{author}}"
     },
     "share": {
       "title": "¿Compartir con {{space}}?",
@@ -884,7 +892,64 @@
       "none_many": "{{source}} · {{count}} resultados",
       "members": "Los miembros de {{space}} leerán las respuestas que los usaron.",
       "share": "Compartir",
-      "unreadable": "No se pudieron leer las fuentes de esta conversación. No se compartió nada."
-    }
+      "unreadable": "No se pudieron leer las fuentes de esta conversación. No se compartió nada.",
+      "personal_one": "{{source}}, con tu propia cuenta · {{count}} resultado",
+      "personal_other": "{{source}}, con tu propia cuenta · {{count}} resultados",
+      "personal_many": "{{source}}, con tu propia cuenta · {{count}} resultados"
+    },
+    "yourAccount": {
+      "connected": "Tu cuenta: conectada",
+      "notConnected": "Tu cuenta: no conectada"
+    },
+    "accountPersonal": "Cada persona conecta su propia cuenta, en Tus cuentas.",
+    "useValue": "Usar {{value}}",
+    "connectToChoose": "Conecta tu cuenta para elegir",
+    "notYourAccount": "Elige una de tus propias cuentas de {{source}}."
+  },
+  "accounts": {
+    "menu": "Tus cuentas",
+    "title": "Tus cuentas en {{agent}}",
+    "intro": "{{agent}} usa estas cuentas con tus propios derechos en cada servicio. Solo tú las conectas.",
+    "usedIn": {
+      "all": "Se usa en todas tus conversaciones",
+      "places": "Se usa en {{places}}",
+      "none": "No se usa ahora"
+    },
+    "binding": "{{label}}: {{value}}",
+    "state": {
+      "notConnected": "No conectada",
+      "connected": "Conectada como {{label}} · desde el {{date}}",
+      "connectedNoLabel": "Conectada · desde el {{date}}",
+      "moreAccess": "{{source}} pide más acceso. Vuelve a conectar para dárselo.",
+      "expired": "{{source}} cerró tu sesión. Vuelve a conectar para usarla otra vez.",
+      "revoked": "{{source}} ya no acepta esta conexión. Vuelve a conectar para usarla otra vez.",
+      "changed": "{{agent}} cambió cómo se conecta a {{source}}. Vuelve a conectar para usarla otra vez."
+    },
+    "connect": "Conectar",
+    "reconnect": "Volver a conectar",
+    "disconnect": "Desconectar",
+    "cancel": "Cancelar",
+    "waiting": "Termina en el navegador · quedan {{time}}",
+    "outcome": {
+      "connected": "Conectada como {{label}}",
+      "connectedNoLabel": "Conectada",
+      "denied": "No conectada: no autorizaste a {{agent}} en {{source}}.",
+      "failed": "No conectada: {{source}} no completó el inicio de sesión. Inténtalo de nuevo.",
+      "expired": "No se conectó a tiempo. Inténtalo de nuevo.",
+      "cancelled": "Cancelado. No cambió nada.",
+      "wrongBinding": "No conectada: esta cuenta es para {{chosen}}. Conecta de nuevo y elige {{expected}}.",
+      "wrongPerson": "No conectada: esta cuenta de {{source}} no es tuya. Conecta de nuevo con la tuya.",
+      "disconnected": "Desconectada. {{source}} puede seguir mostrando a {{agent}} en tus ajustes allí: puedes quitarlo.",
+      "disconnectedRevoked": "Desconectada"
+    },
+    "unavailable": "No se puede conectar {{source}} ahora. Inténtalo más tarde.",
+    "notOffered": "Esta cuenta no se te ofrece.",
+    "changed": "Esta cuenta cambió. Abre Tus cuentas de nuevo.",
+    "disconnectConfirm": "¿Desconectar {{source}}? {{agent}} borra su acceso a tu cuenta.",
+    "card": {
+      "connect": "Conecta tu cuenta de {{source}} para que {{agent}} pueda usarla con tus derechos."
+    },
+    "empty": "{{agent}} no te ofrece ninguna cuenta propia que conectar.",
+    "noTab": "El navegador no abrió una pestaña nueva. Permite las ventanas emergentes en esta página e inténtalo de nuevo."
   }
 }

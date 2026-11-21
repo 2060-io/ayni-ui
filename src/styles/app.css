@@ -2761,6 +2761,7 @@ mark.hit.current {
 /* a space's page (UI-CONV-031) */
 .space-page,
 .keeps-page,
+.accounts-page,
 .admin-page,
 .shared-view {
   display: flex;
@@ -3495,4 +3496,152 @@ mark.hit.current {
 }
 .info-desc {
   margin: 0;
+}
+
+/* ---- tools, phase 2: each person's own accounts (UI-CONV-053..058) ------------------------------------------------ */
+
+/* Your accounts of an agent (UI-CONV-053): one row per account, on the page's ground */
+.accounts-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.accounts-intro {
+  margin: 0;
+  font-size: 14px;
+}
+.account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.account-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.account-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.account-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.account-description,
+.account-binding,
+.account-used {
+  font-size: 13px;
+  color: var(--muted);
+}
+.account-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text);
+}
+.account-more {
+  margin-top: 0;
+}
+.account-icon {
+  flex: none;
+  color: var(--muted);
+}
+.account-reconnect-icon {
+  flex: none;
+  color: var(--warning);
+}
+.account-fields {
+  display: flex;
+  flex-direction: column;
+}
+.account-notice {
+  align-self: flex-start;
+}
+
+/* the Connect card, on the transcript's card (CONVERSATION_DESIGN.connectCard) */
+.card.connect-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.connect-card .connect-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.connect-card .connect-description,
+.connect-card .connect-binding {
+  font-size: 13px;
+  color: var(--muted);
+}
+.connect-card .connect-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text);
+}
+.connect-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--muted);
+}
+.connect-reconnect-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warning);
+}
+.connect-card .actions {
+  margin-top: 6px;
+}
+.connect-card .tool-pending {
+  margin-top: 6px;
+}
+
+/* the binding of a space chosen from the owner's own accounts (UI-CONV-050) */
+.tool-choice {
+  border: 0;
+  margin: 0 0 10px;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+.tool-choice legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+.tool-choice-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* the reader's own account of a space's tool, in About (UI-CONV-049) */
+.about-tool-yours {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
 }

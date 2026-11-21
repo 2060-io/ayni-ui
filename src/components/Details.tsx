@@ -47,10 +47,13 @@ export function MessageInfo() {
               : t('details.fromSystem')}
         </h3>
         {isWithheld(m) ? (
-          // the service's code took it: the AI never received it (UI-CONV-044, D95)
+          // the service's code took it: the AI never received it (UI-CONV-044, D95); one held back because it carried
+          // a password or a key says so (agent D109)
           <p className="withheld-note">
             <Lock size={14} aria-hidden="true" className="withheld-lock" />
-            {t('conversation.withheldInfo')}
+            {m.role === 'user' && m.withheld === 'credential'
+              ? t('conversation.withheldCredentialInfo', { agent: agent?.name ?? '' })
+              : t('conversation.withheldInfo')}
           </p>
         ) : null}
         <dl>
