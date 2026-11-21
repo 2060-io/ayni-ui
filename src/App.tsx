@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { preloadAboutArt } from './brand/aboutArt.js'
 import { About } from './components/About.js'
+import { AccountsPage } from './components/Accounts.js'
 import { AddPage } from './components/AddPage.js'
 import { AdminPage } from './components/AdminRoles.js'
 import { Column } from './components/Column.js'
@@ -87,6 +88,8 @@ function Shell({ update }: { update: AppUpdate }) {
       <AdminPage />
     ) : snap.view === 'shared' ? (
       <SharedConversationView />
+    ) : snap.view === 'accounts' ? (
+      <AccountsPage />
     ) : (
       <Conversation />
     )

@@ -6,7 +6,9 @@
  * the time left, a stream stays open so that `ayni.space.tools.changed` reaches this page, and it can be withdrawn; a
  * change that only narrows applies at once, also while another waits. A space's account is typed in one masked field
  * per value its agent declares, in the agent's order: never prefilled, sent all together once each holds a value that
- * fits, emptied as their request leaves and with the panel, and kept nowhere.
+ * fits, emptied as their request leaves and with the panel, and kept nowhere. A source of each person's own account
+ * (profile 3.5) has no account of the space; the binding its accounts are for is chosen from the owner's own accounts,
+ * never typed, and an owner who holds none connects one to choose (UI-CONV-050, PROF-TOOL-021).
  */
 import {
   type AgentRecord,
@@ -24,15 +26,17 @@ import {
   type SpaceTool,
   type SpaceToolAccountField,
   type SpaceToolAnswer,
+  type SpaceToolBinding,
   type ToolRule,
   timeLeftOf,
   toolRefusalOf,
   toolRowStateOf,
 } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, ChevronRight, CircleAlert, Smartphone } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { AccountNoticeLine, bindingWords, SignInWaiting, useNow, useSignIn } from './Accounts.js'
 import { organizationNameOf, spaceTitle } from './SpaceParts.js'
 import { useSpaceTools } from './Tools.js'
 
@@ -53,17 +57,6 @@ function stateWords(tool: SpaceTool, t: T): string {
   const missing = missingOf(tool)
   const parts = [...missing.bindings, ...(missing.account ? [t('tools.missingAccount')] : [])]
   return parts.length ? `${words}: ${parts.join(', ')}` : words
-}
-
-/** Re-renders every second while `on`: the time left of a change that waits. */
-function useNow(on: boolean): number {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    if (!on) return
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [on])
-  return now
 }
 
 export function ToolsSegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
@@ -119,6 +112,71 @@ export function ToolsSegment({ agent, space }: { agent: AgentRecord; space: Spac
         <div className="muted empty">{t('tools.empty')}</div>
       )}
     </section>
+  )
+}
+
+/**
+ * The binding a source's personal accounts are for, such as Relaticle's workspace (UI-CONV-050, PROF-TOOL-021, agent
+ * D110): chosen from the owner's own accounts of the source, one choice "Use <valueLabel>" each, never typed; the
+ * Save of the settings sends it, and the change goes through the phone as any binding. An owner who holds no account
+ * of the source connects one to choose: the sign-in of Your accounts for this space, with no value expected; once it
+ * is connected the list is read again and its workspace is offered.
+ */
+function BindingFromAccount({
+  agent,
+  space,
+  tool,
+  binding,
+  value,
+  disabled,
+  error,
+  onChoose,
+}: {
+  agent: AgentRecord
+  space: SpaceInfo
+  tool: SpaceTool
+  binding: SpaceToolBinding
+  value: string
+  disabled: boolean
+  error: ReactNode
+  onChoose: (value: string) => void
+}) {
+  const { t } = useTranslation()
+  const choices = binding.choices ?? []
+  const signIn = useSignIn(agent, { source: tool.source, title: tool.title, spaceId: space.id })
+  const current =
+    binding.value !== null && binding.value !== ''
+      ? bindingWords({ label: binding.label, valueLabel: binding.valueLabel ?? binding.value }, t)
+      : ''
+  return (
+    <fieldset className="field tool-choice">
+      <legend>{binding.label}</legend>
+      {current ? <span className="tool-fixed-value tool-choice-current">{current}</span> : null}
+      {choices.length ? (
+        choices.map((c) => (
+          <label key={c.value} className="tool-choice-option">
+            <input
+              type="radio"
+              name={`binding-${tool.source}-${binding.name}`}
+              value={c.value}
+              checked={value === c.value}
+              disabled={disabled}
+              onChange={() => onChoose(c.value)}
+            />
+            {t('tools.useValue', { value: c.valueLabel })}
+          </label>
+        ))
+      ) : signIn.attempt ? null : (
+        <div className="tool-actions">
+          <button type="button" className="btn" disabled={disabled || signIn.busy} onClick={signIn.start}>
+            {t('tools.connectToChoose')}
+          </button>
+        </div>
+      )}
+      <SignInWaiting signIn={signIn} />
+      <AccountNoticeLine notice={signIn.notice} />
+      {error}
+    </fieldset>
   )
 }
 
@@ -246,7 +304,10 @@ function ToolPanel({
     const r = toolRefusalOf(e)
     if (r.at === 'binding')
       setFieldErrors({
-        [r.name]: t(r.reason === 'badBinding' ? 'tools.badValue' : 'tools.pinnedByPack', { agent: agent.name }),
+        [r.name]:
+          r.reason === 'notYourAccount'
+            ? t('tools.notYourAccount', { source: tool.title })
+            : t(r.reason === 'badBinding' ? 'tools.badValue' : 'tools.pinnedByPack', { agent: agent.name }),
       })
     else if (r.at === 'rule') {
       // the rule in force stays
@@ -484,7 +545,19 @@ function ToolPanel({
         <section className="space-section tool-section" aria-label={t('tools.settings')}>
           <h4 className="section-label">{t('tools.settings')}</h4>
           {tool.bindings.map((b) =>
-            b.setBy === 'pack' ? (
+            b.fromAccount ? (
+              <BindingFromAccount
+                key={b.name}
+                agent={agent}
+                space={space}
+                tool={tool}
+                binding={b}
+                value={values[b.name] ?? ''}
+                disabled={grantsLocked}
+                error={fieldError(b.name)}
+                onChoose={(value) => setValues((v) => ({ ...v, [b.name]: value }))}
+              />
+            ) : b.setBy === 'pack' ? (
               <div key={b.name} className="field tool-fixed">
                 <span>{b.label}</span>
                 <span className="tool-fixed-value">{b.value ?? ''}</span>
@@ -514,6 +587,12 @@ function ToolPanel({
         <section className="space-section tool-section" aria-label={t('tools.accountTitle')}>
           <h4 className="section-label">{t('tools.accountTitle')}</h4>
           <p className="rule-line">{t('tools.account.agent', { agent: agent.name })}</p>
+        </section>
+      ) : account.kind === 'personal' ? (
+        // each member's calls run with their own account: the owner sets none (UI-CONV-050, agent D104)
+        <section className="space-section tool-section" aria-label={t('tools.accountTitle')}>
+          <h4 className="section-label">{t('tools.accountTitle')}</h4>
+          <p className="rule-line">{t('tools.accountPersonal')}</p>
         </section>
       ) : account.kind === 'space' && added ? (
         // a space's account, once the source is added (UI-CONV-050): before, the agent would answer `409 not-added`

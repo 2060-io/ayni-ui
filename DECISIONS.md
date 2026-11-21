@@ -580,5 +580,90 @@
       method added later is covered) makes its call with `cache: 'no-store'`; the caller's method, headers, body and
       signal are kept; the descriptor is read with it. Without the change all three fail (46 calls without it).
     - Core 0.6.2.
-44. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+44. **Tools, phase 2: each person's own accounts** (2026-11-21; ayni-spec #107: agent D104 to D110, AG-UI profile
+    3.5; UI-SHELL-014, UI-SESS-018, UI-CONV-044, UI-CONV-045, UI-CONV-047 to UI-CONV-050, UI-APPR-006 and UI-LINK-001
+    amended, UI-CONV-053 to UI-CONV-058). Built against the spec while the agent and the app are built at the same
+    time, with the fake agent of the tests; the wire is the spec's.
+    - **Against which agent.** Your accounts, the Connect card and the owner's choice of a workspace are shown and
+      asked only of an agent that declares `features.connections` (PROF-DESC-010). Every session says
+      `client.profileVersion: "3.5"` (`CLIENT.version` 3.5.0), so that the agent shows Connect cards in it. The wire
+      types and readers are in the core (`connections.ts`), the English words in `CONNECTIONS_COPY`, the table of
+      UI-CONV-058 row by row; the app starts from both.
+    - **Your accounts.** A page in the main pane (view `accounts`), from the agent's menu (once the browser is linked, as
+      "What <agent> keeps about you"), the conversation's menu, Connect in About, a Connect card of an account of
+      fields, and the return link. One row per item, in the agent's order: title, description, the binding as
+      "<label>: <valueLabel>", where it is used (Personal first, then the spaces, joined by commas; `agent` anywhere is
+      "Used in all your conversations"; none is "Not used now"), the state, the controls, and the words of an outcome
+      under the row it names. A row is an `article` whose name is its title, its binding and its state (then the
+      moreAccess line), so a screen reader reads those, then the controls. A connected account that the service asks
+      more of shows both lines: "Connected as <label> · since <date>" and "<source> asks for more access. Reconnect to
+      give it.". The date is the day and the short month in the UI's language, with the year when it is not this
+      one: "Nov 21" in English (`en`, the language the UI uses); the spec's example writes the British "21 Nov". A row
+      that holds no account offers no Disconnect. An agent that lists nothing reads "<agent> offers you no account of
+      your own to connect." (words of this client: the table has no row for it).
+    - **Read again.** On every `ayni.connections.changed` (heard once, from whichever session; other tabs are told by
+      the tab bus), and each time the tab comes back in front for the agents a screen shows (`watchConnections`: the
+      page and the cards hold it, so one read per agent, not one per card). The answer of a Disconnect or of the fields
+      replaces its row at once, and the list is read again behind it. Only the latest read's answer is kept.
+    - **The sign-in.** At the press a new tab opens (`window.open('', '_blank')`), its `opener` is cut, then
+      `authorize` is sent (with `spaceId` for a row that serves only spaces: the first it serves; a row of Personal or
+      of every conversation sends none), and the tab is pointed at `authorizationUrl` with `location.replace`, so the
+      blank page leaves no history entry. A refusal closes the tab and is said under the row. The page never frames,
+      reads or fills the sign-in, and sends nothing of its own into it; the browser's default referrer policy sends
+      at most the UI's origin. Only an `https:` address (or `http:` on this computer) is opened: anything else, a
+      `javascript:` one above all, would run in a tab of the UI's origin, so the tab is closed, the attempt cancelled
+      and "Not connected: <source> did not complete the sign-in. Try again." is said. A browser that opens no tab
+      sends nothing and reads "The browser did not open a new tab. Allow pop-ups for this page and try again." (words
+      of this client). While an attempt waits, this tab's or one the agent lists (started on the phone or in another
+      tab), the row shows "Finish in the browser · <m>:<ss> left", counted every second from the moment it waits, with
+      Cancel, and a stream of the person stays open (`holdStream`) for its outcome. The outcome is the one the agent
+      announces for that attempt, or for that account: matched by `attemptId`, else by source and binding value.
+    - **The return link.** `/app/service/{did}/accounts` opens Your accounts of that agent and reads nothing else from
+      the link: the state is the agent's list, the outcome its event (PROF-LINK-004). For an agent that does not declare
+      `features.connections`, or that this browser does not know, the link is `/app/service/{did}` as before. A
+      transcript link to it opens the page in place, named "Your accounts" on hover.
+    - **An account of fields.** Connect opens the fields in the row, masked, never prefilled, with Save (enabled once
+      every field holds a value) and Cancel; values are trimmed and checked as a space's account is, sent with
+      `PUT …/account`, the fields emptied as the request leaves and when the page is left, and kept in no state, store
+      or log. A refusal naming a field is said at it in the words of UI-CONV-052. Opened at the row of an account of
+      fields to connect (from a Connect card or About), the fields are open at once.
+    - **Refusals and outcomes.** In the words of UI-CONV-058. `400 bad-request` (a `spaceId` missing, a field the agent
+      no longer declares) reads as `409 not-oauth`: "This account has changed. Open Your accounts again.". An outcome
+      `disconnected` heard from another device reads as after one's own Disconnect; `ended` says nothing more than the
+      row's new state.
+    - **The Connect card.** The transcript's card, on the agent's side, at its place: the source's title in bold, its
+      description and binding muted (`CONVERSATION_DESIGN.connectCard`, `CONVERSATION_COLORS.connectCard`), then the
+      state of the account it names, found in Your accounts by source and binding value (else the row of its source that
+      serves its space, else the first of its source). Until the list is read it claims no state, so a card in history
+      does not flash "Connect your…" before "Connected as …"; if the list cannot be read, it follows the card's `why`.
+      While its sign-in waits it shows the same waiting line and Cancel, and the outcome under it. A conversation shared
+      with the space shows none (its history holds none, and the read-only view draws no such card).
+    - **The account of a call.** On the person's own card, "With your account <label>" when the agent gives the label,
+      else "With your own account"; on an approver's card "With <requester>'s own account". In a reply's Info,
+      "<source>, your own account", and in a conversation shared with the space "<source>, <author>'s own account";
+      before sharing, "<source>, with your own account · <n> results".
+    - **A space's tool of each person's account.** In About: "Each person uses their own account", then "Your account:
+      connected", or "Your account: not connected" with Connect, which opens Your accounts at that row; read again
+      when the person's accounts change. In the owner's panel the Account section reads "Each person connects their own
+      account, in Your accounts." and has no field. The binding a personal account is for (`fromAccount`) is chosen:
+      the value in force as "<label>: <valueLabel>", then one radio "Use <valueLabel>" per choice, saved by the Save of
+      the settings and confirmed on the phone as any binding; with no choice, "Connect your account to choose" starts
+      the sign-in for the space with no value expected, and once connected the list is read again and offers it.
+      `422 not-your-account` is said at the binding.
+    - **A credential pasted in a conversation.** `ayni.messages.withheld` with `reason: "credential"` marks the message
+      (`withheld: "credential"`) and puts the text the agent kept in place of the one this device holds, in the
+      transcript, the store, the row's title and preview (made from the text sent), and a text that waited for the
+      session to bind. `texts` is keyed by the agent's ids; the device that sent the message holds it under its own
+      id, so a client's id takes the text of the agent's id at the same place in the two lists, or the only text when
+      the event keeps one. History's `metadata.withheld` does the same for a message held here. It is drawn as the
+      email code is, and its Info says "This looked like a password or a key. <agent> did not keep it and did not show
+      it to the AI. To connect an account, open Your accounts."
+    - **Colours.** Every pair the new rules paint, computed from the tokens of both palettes (light; dark by choice and
+      by system, which take the same tokens), WCAG 2.2: text at least 4.5:1, icons and edges at least 3:1. The
+      reconnect icon is the warning colour (3.53:1 on the dark card, 3.73:1 on the dark ground); its words stay in the
+      text colour. Disconnect is red as Remove is; Connect and Reconnect are the primary button.
+    - **Tests.** `packages/core/tests/connections35.test.ts`, `tests/accounts.test.tsx`,
+      `tests/personalAccounts.test.tsx`, and the version of the sessions (3.5) in the tests of 3.4.
+    - Core 0.7.0.
+45. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

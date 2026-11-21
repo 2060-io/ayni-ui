@@ -215,7 +215,8 @@
       "unreachable": "{{agent}} could not be reached: the message is back.",
       "refused": "{{agent}} did not delete the message: it is back."
     },
-    "spaceLeft": "You are no longer in {{space}}: this conversation is read-only."
+    "spaceLeft": "You are no longer in {{space}}: this conversation is read-only.",
+    "withheldCredentialInfo": "This looked like a password or a key. {{agent}} did not keep it and did not show it to the AI. To connect an account, open Your accounts."
   },
   "approval": {
     "title": "Approval",
@@ -491,7 +492,8 @@
       "settingsBackup": "Settings › Backup",
       "settingsDevices": "Linked devices",
       "connect": "this invitation",
-      "unknown": "this page"
+      "unknown": "this page",
+      "serviceAccounts": "Your accounts"
     }
   },
   "spaces": {
@@ -762,7 +764,8 @@
     "aboutTitle": "Tools {{agent}} uses in this space",
     "account": {
       "space": "Uses the space's account",
-      "agent": "Uses {{agent}}'s account"
+      "agent": "Uses {{agent}}'s account",
+      "personal": "Each person uses their own account"
     },
     "effect": {
       "read": "Reads",
@@ -852,11 +855,16 @@
       "refused": "Refused",
       "expired": "Not answered in time",
       "cancelled": "Not run",
-      "erased": "The details were deleted with your message."
+      "erased": "The details were deleted with your message.",
+      "accountYours": "With your account {{label}}",
+      "accountOwn": "With your own account",
+      "accountRequester": "With {{requester}}'s own account"
     },
     "sources": {
       "space": "{{source}}, the space's account",
-      "agent": "{{source}}, {{agent}}'s account"
+      "agent": "{{source}}, {{agent}}'s account",
+      "personal": "{{source}}, your own account",
+      "personalOf": "{{source}}, {{author}}'s own account"
     },
     "share": {
       "title": "Share with {{space}}?",
@@ -869,7 +877,63 @@
       "none_other": "{{source}} · {{count}} results",
       "members": "The members of {{space}} will read the replies that used them.",
       "share": "Share",
-      "unreadable": "The sources of this conversation could not be read. Nothing was shared."
-    }
+      "unreadable": "The sources of this conversation could not be read. Nothing was shared.",
+      "personal_one": "{{source}}, with your own account · {{count}} result",
+      "personal_other": "{{source}}, with your own account · {{count}} results"
+    },
+    "yourAccount": {
+      "connected": "Your account: connected",
+      "notConnected": "Your account: not connected"
+    },
+    "accountPersonal": "Each person connects their own account, in Your accounts.",
+    "useValue": "Use {{value}}",
+    "connectToChoose": "Connect your account to choose",
+    "notYourAccount": "Choose one of your own accounts of {{source}}."
+  },
+  "accounts": {
+    "menu": "Your accounts",
+    "title": "Your accounts in {{agent}}",
+    "intro": "{{agent}} uses these accounts with your own rights at each service. Only you connect them.",
+    "usedIn": {
+      "all": "Used in all your conversations",
+      "places": "Used in {{places}}",
+      "none": "Not used now"
+    },
+    "binding": "{{label}}: {{value}}",
+    "state": {
+      "notConnected": "Not connected",
+      "connected": "Connected as {{label}} · since {{date}}",
+      "connectedNoLabel": "Connected · since {{date}}",
+      "moreAccess": "{{source}} asks for more access. Reconnect to give it.",
+      "expired": "{{source}} signed you out. Reconnect to use it again.",
+      "revoked": "{{source}} no longer accepts this connection. Reconnect to use it again.",
+      "changed": "{{agent}} changed how it connects to {{source}}. Reconnect to use it again."
+    },
+    "connect": "Connect",
+    "reconnect": "Reconnect",
+    "disconnect": "Disconnect",
+    "cancel": "Cancel",
+    "waiting": "Finish in the browser · {{time}} left",
+    "outcome": {
+      "connected": "Connected as {{label}}",
+      "connectedNoLabel": "Connected",
+      "denied": "Not connected: you did not allow {{agent}} at {{source}}.",
+      "failed": "Not connected: {{source}} did not complete the sign-in. Try again.",
+      "expired": "Not connected in time. Try again.",
+      "cancelled": "Cancelled. Nothing changed.",
+      "wrongBinding": "Not connected: this account is for {{chosen}}. Connect again and choose {{expected}}.",
+      "wrongPerson": "Not connected: this {{source}} account is not yours. Connect again with your own.",
+      "disconnected": "Disconnected. {{source}} may still list {{agent}} in your settings there: you can remove it.",
+      "disconnectedRevoked": "Disconnected"
+    },
+    "unavailable": "{{source}} cannot be connected now. Try again later.",
+    "notOffered": "This account is not offered to you.",
+    "changed": "This account has changed. Open Your accounts again.",
+    "disconnectConfirm": "Disconnect {{source}}? {{agent}} deletes its access to your account.",
+    "card": {
+      "connect": "Connect your {{source}} account so that {{agent}} can use it with your rights."
+    },
+    "empty": "{{agent}} offers you no account of your own to connect.",
+    "noTab": "The browser did not open a new tab. Allow pop-ups for this page and try again."
   }
 }

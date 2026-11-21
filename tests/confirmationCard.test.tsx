@@ -397,7 +397,7 @@ describe('the approval of a tool call (UI-APPR-006)', () => {
 })
 
 describe('the sessions this browser creates (UI-SESS-018, PROF-SESS-016)', () => {
-  it('carry `client.profileVersion: "3.4"`', async () => {
+  it('carry `client.profileVersion: "3.5"` (amended by phase 2: Connect cards are shown in sessions of 3.5)', async () => {
     const agent = fakeAgent([
       [
         'POST ',
@@ -421,7 +421,7 @@ describe('the sessions this browser creates (UI-SESS-018, PROF-SESS-016)', () =>
     expect((created[0].body as { client: Record<string, unknown> }).client).toMatchObject({
       name: 'ayni-ui',
       platform: 'web',
-      profileVersion: '3.4',
+      profileVersion: '3.5',
     })
   })
 })

@@ -2,6 +2,7 @@
 import { ACTIVITY, CLOSURE_REASONS } from '@ayni.org/ayni-agui-profile'
 import {
   CLOSURE_REASON_KEYS,
+  CONNECT_ACTIVITY,
   CONVERSATION_DESIGN,
   canDeleteMessage,
   canWriteIn,
@@ -41,6 +42,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { ConnectCard } from './Accounts.js'
 import { AttachmentView } from './AttachmentView.js'
 import { Binding } from './Binding.js'
 import { ApprovalCard, CapabilityCard, ElevationForm, FlowCard, GeneratingCard, MenuCard } from './Cards.js'
@@ -636,6 +638,9 @@ function Message({
         return <FlowCard flow={m.content as never} />
       case ACTIVITY.generating:
         return <GeneratingCard />
+      case CONNECT_ACTIVITY:
+        // the model offers the person to connect an account of theirs, at its place in the reply (UI-CONV-057)
+        return <ConnectCard agentDid={agentDid} content={m.content} />
       default:
         return null
     }

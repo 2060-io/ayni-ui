@@ -215,7 +215,8 @@
       "unreachable": "{{agent}} n'a pas pu être joint : le message est revenu.",
       "refused": "{{agent}} n'a pas supprimé le message : il est revenu."
     },
-    "spaceLeft": "Vous ne faites plus partie de {{space}} : cette conversation est en lecture seule."
+    "spaceLeft": "Vous ne faites plus partie de {{space}} : cette conversation est en lecture seule.",
+    "withheldCredentialInfo": "Ceci ressemblait à un mot de passe ou à une clé. {{agent}} ne l'a pas gardé et ne l'a pas montré à l'IA. Pour connecter un compte, ouvrez Vos comptes."
   },
   "approval": {
     "title": "Approbation",
@@ -491,7 +492,8 @@
       "settingsBackup": "Réglages › Sauvegarde",
       "settingsDevices": "les appareils liés",
       "connect": "cette invitation",
-      "unknown": "cette page"
+      "unknown": "cette page",
+      "serviceAccounts": "Vos comptes"
     }
   },
   "spaces": {
@@ -774,7 +776,8 @@
     "aboutTitle": "Outils que {{agent}} utilise dans cet espace",
     "account": {
       "space": "Utilise le compte de l'espace",
-      "agent": "Utilise le compte de {{agent}}"
+      "agent": "Utilise le compte de {{agent}}",
+      "personal": "Chaque personne utilise son propre compte"
     },
     "effect": {
       "read": "Lit",
@@ -864,11 +867,16 @@
       "refused": "Refusé",
       "expired": "Pas de réponse à temps",
       "cancelled": "Non exécuté",
-      "erased": "Les détails ont été supprimés avec votre message."
+      "erased": "Les détails ont été supprimés avec votre message.",
+      "accountYours": "Avec votre compte {{label}}",
+      "accountOwn": "Avec votre propre compte",
+      "accountRequester": "Avec le propre compte de {{requester}}"
     },
     "sources": {
       "space": "{{source}}, le compte de l'espace",
-      "agent": "{{source}}, le compte de {{agent}}"
+      "agent": "{{source}}, le compte de {{agent}}",
+      "personal": "{{source}}, votre propre compte",
+      "personalOf": "{{source}}, le propre compte de {{author}}"
     },
     "share": {
       "title": "Partager avec {{space}} ?",
@@ -884,7 +892,64 @@
       "none_many": "{{source}} · {{count}} résultats",
       "members": "Les membres de {{space}} liront les réponses qui les ont utilisés.",
       "share": "Partager",
-      "unreadable": "Les sources de cette conversation n'ont pas pu être lues. Rien n'a été partagé."
-    }
+      "unreadable": "Les sources de cette conversation n'ont pas pu être lues. Rien n'a été partagé.",
+      "personal_one": "{{source}}, avec votre propre compte · {{count}} résultat",
+      "personal_other": "{{source}}, avec votre propre compte · {{count}} résultats",
+      "personal_many": "{{source}}, avec votre propre compte · {{count}} résultats"
+    },
+    "yourAccount": {
+      "connected": "Votre compte : connecté",
+      "notConnected": "Votre compte : non connecté"
+    },
+    "accountPersonal": "Chaque personne connecte son propre compte, dans Vos comptes.",
+    "useValue": "Utiliser {{value}}",
+    "connectToChoose": "Connectez votre compte pour choisir",
+    "notYourAccount": "Choisissez l'un de vos propres comptes {{source}}."
+  },
+  "accounts": {
+    "menu": "Vos comptes",
+    "title": "Vos comptes dans {{agent}}",
+    "intro": "{{agent}} utilise ces comptes avec vos propres droits dans chaque service. Vous seul les connectez.",
+    "usedIn": {
+      "all": "Utilisé dans toutes vos conversations",
+      "places": "Utilisé dans {{places}}",
+      "none": "Pas utilisé pour l'instant"
+    },
+    "binding": "{{label}} : {{value}}",
+    "state": {
+      "notConnected": "Non connecté",
+      "connected": "Connecté en tant que {{label}} · depuis le {{date}}",
+      "connectedNoLabel": "Connecté · depuis le {{date}}",
+      "moreAccess": "{{source}} demande plus d'accès. Reconnectez pour le lui donner.",
+      "expired": "{{source}} vous a déconnecté. Reconnectez pour l'utiliser à nouveau.",
+      "revoked": "{{source}} n'accepte plus cette connexion. Reconnectez pour l'utiliser à nouveau.",
+      "changed": "{{agent}} a changé sa façon de se connecter à {{source}}. Reconnectez pour l'utiliser à nouveau."
+    },
+    "connect": "Connecter",
+    "reconnect": "Reconnecter",
+    "disconnect": "Déconnecter",
+    "cancel": "Annuler",
+    "waiting": "Terminez dans le navigateur · reste {{time}}",
+    "outcome": {
+      "connected": "Connecté en tant que {{label}}",
+      "connectedNoLabel": "Connecté",
+      "denied": "Non connecté : vous n'avez pas autorisé {{agent}} dans {{source}}.",
+      "failed": "Non connecté : {{source}} n'a pas terminé la connexion. Réessayez.",
+      "expired": "Non connecté à temps. Réessayez.",
+      "cancelled": "Annulé. Rien n'a changé.",
+      "wrongBinding": "Non connecté : ce compte est pour {{chosen}}. Connectez à nouveau et choisissez {{expected}}.",
+      "wrongPerson": "Non connecté : ce compte {{source}} n'est pas le vôtre. Connectez à nouveau avec le vôtre.",
+      "disconnected": "Déconnecté. {{source}} peut encore lister {{agent}} dans vos réglages là-bas : vous pouvez le retirer.",
+      "disconnectedRevoked": "Déconnecté"
+    },
+    "unavailable": "Impossible de connecter {{source}} pour le moment. Réessayez plus tard.",
+    "notOffered": "Ce compte ne vous est pas proposé.",
+    "changed": "Ce compte a changé. Ouvrez Vos comptes à nouveau.",
+    "disconnectConfirm": "Déconnecter {{source}} ? {{agent}} supprime son accès à votre compte.",
+    "card": {
+      "connect": "Connectez votre compte {{source}} pour que {{agent}} puisse l'utiliser avec vos droits."
+    },
+    "empty": "{{agent}} ne vous propose aucun compte personnel à connecter.",
+    "noTab": "Le navigateur n'a pas ouvert de nouvel onglet. Autorisez les fenêtres pop-up pour cette page et réessayez."
   }
 }
