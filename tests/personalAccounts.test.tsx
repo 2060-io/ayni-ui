@@ -656,6 +656,95 @@ describe("a space's tool of each person's own account (UI-CONV-049, UI-CONV-050)
     expect(byText(el, 'button', 'Connect')).toBeUndefined()
   })
 
+  it("opens the row of the source whose account a tool uses, as the space's tools name it (ayni-spec #110)", async () => {
+    // GitHub repository uses the person's GitHub account: Your accounts lists it under GitHub
+    const project = {
+      source: 'github-project',
+      title: 'GitHub repository',
+      description: "The issues of the project's repository",
+      state: 'ready',
+      guests: false,
+      account: { kind: 'personal', connected: false, source: 'github' },
+      bindings: [],
+      tools: [{ title: 'Comment on an issue', effect: 'write', rule: 'confirm', stepUp: null }],
+      pending: null,
+    }
+    const github = { ...GITHUB, usedIn: [{ kind: 'personal' }, { kind: 'space', id: 'spc_sales', title: 'Sales EU' }] }
+    const { el, hub } = await spacePage(
+      'member',
+      [
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [project] })],
+        ['GET /connections', () => json({ connections: [RELATICLE, github, TASKS] })],
+      ],
+      'about'
+    )
+    await until(() => el.querySelector('.about-tool'))
+    await click(byText(el.querySelector('.about-tool') as HTMLElement, 'button', 'Connect'))
+    expect(hub.getSnapshot().accountsFor).toEqual({
+      agentDid: AGENT,
+      focus: { source: 'github', spaceId: 'spc_sales' },
+    })
+    teardown()
+    const page = await render(hub, <AccountsPage />)
+    await until(() => page.querySelector('.account-row'))
+    const row = [...page.querySelectorAll<HTMLElement>('.account-item')].find(
+      (r) => r.querySelector('.account-title')?.textContent === 'GitHub'
+    )
+    expect(row?.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement?.textContent).toBe('Connect')
+  })
+
+  it('signs the owner in to the source whose account a tool uses, to choose its binding (ayni-spec #110)', async () => {
+    fakeTab()
+    const { el, agent } = await spacePage(
+      'owner',
+      [
+        [
+          `GET ${TOOLS_PATH}`,
+          () =>
+            json({
+              tools: [
+                crm({
+                  source: 'relaticle-team',
+                  state: 'setup',
+                  account: { kind: 'personal', connected: false, source: 'relaticle' },
+                  bindings: [
+                    {
+                      name: 'workspace',
+                      label: 'Workspace',
+                      value: null,
+                      setBy: 'owner',
+                      fromAccount: true,
+                      choices: [],
+                    },
+                  ],
+                }),
+              ],
+            }),
+        ],
+        [
+          'POST /connections/relaticle/authorize',
+          () =>
+            json(
+              {
+                attemptId: 'att_8',
+                authorizationUrl: 'https://crm.2060.io/oauth/authorize?x',
+                expiresAt: new Date(Date.now() + 600_000).toISOString(),
+              },
+              202
+            ),
+        ],
+      ],
+      'tools'
+    )
+    await until(() => el.querySelector('.tool-row'))
+    await click(el.querySelector('.tool-row-main'))
+    await click(byText(el, 'button', 'Connect your account to choose'))
+    await until(() => agent.find('POST', '/connections/relaticle/authorize').length === 1)
+    expect(agent.find('POST', '/connections/relaticle/authorize')[0]?.body).toEqual({ spaceId: 'spc_sales' })
+    expect(agent.find('POST', '/connections/relaticle-team/authorize')).toHaveLength(0)
+  })
+
   it("shows the owner no account to set, and the workspace chosen from the owner's own accounts", async () => {
     const { el, agent } = await spacePage(
       'owner',

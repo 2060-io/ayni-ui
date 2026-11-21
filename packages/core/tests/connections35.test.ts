@@ -29,6 +29,7 @@ import { ProfileClient, ProfileError } from '../src/profileClient.js'
 import {
   emptyTranscript,
   mergeHistory,
+  namedMessageIds,
   reduce,
   toTranscriptMessage,
   withheldTextsOf,
@@ -36,6 +37,7 @@ import {
 } from '../src/reducer.js'
 import {
   accountLineOf,
+  accountSourceOf,
   conversationSourcesOf,
   messageSourcesOf,
   spaceToolOf,
@@ -400,6 +402,22 @@ describe('`personal` in the shapes of 3.4 (PROF-TOOL-021)', () => {
     })
   })
 
+  it("names the row of Your accounts a tool that uses another source's account is under (ayni-spec #110)", () => {
+    const project = spaceToolOf({
+      source: 'github-project',
+      title: 'GitHub repository',
+      account: { kind: 'personal', connected: false, source: 'github' },
+    })
+    expect(project?.account).toEqual({ kind: 'personal', connected: false, source: 'github' })
+    expect(accountSourceOf(project as never)).toBe('github')
+    expect(accountSourceOf({ source: 'relaticle', account: { kind: 'personal', connected: true } })).toBe('relaticle')
+    // only a personal account names one
+    expect(spaceToolOf({ source: 'web', account: { kind: 'agent', source: 'other' } })?.account).toEqual({
+      kind: 'agent',
+    })
+    expect(accountSourceOf({ source: 'web', account: { kind: 'agent' } })).toBe('web')
+  })
+
   it('reads the account of an action: its label on the card of its person only', () => {
     const own = toolActionOf({
       title: 'Comment on an issue',
@@ -467,6 +485,42 @@ describe('the stream, history and links of 3.5', () => {
   const withheld = (value: Record<string, unknown>) =>
     reduce(transcript, session, { type: 'CUSTOM', name: 'ayni.messages.withheld', value }, true, true)
 
+  it('`ayni.messages.erased` names a message by the id a client gave it, at its place, and nothing by `""`', () => {
+    expect(namedMessageIds({ messageIds: ['msg_9', 'msg_10'], clientIds: ['u-door', ''] })).toEqual([
+      'msg_9',
+      'msg_10',
+      'u-door',
+    ])
+    // the person's message held here under its own id, and the agent's reply to it, deleted together
+    const reply: TranscriptMessage = {
+      id: 'msg_10',
+      role: 'assistant',
+      content: 'The door code is…',
+      at: '2026-11-21T10:01:00.000Z',
+    }
+    const held: Transcript = {
+      ...emptyTranscript('s1'),
+      messages: [
+        { id: 'u-door', role: 'user', content: 'What is the door code?', at: '2026-11-21T10:00:00.000Z' },
+        reply,
+      ],
+      reactions: { 'u-door': [{ emoji: '👍', by: 'Ana' }] },
+    }
+    const r = reduce(
+      held,
+      session,
+      {
+        type: 'CUSTOM',
+        name: 'ayni.messages.erased',
+        value: { conversationId: 'c1', messageIds: ['msg_9', 'msg_10'], clientIds: ['u-door', ''] },
+      },
+      false,
+      true
+    )
+    expect(r.transcript.messages).toEqual([])
+    expect(r.transcript.reactions).toEqual({})
+  })
+
   it('`ayni.connections.changed` is a signal, never a message (PROF-TOOL-019)', () => {
     const r = reduce(
       transcript,
@@ -500,7 +554,7 @@ describe('the stream, history and links of 3.5', () => {
     expect(r.session.title).toBe(SENT)
   })
 
-  it("pairs the client's ids with the agent's by place, and takes the only text when there is one", () => {
+  it('pairs the client\'s ids with the agent\'s by place, `""` for a message no client sent (ayni-spec #110)', () => {
     expect(withheldTextsOf({ messageIds: ['m1', 'm2'], clientIds: ['c1', 'c2'], texts: { m1: 'a', m2: 'b' } })).toEqual(
       {
         m1: 'a',
@@ -510,9 +564,15 @@ describe('the stream, history and links of 3.5', () => {
       }
     )
     expect(withheldTextsOf({ messageIds: ['m1'], clientIds: ['c1'], texts: { m1: 'a' } })).toEqual({ m1: 'a', c1: 'a' })
-    expect(withheldTextsOf({ messageIds: ['m1', 'm2'], clientIds: ['c1'], texts: { m1: 'a', m2: 'b' } })).toEqual({
+    // the second message was sent by no client (another device's, or one the agent wrote): nothing is named by ""
+    expect(withheldTextsOf({ messageIds: ['m1', 'm2'], clientIds: ['c1', ''], texts: { m1: 'a', m2: 'b' } })).toEqual({
       m1: 'a',
       m2: 'b',
+      c1: 'a',
+    })
+    // by place, never "the only text": a client's id of a message with no text kept takes none
+    expect(withheldTextsOf({ messageIds: ['m1', 'm2'], clientIds: ['', 'c2'], texts: { m1: 'a' } })).toEqual({
+      m1: 'a',
     })
     expect(withheldTextsOf({ messageIds: ['m1'], texts: { m1: 3 } })).toEqual({})
     // a message another device sent arrives with the text the agent kept: it is only marked

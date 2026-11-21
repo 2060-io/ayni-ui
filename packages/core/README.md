@@ -108,6 +108,7 @@ in place of the one the device holds (`withheldTextsOf`, a message's `withheld: 
 | The sign-in and the fields (UI-CONV-054, UI-CONV-055) | `spaceIdFor` (the space a row's sign-in is for), `signInUrlAllowed` (only the service's sign-in over HTTPS is opened), `accountValuesOf` (as for a space's account) |
 | Outcomes, refusals, Disconnect (UI-CONV-056, UI-CONV-058) | `outcomeNoticeOf`, `connectionRefusalOf`, `disconnectedKeyOf` |
 | The account of a call (UI-CONV-045, UI-APPR-006) | `accountLineOf` (whose card it is: the person's, or an approver's) |
+| A space's tool of each person's account (UI-CONV-049, UI-CONV-050) | `accountSourceOf` (the row of Your accounts its Connect opens: `account.source`, for a tool that uses another source's account, else its own) |
 | The Connect card (UI-CONV-057) | `CONNECT_ACTIVITY`, `connectCardOf`, `CONVERSATION_DESIGN.connectCard`, `CONVERSATION_COLORS.connectCard` |
 
 The English wording of these surfaces is `CONNECTIONS_COPY`, the table of UI-CONV-058 row by row, keyed by its path in

@@ -73,12 +73,13 @@ export const MESSAGES_WITHHELD = 'ayni.messages.withheld'
 /**
  * The ids an event names its messages by (PROF-STREAM-008, PROF-STREAM-011): the agent's (`messageIds`), and the ids
  * the clients gave the messages they sent (`clientIds`), under which the sending device holds them until history
- * names them (`mergeHistory`).
+ * names them (`mergeHistory`). `clientIds` has the length and the order of `messageIds`, with `""` for a message no
+ * client sent (the agent's reply to a message deleted with it): an empty id names nothing.
  */
 export function namedMessageIds(value: unknown): string[] {
   const v = (value ?? {}) as { messageIds?: unknown; clientIds?: unknown }
   return [v.messageIds, v.clientIds].flatMap((list) =>
-    Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []
+    Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string' && id !== '') : []
   )
 }
 
@@ -125,27 +126,21 @@ export function withWithheld(
 /**
  * The text the agent kept of each message held back for a credential, by every id the event names it under
  * (PROF-STREAM-011). `texts` is keyed by the agent's ids; the device that sent the message holds it under its own id
- * until history names it, so a client's id takes the text of the agent's id at its place in the lists, and, when the
- * event keeps one text only, that text.
+ * until history names it. `clientIds[i]` is the client's id of `messageIds[i]`, `""` for a message no client sent, so
+ * a client's id takes the text of the agent's id at its place.
  */
 export function withheldTextsOf(value: unknown): Record<string, string> {
   const v = (value ?? {}) as { messageIds?: unknown; clientIds?: unknown; texts?: unknown }
   const texts: Record<string, string> = {}
-  const given =
-    typeof v.texts === 'object' && v.texts !== null
-      ? Object.entries(v.texts as Record<string, unknown>).filter(
-          (e): e is [string, string] => typeof e[1] === 'string'
-        )
-      : []
-  if (!given.length) return texts
-  for (const [id, text] of given) texts[id] = text
-  const ids = (list: unknown) => (Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : [])
-  const agentIds = ids(v.messageIds)
-  const clientIds = ids(v.clientIds)
-  const only = given.length === 1 ? (given[0] as [string, string])[1] : undefined
+  if (typeof v.texts !== 'object' || v.texts === null) return texts
+  for (const [id, text] of Object.entries(v.texts as Record<string, unknown>))
+    if (typeof text === 'string') texts[id] = text
+  const agentIds = Array.isArray(v.messageIds) ? (v.messageIds as unknown[]) : []
+  const clientIds = Array.isArray(v.clientIds) ? (v.clientIds as unknown[]) : []
   clientIds.forEach((clientId, i) => {
-    const byPlace = agentIds.length === clientIds.length ? texts[agentIds[i] as string] : undefined
-    const text = byPlace ?? only
+    const agentId = agentIds[i]
+    if (typeof clientId !== 'string' || !clientId || typeof agentId !== 'string') return
+    const text = texts[agentId]
     if (text !== undefined && texts[clientId] === undefined) texts[clientId] = text
   })
   return texts

@@ -12,6 +12,7 @@
  */
 import {
   type AgentRecord,
+  accountSourceOf,
   accountValuesOf,
   bindingValueFits,
   canAdd,
@@ -143,7 +144,8 @@ function BindingFromAccount({
 }) {
   const { t } = useTranslation()
   const choices = binding.choices ?? []
-  const signIn = useSignIn(agent, { source: tool.source, title: tool.title, spaceId: space.id })
+  // the row of Your accounts the tool's personal accounts are under: another source's when it uses that one's
+  const signIn = useSignIn(agent, { source: accountSourceOf(tool), title: tool.title, spaceId: space.id })
   const current =
     binding.value !== null && binding.value !== ''
       ? bindingWords({ label: binding.label, valueLabel: binding.valueLabel ?? binding.value }, t)

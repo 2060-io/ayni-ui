@@ -51,6 +51,11 @@ export interface SpaceToolAccount {
   setBy?: { name: string } | null
   /** `personal` only: the reader's own account is connected for this space */
   connected?: boolean
+  /**
+   * `personal` only, when the tool uses another source's account (`account.from`, such as `github-project` using
+   * `github`): the source Your accounts lists for it (§3.10), the row a Connect from the space's tools opens
+   */
+  source?: string
 }
 
 /** One of the owner's own accounts of a source, a value the binding it is for may take (PROF-TOOL-021, agent D110). */
@@ -239,7 +244,12 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
             setBy: typeof setBy.name === 'string' ? { name: setBy.name } : null,
           }
         : {}),
-      ...(kind === 'personal' ? { connected: account.connected === true } : {}),
+      ...(kind === 'personal'
+        ? {
+            connected: account.connected === true,
+            ...(typeof account.source === 'string' && account.source ? { source: account.source } : {}),
+          }
+        : {}),
     },
     bindings: list(t.bindings).map((b) => ({
       name: str(b.name, str(b.label)),
@@ -358,6 +368,15 @@ export function ruleChoicesFor(tool: Pick<SpaceToolItem, 'rule' | 'packRule'>): 
 /** Whether a rule chosen grants something over the one in force, and so waits for the owner's phone (agent D98). */
 export function loosens(next: ToolRule, current: ToolRule): boolean {
   return strictnessOf(next) < strictnessOf(current)
+}
+
+/**
+ * The source of Your accounts a space's tool of each person's own account is connected under (§3.10, PROF-TOOL-021):
+ * the one its account names when it uses another source's account (`account.from`), else its own. A Connect from the
+ * space's tools opens, or signs in to, that row.
+ */
+export function accountSourceOf(tool: Pick<SpaceTool, 'source' | 'account'>): string {
+  return tool.account.kind === 'personal' ? (tool.account.source ?? tool.source) : tool.source
 }
 
 /** Whether the source is in the space: added, ready or still missing something. */

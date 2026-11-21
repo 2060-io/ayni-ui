@@ -8,6 +8,7 @@ import {
   type AgentRecord,
   type ApprovalStatus,
   accountLineOf,
+  accountSourceOf,
   CONVERSATION_DESIGN,
   type ConversationSource,
   canStopAllowing,
@@ -542,7 +543,9 @@ export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceI
                       <button
                         type="button"
                         className="link about-tool-connect"
-                        onClick={() => hub.openAccounts(agent.did, { source: tool.source, spaceId: space.id })}
+                        onClick={() =>
+                          hub.openAccounts(agent.did, { source: accountSourceOf(tool), spaceId: space.id })
+                        }
                       >
                         {t('accounts.connect')}
                       </button>

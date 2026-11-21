@@ -649,13 +649,17 @@
       the value in force as "<label>: <valueLabel>", then one radio "Use <valueLabel>" per choice, saved by the Save of
       the settings and confirmed on the phone as any binding; with no choice, "Connect your account to choose" starts
       the sign-in for the space with no value expected, and once connected the list is read again and offers it.
-      `422 not-your-account` is said at the binding.
+      `422 not-your-account` is said at the binding. A tool that uses another source's account (`account.from`, such as
+      `github-project` using `github`) names that source in `account.source` (ayni-spec #110): Connect in About opens
+      the row of `account.source ?? source`, and the owner's "Connect your account to choose" signs in to it.
     - **A credential pasted in a conversation.** `ayni.messages.withheld` with `reason: "credential"` marks the message
       (`withheld: "credential"`) and puts the text the agent kept in place of the one this device holds, in the
       transcript, the store, the row's title and preview (made from the text sent), and a text that waited for the
       session to bind. `texts` is keyed by the agent's ids; the device that sent the message holds it under its own
-      id, so a client's id takes the text of the agent's id at the same place in the two lists, or the only text when
-      the event keeps one. History's `metadata.withheld` does the same for a message held here. It is drawn as the
+      id. `clientIds` has the length and the order of `messageIds`, with `""` for a message no client sent
+      (ayni-spec #110), so a client's id takes the text of the agent's id at its place; `""` names nothing, in this
+      event as in `ayni.messages.erased` (a message deleted with its reply: `['u-door', '']`). History's
+      `metadata.withheld` does the same for a message held here. It is drawn as the
       email code is, and its Info says "This looked like a password or a key. <agent> did not keep it and did not show
       it to the AI. To connect an account, open Your accounts."
     - **Colours.** Every pair the new rules paint, computed from the tokens of both palettes (light; dark by choice and
