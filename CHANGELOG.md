@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.20.0](https://github.com/2060-io/ayni-ui/compare/v0.19.0...v0.20.0) (2026-11-21)
+
+
+### Features
+
+* **core:** one field per key of a space account, the values set together (core 0.6.0) ([a76f23f](https://github.com/2060-io/ayni-ui/commit/a76f23f318b1860c8ab919a2eda0a57de0c74c0d))
+* **tools:** one field per key of a space account ([626dfd3](https://github.com/2060-io/ayni-ui/commit/626dfd34a0bdbb2b90d163f85738610ba8deedd8))
+* **tools:** one field per key of a space account ([6cb52d0](https://github.com/2060-io/ayni-ui/commit/6cb52d0e08f75caac23781d760348c832d67e90f))
+
+
+### Bug Fixes
+
+* **sessions:** a link lists the person's conversations and spaces at once, through the session it bound (UI-SESS-019) ([037fe96](https://github.com/2060-io/ayni-ui/commit/037fe969ec316dd51d514436c84873cbe051ebb8))
+* **sessions:** a link lists the person's conversations and spaces at once, through the session it bound (UI-SESS-019) ([012fabb](https://github.com/2060-io/ayni-ui/commit/012fabb3f68dc39c2d38ef41d6c29cf220689f14))
+* **tools:** the words of the account's refusals as UI-CONV-052 settles them ([cf0007b](https://github.com/2060-io/ayni-ui/commit/cf0007bc3343abd0135602e9a16d180e19b49b7b))
+
 ## [0.19.0](https://github.com/2060-io/ayni-ui/compare/v0.18.0...v0.19.0) (2026-11-20)
 
 
