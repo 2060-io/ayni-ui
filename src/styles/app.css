@@ -1488,6 +1488,20 @@ label.field {
   letter-spacing: 0.1em;
   font-variant-numeric: tabular-nums;
 }
+/* the link screen (UI-BIND-013): what to do when the phone did not link, and Show a new code */
+.link-hint {
+  margin: 12px auto 0;
+  max-width: 440px;
+}
+.link-renew {
+  margin-top: 12px;
+}
+/* Show a new code while the code waits: an outline in the accent over the page; once the code is dead, the primary */
+.btn.new-code {
+  background: var(--bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .toast {
   position: fixed;
   bottom: 16px;

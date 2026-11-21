@@ -669,5 +669,51 @@
     - **Tests.** `packages/core/tests/connections35.test.ts`, `tests/accounts.test.tsx`,
       `tests/personalAccounts.test.tsx`, and the version of the sessions (3.5) in the tests of 3.4.
     - Core 0.7.0.
-45. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+45. **Show a new code on the link screen** (2026-11-21, found by Fabrice on devnet and chosen by him; UI-BIND-013).
+    Since agent 0.28.1 (ayni-agent #104) the binding invitation is a single-use invitation record of the VS Agent, and
+    the phone refuses an Out-of-Band invitation it received already ("This code was already scanned. Show a new code in
+    the browser and scan it.", app APP-SCAN-013). After a scan that did not complete (cancelled on the phone, another
+    code tapped, the sheet lost, the session's window ended) the browser kept showing the code the phone refuses, and
+    only a reload gave another one.
+    - **What the wire allows.** `POST {sessions}/{id}/binding` gives fresh material only once the current material
+      expired, else `409` with it (PROF-BIND-007); before expiry a new code is a new session. `DELETE {sessions}/{id}`
+      takes the token of a provisional session and closes it with reason `user` (PROF-SESS-003, PROF-SESS-005). The
+      agent closes a provisional session three binding windows after it was created (`expired`, said on its stream;
+      later calls `410`). It tells the browser nothing of a link refused or cancelled on the phone: the flow closes
+      `cancelled` ("Not linked.") on DIDComm, the session stays provisional and its status does not change
+      (PROF-BIND-004, agent `onLinkSessionStateChanged`). So the screen cannot say that it happened; it says, under the
+      code, what to do when it did: "If you cancelled on the phone, picked another code, or the phone says this code
+      was already scanned, show a new code and scan it." (the unused `bind.refused`, reworded).
+    - **Show a new code.** A button under the code, in every state of the screen (`hub.newBindingCode`). Before the
+      material expires it opens a new provisional session the way the first one was opened (the same conversation to
+      resume, or a new conversation in the same space: `SessionRecord.newConversation`, core 0.7.1; the device handle
+      when the browser holds one, so a known phone is asked again), and only then ends the old one on the agent with
+      its own token: if the new one cannot be opened, the old code stays. The new session takes the old one's place:
+      its transcript, its title, its row, and the screen, in the same change, so there is never a moment with neither.
+      Pressed again while it runs, it is the same renewal. In another tab, the opening lock and a fresh read of the
+      store leave a link that tab replaced already alone.
+    - **By itself.** While the page is visible, and again each time it comes back in front: material that expired is
+      refreshed on the same session (no new session, the phone is not asked again); a session that closed `expired`
+      while its link was on screen gets a new session (the screen stays the link screen, where it showed an empty
+      conversation and its message form before). A refresh that answers `410` (the session's window ended) or the
+      same code (the agent's clock still holds it) gets a new session too. A link closed for any other reason waits
+      for the button: nothing is opened in a loop. In the background nothing is asked; the dead code is not shown, and
+      the button waits.
+    - **Looks.** While the code waits, an outline in the accent over the page (`.btn.new-code`), with the lucide
+      refresh icon; once the code is dead, the primary button. Light, and dark by choice and by system (the same
+      tokens): the button's label, edge and focus ring 5.47:1 and 10.06:1; the primary's label 5.47:1 and 7.77:1;
+      the line under the code 4.83:1 and 7.37:1; the code 17.74:1 and 17.01:1. A test computes them from the
+      stylesheet.
+    - **Focus.** The button is one element in every state and is never disabled while it works (`aria-disabled`), so
+      focus stays on it while the code changes; a status line tells a screen reader "New code: K7-2P".
+    - **Words.** `bind.newCode` "Show a new code" (it was "New code", shown only after expiry), `bind.renewing`,
+      `bind.newCodeShown`, `bind.ended`, `bind.refused`, in the four languages.
+    - **Tests.** `tests/linkNewCode.test.tsx`: the button ends the waiting session with its own token and shows a new
+      session's code, the same button keeping focus, twice; a new conversation in a space opens its replacement the
+      same way; an expired code is refreshed on the same session once the page is visible, and not while hidden; a
+      session that closes `expired` on screen is replaced by a new session, with no message form; a refresh answered
+      `410` gets a new session; after each, the agent holds one provisional session, the one on screen; the words in
+      the four languages; the colours. All seven fail without the change.
+    - Core 0.7.1.
+46. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

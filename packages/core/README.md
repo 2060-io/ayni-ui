@@ -30,6 +30,9 @@ The English wording of the browser's banner for a new version waiting to take ov
 descriptor with it (UI-SESS-020): no answer a browser or a proxy stored ever answers a call. The `fetch` a client gives
 `ProfileClient` receives the caller's `init` with `cache: 'no-store'` added.
 
+A provisional session opened to start a new conversation says so in its record (`SessionRecord.newConversation`), so
+that a client which replaces its code with a new session (UI-BIND-013) opens the new one the same way.
+
 ## One conversation, every device
 
 A conversation shows the same transcript on every device of a person (AG-UI profile PROF-STREAM-005,
