@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.1](https://github.com/2060-io/ayni-ui/compare/v0.21.0...v0.21.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **well-known:** the Apple association file lists the app under webcredentials, so the app's sign-in session closes on its return ([4031ae6](https://github.com/2060-io/ayni-ui/commit/4031ae6a4ffe0a8ee147f74baa92dc6d0dd6f0e1))
+* **well-known:** the Apple association file lists the app under webcredentials, so the sign-in session of the app closes on its return (PROF-TOOL-018, APP-CONV-054) ([3cd622b](https://github.com/2060-io/ayni-ui/commit/3cd622b3c100432584d33c6ff4541645020fd258))
+
 ## [0.21.0](https://github.com/2060-io/ayni-ui/compare/v0.20.2...v0.21.0) (2026-11-21)
 
 
