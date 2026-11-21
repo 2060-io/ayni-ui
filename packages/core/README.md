@@ -24,6 +24,8 @@ The browser's stylesheet is the reference: tests in this repository compare it, 
 with these values, so a change made on one side only fails. The app builds its styles from the same values. A change
 of look or wording on one of these surfaces starts here.
 
+The English wording of the browser's banner for a new version waiting to take over (UI-PLAT-007) is `UPDATE_COPY`.
+
 ## One conversation, every device
 
 A conversation shows the same transcript on every device of a person (AG-UI profile PROF-STREAM-005,

@@ -19,6 +19,10 @@
     "resizeColumn": "Redimensionar a lista",
     "about": "Sobre o Ayni"
   },
+  "update": {
+    "available": "Está disponível uma nova versão do Ayni.",
+    "reload": "Recarregar"
+  },
   "rail": {
     "pinned": "Fixados",
     "notLinked": "Não ligado",
@@ -322,6 +326,7 @@
     "sounds": "Som ao receber mensagens",
     "about": "Sobre",
     "version": "Versão {{version}}",
+    "core": "Núcleo {{version}}",
     "profile": "Perfil AG-UI {{version}}",
     "links": {
       "terms": "Termos",

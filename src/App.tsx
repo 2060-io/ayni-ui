@@ -18,13 +18,16 @@ import { Settings } from './components/Settings.js'
 import { SharedConversationView } from './components/SharedConversation.js'
 import { SpacePage } from './components/SpacePage.js'
 import { Splitter } from './components/Splitter.js'
+import { UpdateBanner } from './components/UpdateBanner.js'
 import type { Hub } from './state/hub.js'
+import { type AppUpdate, appUpdate, useNewVersion } from './state/update.js'
 import { HubContext, useHub, useSnapshot } from './state/useHub.js'
 
-function Shell() {
+function Shell({ update }: { update: AppUpdate }) {
   const snap = useSnapshot()
   const hub = useHub()
   const { t } = useTranslation()
+  const newVersion = useNewVersion(update)
   useEffect(() => {
     document.documentElement.dataset.theme = snap.prefs.theme === 'system' ? '' : snap.prefs.theme
   }, [snap.prefs.theme])
@@ -57,6 +60,7 @@ function Shell() {
     snap.config.singleAgent ? 'single' : '',
     showConversation ? 'show-conversation' : '',
     sheet ? 'with-sheet' : '',
+    newVersion ? 'with-update' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -70,7 +74,7 @@ function Shell() {
     ) : snap.view === 'about' ? (
       <About />
     ) : snap.view === 'settings' ? (
-      <Settings />
+      <Settings update={update} />
     ) : snap.view === 'phone' ? (
       <PhonePage />
     ) : snap.view === 'connect' ? (
@@ -88,6 +92,7 @@ function Shell() {
     )
   return (
     <div className={classes}>
+      <UpdateBanner update={update} />
       <Rail />
       <Column />
       <section className="conversation" aria-live="off">
@@ -109,10 +114,10 @@ function Shell() {
   )
 }
 
-export function App({ hub }: { hub: Hub }) {
+export function App({ hub, update = appUpdate }: { hub: Hub; update?: AppUpdate }) {
   return (
     <HubContext.Provider value={hub}>
-      <Shell />
+      <Shell update={update} />
     </HubContext.Provider>
   )
 }

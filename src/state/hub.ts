@@ -169,6 +169,8 @@ export class Hub {
   private readonly clients = new Map<string, ProfileClient>()
   private readonly pendingActions = new Map<string, { resolve: () => void; reject: (e: Error) => void }>()
   private visible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
+  /** what the message forms hold and the store does not yet, by session: a draft is written 400 ms after typing */
+  private readonly unsavedDrafts = new Map<string, string>()
 
   public constructor(config: RuntimeConfig, brand: BrandConfig) {
     this.snapshot = {
@@ -1414,8 +1416,22 @@ export class Hub {
   }
 
   public async setDraft(sessionId: string, draft: string): Promise<void> {
+    if (this.unsavedDrafts.get(sessionId) === draft) this.unsavedDrafts.delete(sessionId)
     const session = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
     if (session && session.draft !== draft) await this.saveSession({ ...session, draft }, false)
+  }
+
+  /** What a message form holds as the person types, before `setDraft` writes it (UI-SHELL-010). */
+  public noteDraft(sessionId: string, draft: string): void {
+    this.unsavedDrafts.set(sessionId, draft)
+  }
+
+  /**
+   * Writes what every message form holds at once: before the page loads again for a new version (UI-PLAT-007), and
+   * when the person opens another conversation, so that nothing typed is lost (UI-SHELL-010).
+   */
+  public async flushDrafts(): Promise<void> {
+    await Promise.all([...this.unsavedDrafts].map(([sessionId, draft]) => this.setDraft(sessionId, draft)))
   }
 
   /** Whether the person has this session's conversation in front of them. */

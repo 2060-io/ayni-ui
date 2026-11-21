@@ -19,6 +19,10 @@
     "resizeColumn": "Redimensionner la liste",
     "about": "À propos d’Ayni"
   },
+  "update": {
+    "available": "Une nouvelle version d’Ayni est disponible.",
+    "reload": "Recharger"
+  },
   "rail": {
     "pinned": "Épinglés",
     "notLinked": "Non lié",
@@ -322,6 +326,7 @@
     "sounds": "Son à la réception de messages",
     "about": "À propos",
     "version": "Version {{version}}",
+    "core": "Noyau {{version}}",
     "profile": "Profil AG-UI {{version}}",
     "links": {
       "terms": "Conditions",

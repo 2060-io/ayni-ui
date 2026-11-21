@@ -19,6 +19,10 @@
     "resizeColumn": "Resize the conversation list",
     "about": "About Ayni"
   },
+  "update": {
+    "available": "A new version of Ayni is available.",
+    "reload": "Reload"
+  },
   "rail": {
     "pinned": "Pinned",
     "notLinked": "Not linked",
@@ -322,6 +326,7 @@
     "sounds": "Sound on new messages",
     "about": "About",
     "version": "Version {{version}}",
+    "core": "Core {{version}}",
     "profile": "AG-UI profile {{version}}",
     "links": {
       "terms": "Terms",

@@ -223,10 +223,12 @@ export async function tab(
     features?: Record<string, unknown>
     profileVersion?: string
     snapshot?: Partial<Snapshot>
+    /** the device's store, for the tab a reload opens in the same browser */
+    store?: MemoryDeviceStore
   } = {}
 ): Promise<Hub> {
   const hub = new Hub(config, { appName: 'Ayni' })
-  const store = new MemoryDeviceStore()
+  const store = options.store ?? new MemoryDeviceStore()
   // @ts-expect-error private: the store and the bus of a test tab
   hub.store = store
   // @ts-expect-error private
