@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.1](https://github.com/2060-io/ayni-ui/compare/v0.20.0...v0.20.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **pwa:** a waiting version says so, with Reload, and Settings shows the version running (UI-PLAT-007, UI-PLAT-008) ([f1aa4e0](https://github.com/2060-io/ayni-ui/commit/f1aa4e0181e230408d11f6fe53786b5c924ba5d7))
+* **pwa:** a waiting version says so, with Reload, and Settings shows the version running (UI-PLAT-007, UI-PLAT-008) ([de18874](https://github.com/2060-io/ayni-ui/commit/de18874f58b7187e7d9aab63894c01a38b4d6b4c))
+
 ## [0.20.0](https://github.com/2060-io/ayni-ui/compare/v0.19.0...v0.20.0) (2026-11-21)
 
 
