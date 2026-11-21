@@ -161,7 +161,7 @@
     "voicePosition": "Posição na nota de voz",
     "download": "Transferir",
     "menuAnswered": "Respondido",
-    "approvals": "Aprovações",
+    "menu": "Menu",
     "requestElevation": "Pedir acesso",
     "thinking": "A pensar…",
     "context": "Contexto {{used}} / {{max}}",
@@ -245,7 +245,29 @@
     "asksYou": "{{requester}} pede a sua aprovação",
     "waitingFor": "Aguardando a aprovação de {{approver}}",
     "waiting": "Aguardando aprovação",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "approvedBy": "Aprovada por {{name}}",
+    "rejectedBy": "Rejeitada por {{name}}",
+    "approvedByYou": "Aprovada por você",
+    "rejectedByYou": "Rejeitada por você",
+    "approvedByYouWaiting": "Aprovada por você · Aguardando outros aprovadores",
+    "rejectedByYouWaiting": "Rejeitada por você · Aguardando outros aprovadores",
+    "notAnswered": "Sem resposta a tempo",
+    "withdrawn": "Retirada"
+  },
+  "notifications": {
+    "title": "Notificações",
+    "empty": "Nenhuma notificação.",
+    "sentByYou": "Enviada por você",
+    "decidedAt": "{{outcome}} · {{time}}",
+    "decideOnPhone": "Decida no seu telefone",
+    "sentToPhone": "Enviada ao seu telefone",
+    "phoneUnreachable": "{{agent}} não consegue chegar ao app Ayni do seu telefone.",
+    "more": "Mostrar mais",
+    "waiting": "{{count}} aguardando",
+    "ended": "Esta solicitação já terminou.",
+    "notEligible": "Você não pode mais decidir esta solicitação.",
+    "notSent": "Sua resposta não foi enviada. Tente de novo."
   },
   "elevation": {
     "title": "Pedir acesso",
@@ -496,7 +518,9 @@
       "settingsDevices": "Dispositivos ligados",
       "connect": "este convite",
       "unknown": "esta página",
-      "serviceAccounts": "Suas contas"
+      "serviceAccounts": "Suas contas",
+      "serviceNotifications": "as Notificações",
+      "spaceNotifications": "as Notificações de um espaço"
     }
   },
   "spaces": {
@@ -533,6 +557,7 @@
     "ownerLineYou": "{{kind}} · é seu",
     "segments": {
       "conversations": "Conversas",
+      "notifications": "Notificações",
       "memories": "Suas memórias",
       "about": "Sobre",
       "members": "Membros",

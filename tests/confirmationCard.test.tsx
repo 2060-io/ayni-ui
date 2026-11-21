@@ -2,7 +2,8 @@
  * The cards of tool calls in a conversation (profile 3.4 §6; agent D99): the confirmation card with the exact action,
  * its buttons, the answer on its way and failing, each outcome, the allowance and Stop allowing, untrusted content, a
  * card whose message was deleted (UI-CONV-045, UI-CONV-046); no working indicator under a card that waits, Stop kept;
- * the approval of a tool call to the approver and to the requester (UI-APPR-006); and the sessions this browser
+ * the requester's card of the approval of a tool call, and no card of it for an approver (UI-APPR-006, UI-APPR-001,
+ * amended by agent D114); and the sessions this browser
  * creates say profile 3.4 (UI-SESS-018).
  */
 import type { TranscriptMessage } from '@ayni.org/ayni-ui-core'
@@ -333,41 +334,15 @@ describe('the approval of a tool call (UI-APPR-006)', () => {
     ...over,
   })
 
-  it('shows the approver the exact action under who asks, and where, with Approve and Reject', async () => {
-    const { card, agent } = await conversation(
-      [cardMessage(approval({ canDecide: true }))],
-      [
-        [
-          'POST /s1/runs',
-          () =>
-            sse(
-              { type: 'RUN_STARTED', threadId: 's1', runId: 'r' },
-              { type: 'RUN_FINISHED', threadId: 's1', runId: 'r' }
-            ),
-        ],
-      ]
-    )
-    const c = card() as HTMLElement
-    // the heading, then the action's title and the space's, each on a line of its own, no case changed
-    const lines = (el: HTMLElement) =>
-      [...el.querySelectorAll('.tool-approval-head, .tool-title, .tool-approval-space, .tool-source')].map(
-        (x) => x.textContent
-      )
-    expect(lines(c)).toEqual(['Ana Ríos asks for your approval', 'Post on LinkedIn', 'Communication', 'LinkedIn'])
-    expect(c.querySelectorAll('.tool-title')).toHaveLength(1)
-    expect(c.querySelector('.tool-field dd')?.textContent).toBe('We are hiring.\nThree roles in Rotterdam.')
-    expect(c.querySelector('.tool-account')?.textContent).toBe('With the account of Communication')
-    expect(c.querySelector('input[aria-label="Note (optional)"]')).toBeTruthy()
-    await click(byText(c, 'button', 'Approve'))
-    await until(() => agent.find('POST', '/s1/runs').length === 1)
-    expect(decisionOf(agent.find('POST', '/s1/runs')[0])).toEqual({
-      kind: 'approval.decide',
-      approvalId: 'apr_2',
-      decision: 'approve',
-    })
+  it("draws no card of an approver's request in a conversation: it is in their Notifications (agent D114)", async () => {
+    // amended by agent D114: the approver's card, with Approve and Reject, was drawn in each of their conversations
+    const { el, card } = await conversation([cardMessage(approval({ canDecide: true }))])
+    expect(card()).toBeNull()
+    expect(el.textContent).not.toContain('asks for your approval')
+    expect(byText(el, 'button', 'Approve')).toBeUndefined()
   })
 
-  it("shows the requester whose approval it waits for, with Cancel, and follows the owner's decision", async () => {
+  it("shows the requester whose approval it waits for, with Cancel, and the owner's decision in its place", async () => {
     const { card, hub } = await conversation([cardMessage(approval({ own: true }))], [], {
       spaces: { spaces: [PERSONAL, COMMS], templates: [] },
     })
@@ -379,7 +354,7 @@ describe('the approval of a tool call (UI-APPR-006)', () => {
     expect(byText(c, 'button', 'Cancel')).toBeTruthy()
     expect(byText(c, 'button', 'Approve')).toBeUndefined()
     await update(hub, { approvalId: 'apr_2', status: 'APPROVED', decidedBy: 'Jonas Weber' })
-    await until(() => byText(card() as HTMLElement, '.row span', 'Approved'))
+    await until(() => card()?.querySelector('.tool-approval-head')?.textContent === 'Approved by Jonas Weber')
     expect(byText(card() as HTMLElement, 'button', 'Cancel')).toBeUndefined()
   })
 
@@ -389,10 +364,12 @@ describe('the approval of a tool call (UI-APPR-006)', () => {
     expect(card()?.querySelector('.tool-approval-space')).toBeNull()
   })
 
-  it('an approval with no action is the card it always was', async () => {
-    const { el } = await conversation([cardMessage(approval({ action: undefined, space: undefined, canDecide: true }))])
+  it("an approval with no action is the requester's card it always was, its status in words", async () => {
+    const { el } = await conversation([cardMessage(approval({ action: undefined, space: undefined, own: true }))])
     expect(el.querySelector('.tool-card')).toBeNull()
     expect(el.querySelector('section.card h3')?.textContent).toBe('Approval needed')
+    expect(byText(el, 'section.card .row span', 'Waiting for approval')).toBeTruthy()
+    expect(byText(el, 'button', 'Withdraw')).toBeTruthy()
   })
 })
 

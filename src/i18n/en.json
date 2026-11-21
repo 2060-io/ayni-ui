@@ -161,7 +161,7 @@
     "voicePosition": "Position in the voice note",
     "download": "Download",
     "menuAnswered": "Answered",
-    "approvals": "Approvals",
+    "menu": "Menu",
     "requestElevation": "Request access",
     "thinking": "Thinking…",
     "context": "Context {{used}} / {{max}}",
@@ -245,7 +245,29 @@
     "asksYou": "{{requester}} asks for your approval",
     "waitingFor": "Waiting for {{approver}}'s approval",
     "waiting": "Waiting for approval",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "approvedBy": "Approved by {{name}}",
+    "rejectedBy": "Rejected by {{name}}",
+    "approvedByYou": "Approved by you",
+    "rejectedByYou": "Rejected by you",
+    "approvedByYouWaiting": "Approved by you · Waiting for other approvers",
+    "rejectedByYouWaiting": "Rejected by you · Waiting for other approvers",
+    "notAnswered": "Not answered in time",
+    "withdrawn": "Withdrawn"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications.",
+    "sentByYou": "Sent by you",
+    "decidedAt": "{{outcome}} · {{time}}",
+    "decideOnPhone": "Decide on your phone",
+    "sentToPhone": "Sent to your phone",
+    "phoneUnreachable": "{{agent}} cannot reach the Ayni app on your phone.",
+    "more": "Show more",
+    "waiting": "{{count}} waiting",
+    "ended": "This request has ended.",
+    "notEligible": "You can no longer decide this request.",
+    "notSent": "Your answer was not sent. Try again."
   },
   "elevation": {
     "title": "Request access",
@@ -496,7 +518,9 @@
       "settingsDevices": "Linked devices",
       "connect": "this invitation",
       "unknown": "this page",
-      "serviceAccounts": "Your accounts"
+      "serviceAccounts": "Your accounts",
+      "serviceNotifications": "Notifications",
+      "spaceNotifications": "a space's Notifications"
     }
   },
   "spaces": {
@@ -533,6 +557,7 @@
     "ownerLineYou": "{{kind}} · you own it",
     "segments": {
       "conversations": "Conversations",
+      "notifications": "Notifications",
       "memories": "Your memories",
       "about": "About",
       "members": "Members",

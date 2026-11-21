@@ -8,6 +8,7 @@ import {
   canWriteIn,
   deletableUntil,
   destinationKey,
+  drawsApprovalCard,
   isAttachment,
   isConfirmation,
   isWithheld,
@@ -280,15 +281,15 @@ export function Conversation() {
           </button>
         ) : null}
         {session.state === 'bound' && contextual.length ? (
+          // the agent's contextual menu: no item and no badge of approvals, which are in the Notifications (agent D114)
           <button
             type="button"
             className="icon-btn"
-            aria-label={t('conversation.approvals')}
+            aria-label={t('conversation.menu')}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
           >
             <MenuIcon size={20} />
-            {session.ayni?.pendingApprovals ? <span className="badge">{session.ayni.pendingApprovals}</span> : null}
           </button>
         ) : null}
         {menuOpen ? (
@@ -635,7 +636,10 @@ function Message({
         )
       }
       case ACTIVITY.approval:
-        // the person's confirmation of a tool call, at its place in the reply (UI-CONV-045)
+        // an approver's request is never a card in a conversation: it is in their Notifications (UI-APPR-001)
+        if (!drawsApprovalCard(m.content)) return null
+        // the person's confirmation of a tool call, at its place in the reply (UI-CONV-045); the requester's one card
+        // of an approval (UI-APPR-006)
         return isConfirmation(m.content) ? (
           <ConfirmationCard sessionId={sessionId} content={m.content} agentName={agentName} />
         ) : (

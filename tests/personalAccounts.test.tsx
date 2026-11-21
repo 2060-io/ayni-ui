@@ -18,6 +18,7 @@ import { AccountsPage } from '../src/components/Accounts.js'
 import { ConversationRow } from '../src/components/Column.js'
 import { Conversation } from '../src/components/Conversation.js'
 import { MessageInfo } from '../src/components/Details.js'
+import { NotificationsPage } from '../src/components/Notifications.js'
 import { SharedConversationView } from '../src/components/SharedConversation.js'
 import { SpacePage } from '../src/components/SpacePage.js'
 import en from '../src/i18n/en.json'
@@ -433,7 +434,7 @@ describe("the account line of a call made with the person's own account (UI-CONV
     expect(bare.el.querySelector('.tool-account')?.textContent).toBe('With your own account')
   })
 
-  it("reads \"With <requester>'s own account\" on the approver's card, and the label on the requester's", async () => {
+  it("reads \"With <requester>'s own account\" on the approver's item, and the label on the requester's card", async () => {
     const approval = (over: Record<string, unknown>, account: Record<string, unknown>) => ({
       approvalId: 'apr_2',
       kind: 'sensitivity',
@@ -451,9 +452,37 @@ describe("the account line of a call made with the person's own account (UI-CONV
       },
       ...over,
     })
-    const approver = await conversation([approvalCard(approval({ canDecide: true }, { kind: 'personal' }))])
-    expect(approver.el.querySelector('.tool-approval-head')?.textContent).toBe('Ana Ríos asks for your approval')
-    expect(approver.el.querySelector('.tool-account')?.textContent).toBe("With Ana Ríos's own account")
+    // the approver's view is the item of the agent's Notifications (UI-APPR-006, amended by agent D114)
+    fakeAgent([
+      [
+        /^GET \/notifications\?/,
+        () =>
+          json({
+            notifications: [
+              {
+                id: 'apr_2',
+                kind: 'approval',
+                at: at(1),
+                waiting: true,
+                approval: approval({ canDecide: true, attested: false }, { kind: 'personal' }),
+              },
+            ],
+            nextBefore: null,
+            waiting: 1,
+          }),
+      ],
+    ])
+    const hub = await tab({
+      sessions: [record({ sessionId: 's1', principal: { displayName: 'Jonas Weber' } as never })],
+      spaces: SPACES,
+      features: { ...FEATURES, notifications: true },
+      profileVersion: '3.5',
+      snapshot: { view: 'notifications', notificationsFor: { agentDid: AGENT } },
+    })
+    const approver = await render(hub, <NotificationsPage />)
+    await until(() => approver.querySelector('.notification'))
+    expect(approver.querySelector('.tool-approval-head')?.textContent).toBe('Ana Ríos asks for your approval')
+    expect(approver.querySelector('.tool-account')?.textContent).toBe("With Ana Ríos's own account")
     teardown()
     const requester = await conversation([
       approvalCard(approval({ own: true }, { kind: 'personal', label: 'ana-rios' })),

@@ -1,6 +1,7 @@
 /**
  * Tools in a conversation and in a space's About (profile 3.4; agent D96 to D100): the confirmation card of a tool
- * call (UI-CONV-045, UI-CONV-046), the exact action on the approval of one (UI-APPR-006), the sources a reply used in
+ * call (UI-CONV-045, UI-CONV-046), the exact action on the requester's card of the approval of one and on its item of
+ * the Notifications (UI-APPR-006, agent D114), the sources a reply used in
  * its Info (UI-CONV-047), the sources shown before a conversation is shared (UI-CONV-048), and the tools a space's
  * members read in About (UI-CONV-031, UI-CONV-049). The cards are the transcript's card (`.card`).
  */
@@ -12,6 +13,7 @@ import {
   CONVERSATION_DESIGN,
   type ConversationSource,
   canStopAllowing,
+  cardStatusOf,
   confirmationOf,
   confirmationOutcomeOf,
   looksLikeJson,
@@ -32,6 +34,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { ApprovalStatusIcon, approvalStatusWords } from './ApprovalWords.js'
 import { Dialog } from './Dialog.js'
 
 const D = CONVERSATION_DESIGN.toolCard
@@ -245,23 +248,25 @@ export function ConfirmationCard({
 }
 
 /**
- * The approval of a tool call (UI-APPR-006, PROF-TOOL-009): the exact action as the confirmation card shows it, and
- * the space. To the approver, "<requester> asks for your approval", then the action's title and the space's, each on
- * a line of its own, with Approve and Reject and the optional note; to the requester, "Waiting for <owner>'s approval"
- * for a tool of a space, "Waiting for approval" for any other, with Cancel. No title's case is changed to fit it in a
- * sentence. It follows `ayni.approval.update`.
+ * The approval of a tool call (UI-APPR-006, PROF-TOOL-009): the requester's one card, in the conversation where they
+ * asked. "Waiting for <owner>'s approval" for a tool of a space, "Waiting for approval" for any other, then the
+ * action's title and the space's, each on a line of its own, and the exact action as the confirmation card shows it,
+ * with Cancel while it waits. Each later status replaces the waiting line in place with the outcome, in the words of
+ * UI-CONV-052 ("Approved by Jonas Weber"): never a second card. No title's case is changed to fit it in a sentence.
+ * An approver's request is never a card in a conversation (UI-APPR-001): it is in their Notifications.
  */
 export function ToolApprovalCard({
   sessionId,
   content,
 }: {
   sessionId: string
-  content: Record<string, unknown> & { canDecide?: boolean; own?: boolean; grantExpiresAt?: string }
+  content: Record<string, unknown> & { own?: boolean; grantExpiresAt?: string }
 }) {
   const hub = useHub()
   const snap = useSnapshot()
   const { t, i18n } = useTranslation()
-  const [note, setNote] = useState('')
+  const [sending, setSending] = useState(false)
+  const [notSent, setNotSent] = useState(false)
   const approval = toolApprovalOf(content)
   if (!approval) return null
   const session = snap.sessions.find((s) => s.sessionId === sessionId)
@@ -274,86 +279,48 @@ export function ToolApprovalCard({
   const owner = space
     ? snap.spaces[agent?.did ?? '']?.spaces.find((x) => x.id === space.id)?.owner.name || undefined
     : undefined
-  const heading = content.canDecide
-    ? t('approval.asksYou', { requester })
-    : owner
-      ? t('approval.waitingFor', { approver: owner })
-      : t('approval.waiting')
+  const line = cardStatusOf(content, owner)
+  const words = approvalStatusWords(line, t, i18n.language, Date.now())
+  const pending = status === 'PENDING'
   const expiresAt = typeof content.expiresAt === 'string' ? content.expiresAt : undefined
+  const cancel = async () => {
+    setSending(true)
+    setNotSent(false)
+    try {
+      await hub.cancelApproval(sessionId, approvalId)
+    } catch {
+      setNotSent(true)
+    } finally {
+      setSending(false)
+    }
+  }
   return (
-    <section className="card tool-card tool-approval" data-status={status} aria-label={heading}>
-      <div className="tool-approval-head">{heading}</div>
+    <section className="card tool-card tool-approval" data-status={status} aria-label={words}>
+      <div className="tool-approval-head" role={pending ? undefined : 'status'}>
+        <ApprovalStatusIcon line={line} />
+        <span>{words}</span>
+      </div>
       <h3 className="tool-title">{action.title}</h3>
       {space ? <div className="tool-approval-space">{space.title}</div> : null}
-      <ToolActionView
-        action={action}
-        agentName={agentName}
-        titled={false}
-        viewer={content.canDecide && !content.own ? 'approver' : 'own'}
-        requester={requester}
-      />
-      <div className="row">
-        <span>{t('approval.title')}</span>
-        <span>{t(`approval.status.${status}`)}</span>
-      </div>
+      <ToolActionView action={action} agentName={agentName} titled={false} viewer="own" requester={requester} />
       {content.grantExpiresAt ? (
         <div className="muted">
           {t('approval.grantUntil', { time: formatTime(content.grantExpiresAt, i18n.language) })}
         </div>
       ) : null}
-      {status === 'PENDING' && expiresAt ? (
+      {pending && expiresAt ? (
         <div className="muted">{t('approval.expires', { time: formatTime(expiresAt, i18n.language) })}</div>
       ) : null}
-      {status === 'PENDING' && content.canDecide && approvalId ? (
-        <>
-          <input
-            className="input"
-            placeholder={t('approval.note')}
-            aria-label={t('approval.note')}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-          <div className="actions">
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() =>
-                void hub.act(sessionId, {
-                  kind: 'approval.decide',
-                  approvalId,
-                  decision: 'approve',
-                  note: note || undefined,
-                })
-              }
-            >
-              {t('approval.approve')}
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() =>
-                void hub.act(sessionId, {
-                  kind: 'approval.decide',
-                  approvalId,
-                  decision: 'reject',
-                  note: note || undefined,
-                })
-              }
-            >
-              {t('approval.reject')}
-            </button>
-          </div>
-        </>
-      ) : null}
-      {status === 'PENDING' && content.own && approvalId ? (
+      {pending && content.own && approvalId ? (
         <div className="actions">
-          <button
-            type="button"
-            className="btn"
-            onClick={() => void hub.act(sessionId, { kind: 'approval.cancel', approvalId })}
-          >
+          <button type="button" className="btn" disabled={sending} onClick={() => void cancel()}>
             {t('approval.cancel')}
           </button>
+        </div>
+      ) : null}
+      {notSent ? (
+        <div className="tool-error" role="alert">
+          {t('tools.card.notSent')}
         </div>
       ) : null}
     </section>

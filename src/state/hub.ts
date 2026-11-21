@@ -8,6 +8,7 @@ import {
   type AgentRecord,
   type AgUiEvent,
   type AppLinkDestination,
+  type ApprovalStatus,
   type BrandConfig,
   BroadcastSyncBus,
   type Connection,
@@ -33,6 +34,9 @@ import {
   IndexedDbStore,
   isAppLink,
   mergeHistory,
+  type NotificationsChange,
+  type NotificationsPage,
+  notificationsChangeOf,
   type Preferences,
   ProfileClient,
   ProfileError,
@@ -61,6 +65,7 @@ import {
   type TranscriptMessage,
   taken,
   takesConnections,
+  takesNotifications,
   takesQueue,
   takesTools,
   turnToDelete,
@@ -70,6 +75,7 @@ import {
   withDecided,
   withoutOrphans,
   withRestored,
+  withSpaceCount,
   withUsageFrom,
 } from '@ayni.org/ayni-ui-core'
 import i18next from '../i18n/index.js'
@@ -97,6 +103,8 @@ export type View =
   | 'shared'
   /** Your accounts of an agent (UI-CONV-053, profile 3.5) */
   | 'accounts'
+  /** the agent's Notifications, for the approvals no space holds (UI-APPR-007, agent D114) */
+  | 'notifications'
 
 export interface Snapshot {
   ready: boolean
@@ -144,8 +152,11 @@ export interface Snapshot {
   settingsSection: 'devices' | null
   /** per agent: Personal, the person's spaces and the templates they may create from (profile 3.3, PROF-SPACE-001) */
   spaces: Record<string, Spaces | undefined>
-  /** the space whose page is open (view `space`, UI-CONV-031) */
-  spaceFor: { agentDid: string; spaceId: string; segment: SpaceSegment } | null
+  /**
+   * the space whose page is open (view `space`, UI-CONV-031); `approvalId`, the item of its Notifications a link
+   * names, shown selected (UI-APPR-007, PROF-LINK-005)
+   */
+  spaceFor: { agentDid: string; spaceId: string; segment: SpaceSegment; approvalId?: string } | null
   /** the agent whose page "What <agent> keeps about you" is open (view `keeps`, UI-CONV-033) */
   keepsFor: string | null
   /** the agent whose admin view of roles is open (view `admin`, UI-CONV-042) */
@@ -175,6 +186,18 @@ export interface Snapshot {
    * UI-CONV-053): a row, a card or a sign-in that waits finds its outcome here
    */
   connectionChanges: { agentDid: string; change: ConnectionsChange; n: number }[]
+  /** the agent whose Notifications are open (view `notifications`, UI-APPR-007), and the item a link names */
+  notificationsFor: { agentDid: string; approvalId?: string } | null
+  /**
+   * per agent: how many of the agent's Notifications wait for the person, the badge of its entry in the agent's menu
+   * (PROF-TOOL-025); a space's count is its `notificationsWaiting`. Both are the agent's numbers, as it last gave them
+   */
+  agentNotifications: Record<string, number | undefined>
+  /**
+   * moves on each `ayni.space.notifications.changed`, heard here or in another tab, after a decision, and when the tab
+   * comes back in front: the Notifications on screen read their list again (UI-APPR-007)
+   */
+  notificationsVersion: number
 }
 
 type Listener = () => void
@@ -236,6 +259,9 @@ export class Hub {
       accountsFor: null,
       connections: {},
       connectionChanges: [],
+      notificationsFor: null,
+      agentNotifications: {},
+      notificationsVersion: 0,
     }
   }
 
@@ -355,6 +381,8 @@ export class Hub {
       this.noteToolsChange(m.agentDid, m.change, false)
     } else if (m.kind === 'connections-changed') {
       this.noteConnectionsChange(m.agentDid, m.change, false)
+    } else if (m.kind === 'notifications-changed') {
+      this.noteNotificationsChange(m.agentDid, m.change, false)
     } else if (m.kind === 'leader' && m.tabId !== this.bus?.tabId) {
       this.set({ leaders: { ...this.snapshot.leaders, [m.sessionId]: false } })
     }
@@ -467,6 +495,15 @@ export class Hub {
         if (agent && destination.accounts && this.takesConnections(agent.did)) {
           this.set(reset)
           this.openAccounts(agent.did)
+          return true
+        }
+        // the Notifications of a space or of the agent, the item of the link selected (PROF-LINK-005): nothing is
+        // decided, and the list is read from the agent
+        if (agent && destination.notifications && this.takesNotifications(agent.did)) {
+          const { spaceId, approval } = destination.notifications
+          this.set(reset)
+          if (spaceId) this.openSpace(agent.did, spaceId, 'notifications', approval)
+          else this.openNotifications(agent.did, approval)
           return true
         }
         if (agent) {
@@ -1861,6 +1898,10 @@ export class Hub {
       // one of the person's own accounts changed: Your accounts and the cards read it again (UI-CONV-053)
       if (signals.includes('connections') && event.type === 'CUSTOM')
         this.noteConnectionsChange(next.agentDid, event.value, true)
+      // a notification of the person entered, changed or ended: the badges take the agent's count, and the
+      // Notifications on screen read their list again (UI-APPR-007, PROF-TOOL-025)
+      if (signals.includes('notifications') && event.type === 'CUSTOM')
+        this.noteNotificationsChange(next.agentDid, event.value, true)
       this.set({})
       this.updateTitle()
       this.bus?.post({ kind: 'transcript', sessionId })
@@ -2110,8 +2151,9 @@ export class Hub {
       return
     }
     // a decision on a confirmation is taken while the turn waits for it, and never starts a turn (PROF-TOOL-008): it
-    // neither waits for the run in progress nor blocks it; the card takes the status the agent answers
-    if (action.decision && action.action?.kind === 'approval.decide') {
+    // neither waits for the run in progress nor blocks it; the card takes the status the agent answers. The
+    // requester's withdrawal of an approval takes the same path (PROF-TOOL-026)
+    if (action.decision && (action.action?.kind === 'approval.decide' || action.action?.kind === 'approval.cancel')) {
       const approvalId = action.action.approvalId
       const end = await client.run(
         sessionId,
@@ -2355,6 +2397,12 @@ export class Hub {
     try {
       const spaces = await client.spaces(token)
       this.set({ spaces: { ...this.snapshot.spaces, [agentDid]: spaces } })
+      // with the spaces' counts, the agent's: the badge of its Notifications in its menu (PROF-TOOL-025)
+      if (this.takesNotifications(agentDid))
+        await client
+          .notifications(token, null, undefined, 1)
+          .then((page) => this.setNotificationCount(agentDid, null, page.waiting))
+          .catch((e) => warn("the agent's notifications could not be read", e))
     } catch (e) {
       // an agent that serves no spaces: the person has Personal alone, as before spaces
       if (e instanceof ProfileError && e.status === 404)
@@ -2389,7 +2437,10 @@ export class Hub {
    * A call of the agent on the person's behalf, with any bound session's token (profile 3.3 §3.7 to §3.9). With none
    * bound, a paired browser gets one quietly first (UI-SESS-016): what the person has on screen stays there.
    */
-  private async withAgent<T>(agentDid: string, fn: (client: ProfileClient, token: string) => Promise<T>): Promise<T> {
+  private async withAgent<T>(
+    agentDid: string,
+    fn: (client: ProfileClient, token: string, session: SessionRecord) => Promise<T>
+  ): Promise<T> {
     // through the latest binding; a session whose token the agent refuses is retired and the next one asked
     // (UI-SESS-019). A 404 is not counted: here it answers about what was asked for, not about the token
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -2399,7 +2450,7 @@ export class Hub {
       if (!bound) break
       const { client, token } = this.clientOf(bound)
       try {
-        return await fn(client, token)
+        return await fn(client, token, bound)
       } catch (e) {
         if (!(e instanceof ProfileError && (e.status === 401 || e.status === 410))) throw e
         warn(`session ${bound.sessionId} was refused: retired, asking the next`, e)
@@ -2409,12 +2460,17 @@ export class Hub {
     throw new Error('link your phone first')
   }
 
-  /** A space's page in the main pane (UI-CONV-031). */
-  public openSpace(agentDid: string, spaceId: string, segment: SpaceSegment = 'conversations'): void {
+  /** A space's page in the main pane (UI-CONV-031); `approvalId`, an item of its Notifications to show selected. */
+  public openSpace(
+    agentDid: string,
+    spaceId: string,
+    segment: SpaceSegment = 'conversations',
+    approvalId?: string
+  ): void {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     this.set({
       view: 'space',
-      spaceFor: { agentDid, spaceId, segment },
+      spaceFor: { agentDid, spaceId, segment, ...(approvalId ? { approvalId } : {}) },
       selectedAgentDid: agentDid,
       selectedControllerDid: agent?.controllerDid ?? this.snapshot.selectedControllerDid,
       inspect: null,
@@ -2422,7 +2478,10 @@ export class Hub {
   }
 
   public setSpaceSegment(segment: SpaceSegment): void {
-    if (this.snapshot.spaceFor) this.set({ spaceFor: { ...this.snapshot.spaceFor, segment } })
+    if (!this.snapshot.spaceFor) return
+    // the item a link named stays selected only on the segment it opened
+    const { approvalId: _named, ...spaceFor } = this.snapshot.spaceFor
+    this.set({ spaceFor: { ...spaceFor, segment } })
   }
 
   public spaceDetail(agentDid: string, spaceId: string) {
@@ -2856,6 +2915,155 @@ export class Hub {
       void this.loadConnections(agentDid).catch((e) => warn('Your accounts could not be read', e))
   }
 
+  // ---- the Notifications of a space and of the agent (UI-APPR-001, 002, 005..009; profile §3.12; agent D114) ---------
+
+  /** Whether the agent serves the Notifications (PROF-DESC-011): no tab, no entry and no badge of them without it. */
+  public takesNotifications(agentDid: string): boolean {
+    return takesNotifications(this.snapshot.agents.find((a) => a.did === agentDid)?.descriptor.features)
+  }
+
+  /** The agent's Notifications in the main pane (UI-APPR-007), the item a link names shown selected. */
+  public openNotifications(agentDid: string, approvalId?: string): void {
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    this.set({
+      view: 'notifications',
+      notificationsFor: { agentDid, ...(approvalId ? { approvalId } : {}) },
+      selectedAgentDid: agentDid,
+      selectedControllerDid: agent?.controllerDid ?? this.snapshot.selectedControllerDid,
+      trustFor: null,
+      inspect: null,
+    })
+  }
+
+  /**
+   * A page of the Notifications of a space, or of the agent's for `spaceId` null (PROF-TOOL-024), newest first; the
+   * count of what waits there is taken for the badges.
+   */
+  public async notifications(
+    agentDid: string,
+    spaceId: string | null,
+    before?: string,
+    limit?: number
+  ): Promise<NotificationsPage> {
+    const page = await this.withAgent(agentDid, (client, token) => client.notifications(token, spaceId, before, limit))
+    if (!before) this.setNotificationCount(agentDid, spaceId, page.waiting)
+    return page
+  }
+
+  /** The badge of a place, as the agent counts it (PROF-TOOL-025): a space's row and tab, or the agent's entry. */
+  private setNotificationCount(agentDid: string, spaceId: string | null, waiting: number): void {
+    if (spaceId === null) {
+      if (this.snapshot.agentNotifications[agentDid] !== waiting)
+        this.set({ agentNotifications: { ...this.snapshot.agentNotifications, [agentDid]: waiting } })
+      return
+    }
+    const held = this.snapshot.spaces[agentDid]
+    const space = held?.spaces.find((x) => x.id === spaceId)
+    if (!held || !space || space.notificationsWaiting === waiting) return
+    this.set({
+      spaces: {
+        ...this.snapshot.spaces,
+        [agentDid]: { ...held, spaces: withSpaceCount(held.spaces, spaceId, waiting) },
+      },
+    })
+  }
+
+  /** The Notifications on screen read their list again. */
+  public rereadNotifications(): void {
+    this.set({ notificationsVersion: this.snapshot.notificationsVersion + 1 })
+  }
+
+  /**
+   * A notification of the person entered, changed or ended (PROF-TOOL-025): its place's badge takes the agent's count,
+   * the Notifications on screen read again, and the other tabs are told. Every bound session of the person whose
+   * stream is open hears it; the count is the agent's number, so hearing it twice counts nothing twice, and a list
+   * read twice at once is read once more after the first (`useNotifications`).
+   */
+  private noteNotificationsChange(agentDid: string, value: unknown, broadcast: boolean): void {
+    const change: NotificationsChange | null = notificationsChangeOf(value)
+    if (!change) return
+    this.setNotificationCount(agentDid, change.spaceId, change.count)
+    this.rereadNotifications()
+    if (broadcast) this.bus?.post({ kind: 'notifications-changed', agentDid, change })
+  }
+
+  /** How many screens show Notifications: while one does, the tab coming back in front reads them again. */
+  private watchedNotifications = 0
+  private watchingNotificationsVisibility = false
+
+  /**
+   * Keeps the Notifications on screen current (UI-APPR-007, PROF-TOOL-025): read again each time the tab comes back in
+   * front, and a stream of the agent held open so that `ayni.space.notifications.changed` reaches this browser (a
+   * decision made on the phone among what changes). Returns what lets it go.
+   */
+  public watchNotifications(agentDid: string): () => void {
+    this.watchedNotifications += 1
+    if (!this.watchingNotificationsVisibility && typeof document !== 'undefined') {
+      this.watchingNotificationsVisibility = true
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && this.watchedNotifications > 0) this.rereadNotifications()
+      })
+    }
+    const release = this.holdStream(agentDid)
+    return () => {
+      this.watchedNotifications = Math.max(0, this.watchedNotifications - 1)
+      release()
+    }
+  }
+
+  /**
+   * An approver's decision from the Notifications (UI-APPR-002, PROF-TOOL-026): `approval.decide` through any bound
+   * session of the person. It starts no turn and adds nothing to any conversation: no event of its run reaches a
+   * transcript. Answers the approval's status after it (`PENDING` while other approvers decide), or the code of the
+   * refusal (`decide-on-phone`, `not-eligible`); the Notifications read again.
+   */
+  public async decideApproval(
+    agentDid: string,
+    approvalId: string,
+    decision: 'approve' | 'reject',
+    note?: string
+  ): Promise<{ status?: ApprovalStatus; code?: string }> {
+    const action = { kind: 'approval.decide', approvalId, decision, ...(note ? { note } : {}) } as AyniAction
+    try {
+      return await this.withAgent(agentDid, async (client, token, session) => {
+        let refused: string | undefined
+        const end = await client.run(
+          session.sessionId,
+          token,
+          { runId: crypto.randomUUID(), action },
+          (event) => {
+            // a refusal the agent sends without a word of the run before it
+            if (event.type === 'RUN_ERROR' && typeof event.code === 'string') refused = event.code
+          },
+          new AbortController().signal
+        )
+        const code = end.code ?? refused
+        return {
+          ...(end.approvalId === approvalId && end.status ? { status: end.status } : {}),
+          ...(code ? { code } : {}),
+        }
+      })
+    } finally {
+      this.rereadNotifications()
+    }
+  }
+
+  /**
+   * Decide on your phone (UI-APPR-008, PROF-TOOL-026): the request of an approval to attest sent to the person's phone
+   * again. Its refusals (`404`, `409 not-pending`, `409 confirmation-unavailable`) reach the caller.
+   */
+  public resendApproval(agentDid: string, approvalId: string): Promise<{ expiresAt: string }> {
+    return this.withAgent(agentDid, (client, token) => client.resendApproval(token, approvalId))
+  }
+
+  /**
+   * The requester withdraws their pending approval from its card (UI-APPR-005, `approval.cancel`): no turn, nothing
+   * added to the conversation; the card turns to Withdrawn where it is.
+   */
+  public async cancelApproval(sessionId: string, approvalId: string): Promise<void> {
+    await this.dispatch(sessionId, { type: 'run', action: { kind: 'approval.cancel', approvalId }, decision: true })
+  }
+
   /** "What <agent> keeps about you" (UI-CONV-033): from the agent's menu, the conversation's, the trust card. */
   public openKeeps(agentDid: string): void {
     this.set({ view: 'keeps', keepsFor: agentDid, trustFor: null, inspect: null })
@@ -2973,7 +3181,10 @@ export interface ResumeTarget {
 }
 
 type LocalAction =
-  /** `decision`: an answer on a confirmation card, sent while the turn waits for it (PROF-TOOL-008) */
+  /**
+   * `decision`: an answer on a confirmation card, sent while the turn waits for it (PROF-TOOL-008), or the requester's
+   * withdrawal of an approval (PROF-TOOL-026): neither starts a turn
+   */
   | { type: 'run'; text?: string; action?: AyniAction; replyTo?: ReplyQuote; decision?: boolean }
   /** `runId`: the run the person saw in progress when they pressed Stop */
   | { type: 'cancel'; runId?: string }

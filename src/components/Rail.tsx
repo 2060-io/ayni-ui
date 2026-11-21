@@ -95,7 +95,11 @@ export function Rail() {
   const tile = (c: (typeof controllers)[number]) => {
     const dids = new Set(agentsOf(c.did).map((a) => a.did))
     const unread = snap.sessions.filter((s) => dids.has(s.agentDid)).reduce((n, s) => n + s.unreadCount, 0)
-    const waiting = snap.sessions.some((s) => dids.has(s.agentDid) && (s.ayni?.pendingApprovals ?? 0) > 0)
+    // the agent's mark of approvals that wait for the person (UI-APPR-001), from what a bound session holds now:
+    // never from the state a closed or older session was left with (UI-APPR-009)
+    const waiting = snap.sessions.some(
+      (s) => dids.has(s.agentDid) && s.state === 'bound' && (s.ayni?.pendingApprovals ?? 0) > 0
+    )
     const selected = snap.selectedControllerDid === c.did
     return (
       <button
