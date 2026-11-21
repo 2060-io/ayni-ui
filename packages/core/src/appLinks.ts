@@ -11,7 +11,8 @@ export type AppLinkDestination =
   | { path: 'scan' }
   | { path: 'explore'; q?: string; create?: boolean }
   | { path: 'wallet'; segment?: 'documents' | 'history' | 'card' | 'send'; id?: string }
-  | { path: 'service'; did: string }
+  /** `accounts`: Your accounts of that agent (`/app/service/{did}/accounts`, profile 3.5, PROF-LINK-004) */
+  | { path: 'service'; did: string; accounts?: true }
   | { path: 'settings'; section?: 'backup' | 'devices' }
   | { path: 'connect'; oob?: string }
   | { path: 'unknown' }
@@ -64,7 +65,13 @@ export function parseAppLink(href: string, origin: string): AppLinkDestination {
       return { path: 'unknown' }
     }
     case 'service':
-      return parts.length === 3 && second?.startsWith('did:') ? { path: 'service', did: second } : { path: 'unknown' }
+      if (!second?.startsWith('did:')) return { path: 'unknown' }
+      if (parts.length === 3) return { path: 'service', did: second }
+      // where the agent sends the browser after a sign-in: the link carries no outcome, and nothing but the place is
+      // read from it (PROF-LINK-004)
+      return parts.length === 4 && third === 'accounts'
+        ? { path: 'service', did: second, accounts: true }
+        : { path: 'unknown' }
     case 'settings':
       if (parts.length === 2) return { path: 'settings' }
       return parts.length === 3 && (second === 'backup' || second === 'devices')
@@ -113,6 +120,8 @@ export function destinationKey(destination: AppLinkDestination): string {
               : 'wallet'
     case 'explore':
       return destination.create ? 'exploreCreate' : 'explore'
+    case 'service':
+      return destination.accounts ? 'serviceAccounts' : 'service'
     case 'settings':
       return destination.section === 'backup'
         ? 'settingsBackup'

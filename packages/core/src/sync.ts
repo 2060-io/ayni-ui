@@ -10,6 +10,8 @@ export type SyncMessage =
   | { kind: 'leader'; sessionId: string; tabId: string }
   /** a change of a space's tools applied or was dropped (`ayni.space.tools.changed`), seen by the tab that streams */
   | { kind: 'tools-changed'; agentDid: string; change: unknown }
+  /** one of the person's own accounts, or an attempt to connect one, changed (`ayni.connections.changed`) */
+  | { kind: 'connections-changed'; agentDid: string; change: unknown }
 
 export interface SyncBus {
   tabId: string

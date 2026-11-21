@@ -11,6 +11,13 @@ import type {
   SessionStatus,
   UploadResponse,
 } from '@ayni.org/ayni-agui-profile'
+import {
+  type Connection,
+  type ConnectionAttempt,
+  connectionAttemptOf,
+  connectionOf,
+  connectionsOf,
+} from './connections.js'
 import { type AboutMe, aboutMeOf, type Memories, memoriesOf } from './memories.js'
 import {
   type AdminChangesPage,
@@ -56,7 +63,13 @@ export class ProfileError extends Error {
     public readonly binding?: BindingMaterial,
     message?: string,
     /** the field a `400` or a `422 out-of-bounds` names (profile 3.3 §9) */
-    public readonly field?: string
+    public readonly field?: string,
+    /**
+     * for `422 wrong-binding` (profile 3.5 §3.11): the names of the value the space wants and of the one the account
+     * is for
+     */
+    public readonly expected?: string,
+    public readonly chosen?: string
   ) {
     super(message ?? `${status} ${code}`)
     this.name = 'ProfileError'
@@ -73,7 +86,15 @@ export interface RunInput {
 }
 
 async function parseError(response: Response): Promise<ProfileError> {
-  let body: { error?: string; reason?: string; message?: string; binding?: BindingMaterial; field?: string } = {}
+  let body: {
+    error?: string
+    reason?: string
+    message?: string
+    binding?: BindingMaterial
+    field?: string
+    expected?: unknown
+    chosen?: unknown
+  } = {}
   try {
     body = await response.json()
   } catch {
@@ -85,7 +106,9 @@ async function parseError(response: Response): Promise<ProfileError> {
     body.reason,
     body.binding,
     body.message,
-    typeof body.field === 'string' ? body.field : undefined
+    typeof body.field === 'string' ? body.field : undefined,
+    typeof body.expected === 'string' ? body.expected : undefined,
+    typeof body.chosen === 'string' ? body.chosen : undefined
   )
 }
 
@@ -573,6 +596,62 @@ export class ProfileClient {
       token,
       'DELETE',
       `/conversations/${encodeURIComponent(conversationId)}/allowances/${encodeURIComponent(approvalId)}`
+    )
+  }
+
+  // ---- profile 3.5: the person's own accounts (§3.11)
+
+  /** The item of an answer of §3.11, `{ "connection" }`; a `502` for an answer that carries none. */
+  private static connectionIn(body: unknown): Connection {
+    const connection = connectionOf((body as { connection?: unknown } | undefined)?.connection)
+    if (!connection) throw new ProfileError(502, 'bad-response')
+    return connection
+  }
+
+  /** The person's own accounts, held or to connect (PROF-TOOL-014). */
+  public async connections(token: string): Promise<Connection[]> {
+    return connectionsOf(await this.getJson(token, '/connections'))
+  }
+
+  /**
+   * Starts the sign-in of an account of OAuth: `202` with the URL to open in the browser (PROF-TOOL-015). `spaceId`
+   * for a source of a space's template.
+   */
+  public async authorizeConnection(token: string, source: string, spaceId?: string): Promise<ConnectionAttempt> {
+    const attempt = connectionAttemptOf(
+      await this.send(token, 'POST', `/connections/${encodeURIComponent(source)}/authorize`, spaceId ? { spaceId } : {})
+    )
+    if (!attempt) throw new ProfileError(502, 'bad-response')
+    return attempt
+  }
+
+  /** Ends a sign-in that waits (PROF-TOOL-015): `204`; `404` when it no longer waits. */
+  public async cancelConnectionAttempt(token: string, attemptId: string): Promise<void> {
+    await this.send(token, 'DELETE', `/connections/attempts/${encodeURIComponent(attemptId)}`)
+  }
+
+  /**
+   * Sets an account of fields, at once (PROF-TOOL-016): one value per field, sent and kept nowhere. `spaceId` for a
+   * source of a space's template.
+   */
+  public async setConnectionAccount(
+    token: string,
+    source: string,
+    values: Record<string, string>,
+    spaceId?: string
+  ): Promise<Connection> {
+    return ProfileClient.connectionIn(
+      await this.send(token, 'PUT', `/connections/${encodeURIComponent(source)}/account`, {
+        values,
+        ...(spaceId ? { spaceId } : {}),
+      })
+    )
+  }
+
+  /** Disconnects an account, at once: its item, `not-connected` (PROF-TOOL-017). */
+  public async disconnectAccount(token: string, accountId: string): Promise<Connection> {
+    return ProfileClient.connectionIn(
+      await this.send(token, 'DELETE', `/connections/accounts/${encodeURIComponent(accountId)}`)
     )
   }
 

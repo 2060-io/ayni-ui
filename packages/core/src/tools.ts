@@ -4,7 +4,9 @@
  * that grants something confirmed on the owner's phone; the confirmation card of a tool call and the exact action on
  * the approval of one; the sources a reply used and those a conversation holds. The wire types are written here until
  * the profile package of 3.4 is the one every client has; the rules a screen follows are here too, so that the
- * browser and the Ayni app apply the same ones.
+ * browser and the Ayni app apply the same ones. Phase 2 (profile 3.5, PROF-TOOL-021; agent D104, D110) adds the kind
+ * of account `personal` to these shapes, and the binding of a space set from an account of its owner; each person's
+ * own accounts are in `connections.ts`.
  */
 import type { Transcript, TranscriptMessage } from './types.js'
 
@@ -12,10 +14,14 @@ import type { Transcript, TranscriptMessage } from './types.js'
 export const SPACE_TOOLS_CHANGED = 'ayni.space.tools.changed'
 /** The kind of an `ayni.approval` activity that is the person's confirmation of a tool call (PROF-TOOL-007). */
 export const CONFIRMATION = 'confirmation'
-/** The version of the AG-UI profile this client implements, sent at session creation (PROF-SESS-016). */
-export const PROFILE_VERSION = '3.4'
+/**
+ * The version of the AG-UI profile this client implements, sent at session creation (PROF-SESS-016, UI-SESS-018): the
+ * agent asks the confirmations of tool calls of sessions of 3.4 or later, and shows Connect cards in those of 3.5.
+ */
+export const PROFILE_VERSION = '3.5'
 
-export type ToolAccountKind = 'none' | 'agent' | 'space'
+/** Whose account a source's calls run with; `personal`: the account of the person who asks (3.5, agent D104). */
+export type ToolAccountKind = 'none' | 'agent' | 'space' | 'personal'
 export type ToolEffect = 'read' | 'write' | 'delete' | 'external'
 /** What a call needs before it runs; `off`: the tool is not given to the model in this space (agent D99, D98). */
 export type ToolRule = 'none' | 'confirm' | 'approval' | 'off'
@@ -34,7 +40,8 @@ export interface SpaceToolAccountField {
 
 /**
  * Whose account a source's calls run with; for a space's account, the fields its owner fills in (one per value, in
- * the order to show; none in a member's answer) and whether it is set, when and by whom, never a value.
+ * the order to show; none in a member's answer) and whether it is set, when and by whom, never a value; for each
+ * person's own (`personal`), whether the reader's own account of it, for this space, is connected (PROF-TOOL-021).
  */
 export interface SpaceToolAccount {
   kind: ToolAccountKind
@@ -42,6 +49,14 @@ export interface SpaceToolAccount {
   set?: boolean
   setAt?: string | null
   setBy?: { name: string } | null
+  /** `personal` only: the reader's own account is connected for this space */
+  connected?: boolean
+}
+
+/** One of the owner's own accounts of a source, a value the binding it is for may take (PROF-TOOL-021, agent D110). */
+export interface SpaceToolBindingChoice {
+  value: string
+  valueLabel: string
 }
 
 /** A parameter of a source the agent pins, set by the agent-pack or by the space's owner (agent D98). */
@@ -52,6 +67,14 @@ export interface SpaceToolBinding {
   value: string | null
   setBy: 'pack' | 'owner'
   pattern?: string
+  /** the name of the value, for the binding a personal account is for (agent D110) */
+  valueLabel?: string
+  /**
+   * the owner's answer only: the binding is chosen from the owner's own accounts of the source, never typed
+   * (PROF-TOOL-021), one of `choices`; none when the owner holds no account of it yet
+   */
+  fromAccount?: boolean
+  choices?: SpaceToolBindingChoice[]
 }
 
 /** One tool of a source; `name` and `packRule` only in the owner's answer (PROF-TOOL-001, PROF-TOOL-013). */
@@ -114,7 +137,11 @@ export interface ToolActionField {
 export interface ToolAction {
   title: string
   source: { id: string; title: string }
-  account: { kind: ToolAccountKind; space?: { id: string; title: string } }
+  /**
+   * the space for `space`; for `personal`, `label` (the account's name at its service) on the card of the person
+   * whose account it is, and on no other card (PROF-TOOL-021)
+   */
+  account: { kind: ToolAccountKind; space?: { id: string; title: string }; label?: string }
   fields: ToolActionField[]
   /** the message whose turn asked for it was deleted: the fields are gone (INTX-APPR-015) */
   erased: boolean
@@ -165,7 +192,7 @@ const STATES: readonly SpaceToolState[] = ['available', 'setup', 'ready', 'off']
 
 const ruleOf = (v: unknown, fallback: ToolRule): ToolRule =>
   RULES.includes(v as ToolRule) ? (v as ToolRule) : fallback
-const accountKindOf = (v: unknown): ToolAccountKind => (v === 'agent' || v === 'space' ? v : 'none')
+const accountKindOf = (v: unknown): ToolAccountKind => (v === 'agent' || v === 'space' || v === 'personal' ? v : 'none')
 const spaceRefOf = (v: unknown): { id: string; title: string } | undefined => {
   const s = obj(v)
   return typeof s.id === 'string' ? { id: s.id, title: str(s.title) } : undefined
@@ -212,6 +239,7 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
             setBy: typeof setBy.name === 'string' ? { name: setBy.name } : null,
           }
         : {}),
+      ...(kind === 'personal' ? { connected: account.connected === true } : {}),
     },
     bindings: list(t.bindings).map((b) => ({
       name: str(b.name, str(b.label)),
@@ -219,6 +247,15 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
       value: typeof b.value === 'string' ? b.value : null,
       setBy: b.setBy === 'pack' ? 'pack' : 'owner',
       ...(typeof b.pattern === 'string' ? { pattern: b.pattern } : {}),
+      ...(typeof b.valueLabel === 'string' ? { valueLabel: b.valueLabel } : {}),
+      ...(b.fromAccount === true
+        ? {
+            fromAccount: true,
+            choices: list(b.choices)
+              .filter((c) => typeof c.value === 'string' && c.value)
+              .map((c) => ({ value: c.value as string, valueLabel: str(c.valueLabel, c.value as string) })),
+          }
+        : {}),
     })),
     tools: list(t.tools)
       .filter((x) => typeof x.title === 'string' || typeof x.name === 'string')
@@ -457,8 +494,10 @@ export function changeOutcomeKeyOf(
 }
 
 /** Where a refusal of a change of a space's tools is shown (UI-CONV-050): at the field it names, or for the panel. */
-export function toolRefusalOf(error: { status?: number; code?: string; field?: string } | undefined):
-  | { at: 'binding'; name: string; reason: 'badBinding' | 'pinnedByPack' }
+export function toolRefusalOf(
+  error: { status?: number; code?: string; field?: string } | undefined
+): /** `notYourAccount`: the value of a binding a personal account is for is not one of the owner's accounts (3.5) */
+  | { at: 'binding'; name: string; reason: 'badBinding' | 'pinnedByPack' | 'notYourAccount' }
   | { at: 'rule'; name: string; reason: 'looserThanPack' }
   /**
    * a value of the space's account (`account.<name>`): `field` the one named, null when none is; `fieldsChanged` when
@@ -483,6 +522,7 @@ export function toolRefusalOf(error: { status?: number; code?: string; field?: s
   const named = field.replace(/^(bindings|calls)\./, '')
   if (code === 'bad-binding' || code === 'pinned-by-pack')
     return { at: 'binding', name: named, reason: code === 'bad-binding' ? 'badBinding' : 'pinnedByPack' }
+  if (code === 'not-your-account') return { at: 'binding', name: named, reason: 'notYourAccount' }
   if (code === 'looser-than-pack') return { at: 'rule', name: named, reason: 'looserThanPack' }
   const accountField = field.startsWith('account.') ? field.slice('account.'.length) : null
   if (code === 'bad-token') return { at: 'account', field: accountField, reason: 'badToken' }
@@ -530,7 +570,11 @@ export function toolActionOf(value: unknown): ToolAction | null {
   return {
     title: a.title,
     source: { id: str(source.id), title: str(source.title, str(source.id)) },
-    account: { kind, ...(kind === 'space' && space ? { space } : {}) },
+    account: {
+      kind,
+      ...(kind === 'space' && space ? { space } : {}),
+      ...(kind === 'personal' && typeof account.label === 'string' && account.label ? { label: account.label } : {}),
+    },
     fields: fieldsInOrder(fields),
     erased: a.erased === true,
   }
@@ -539,6 +583,35 @@ export function toolActionOf(value: unknown): ToolAction | null {
 /** The fields of an action, the pinned ones first, each group in the agent's order (PROF-TOOL-007). */
 export function fieldsInOrder<T extends { pinned: boolean }>(fields: readonly T[]): T[] {
   return [...fields.filter((f) => f.pinned), ...fields.filter((f) => !f.pinned)]
+}
+
+/**
+ * The account line of an exact action (UI-CONV-045, UI-APPR-006, UI-CONV-058), as a key of `tools.card` and what it
+ * puts in: the space's, the agent's; for `personal`, "With your account <label>" on the card of the person whose
+ * account it is (the only card that carries `label`), "With <requester>'s own account" on an approver's, "With your
+ * own account" on the person's own card with no label; nothing for `none`.
+ */
+export function accountLineOf(
+  account: ToolAction['account'],
+  viewer: 'own' | 'approver'
+):
+  | { key: 'accountSpace'; space: string }
+  | { key: 'accountAgent' }
+  | { key: 'accountYours'; label: string }
+  | { key: 'accountOwn' }
+  | { key: 'accountRequester' }
+  | null {
+  switch (account.kind) {
+    case 'space':
+      return { key: 'accountSpace', space: account.space?.title ?? '' }
+    case 'agent':
+      return { key: 'accountAgent' }
+    case 'personal':
+      if (account.label) return { key: 'accountYours', label: account.label }
+      return viewer === 'approver' ? { key: 'accountRequester' } : { key: 'accountOwn' }
+    default:
+      return null
+  }
 }
 
 /** Whether an `ayni.approval` activity is the person's confirmation of a tool call (PROF-TOOL-007). */

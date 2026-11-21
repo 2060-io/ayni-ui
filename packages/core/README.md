@@ -88,5 +88,30 @@ to the card it names, where it is (status, scope, end of an allowance), signals 
 The English wording of tools is `TOOLS_COPY`, the words of UI-CONV-049 and the table of UI-CONV-052 among them,
 keyed by its path in the translation files.
 
+## Profile 3.5: tools, phase 2, each person's own accounts
+
+The wire types of AG-UI profile 3.5 (§3.11, §5, §6, PROF-TOOL-014 to 021; agent D104 to D110) are written here
+(`Connection`, `ConnectionAttempt`, `ConnectionsChange`, `ConnectCard`), with tolerant readers (`connectionsOf`,
+`connectionOf`, `connectionAttemptOf`, `connectionsChangeOf`, `connectCardOf`). `ProfileClient` calls the endpoints of
+§3.11 (`connections`, `authorizeConnection`, `cancelConnectionAttempt`, `setConnectionAccount`, `disconnectAccount`), and
+a `ProfileError` carries the `expected` and `chosen` of a `422 wrong-binding`. `personal` is a kind of account in the
+shapes of 3.4: a space's tool says whether the reader's own account is `connected`, a binding a personal account is
+for has its `valueLabel`, `fromAccount` and the owner's `choices`, and the action of a card carries the account's
+`label` on its person's card only. `clientDescription` sends `client.profileVersion: "3.5"`. The reducer signals
+`ayni.connections.changed` and, for `ayni.messages.withheld` with `reason: "credential"`, puts the text the agent kept
+in place of the one the device holds (`withheldTextsOf`, a message's `withheld: "credential"`), as history's
+`metadata.withheld` does. `parseAppLink` reads `/app/service/{did}/accounts` (PROF-LINK-004).
+
+| Surface | Functions |
+| --- | --- |
+| Your accounts (UI-CONV-053) | `takesConnections` (`features.connections`), `connectionKeyOf`, `connectionFor` (the row a card, a link or a space names), `usageOfConnection`, `connectionStateKeyOf`, `connectionControlsOf`, `sinceDateOf`, `attemptWaits` |
+| The sign-in and the fields (UI-CONV-054, UI-CONV-055) | `spaceIdFor` (the space a row's sign-in is for), `signInUrlAllowed` (only the service's sign-in over HTTPS is opened), `accountValuesOf` (as for a space's account) |
+| Outcomes, refusals, Disconnect (UI-CONV-056, UI-CONV-058) | `outcomeNoticeOf`, `connectionRefusalOf`, `disconnectedKeyOf` |
+| The account of a call (UI-CONV-045, UI-APPR-006) | `accountLineOf` (whose card it is: the person's, or an approver's) |
+| The Connect card (UI-CONV-057) | `CONNECT_ACTIVITY`, `connectCardOf`, `CONVERSATION_DESIGN.connectCard`, `CONVERSATION_COLORS.connectCard` |
+
+The English wording of these surfaces is `CONNECTIONS_COPY`, the table of UI-CONV-058 row by row, keyed by its path in
+the translation files.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

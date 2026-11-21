@@ -2,6 +2,8 @@ import { PROFILE_VERSION } from './tools.js'
 
 export * from './agents.js'
 export * from './appLinks.js'
+export * from './connections.js'
+export * from './connectionsCopy.js'
 export * from './contextFigure.js'
 export * from './conversationDesign.js'
 export * from './deletion.js'
@@ -28,13 +30,13 @@ export * from './types.js'
 export * from './updateCopy.js'
 export * from './voiceNote.js'
 
-export const CLIENT = { name: 'ayni-ui', version: '3.4.0' } as const
+export const CLIENT = { name: 'ayni-ui', version: '3.5.0' } as const
 
 /**
  * The client description sent at session creation (PROF-SESS-014): a 3.1 agent gets `platform: web` and the
  * browser as `description`; a 3.0 agent gets the browser as the free-text platform it expects. Every session says
  * which version of the profile this client implements (`profileVersion`, PROF-SESS-016): the agent asks the
- * confirmations of tool calls only of sessions of 3.4 or later.
+ * confirmations of tool calls only of sessions of 3.4 or later, and shows Connect cards only in those of 3.5 or later.
  */
 export function clientDescription(
   profileVersion: string | undefined,
