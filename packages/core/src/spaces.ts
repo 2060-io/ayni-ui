@@ -54,6 +54,11 @@ export interface SpaceInfo {
   state: 'active' | 'left'
   /** the unread messages of the person's own conversations of it */
   unread: number
+  /**
+   * how many of its notifications wait for the person (profile §3.7, §3.12, agent D114): the badge of its row and of
+   * its Notifications, from an agent that declares `features.notifications`
+   */
+  notificationsWaiting?: number
   lastActivityAt: string
 }
 
@@ -223,6 +228,7 @@ export function spaceOf(value: unknown): SpaceInfo | null {
     role: s.role === 'owner' || s.role === 'guest' ? s.role : 'member',
     state: s.state === 'left' ? 'left' : 'active',
     unread: num(s.unread),
+    ...(typeof s.notificationsWaiting === 'number' ? { notificationsWaiting: num(s.notificationsWaiting) } : {}),
     lastActivityAt: str(s.lastActivityAt),
   }
 }
@@ -460,15 +466,30 @@ export function lawfulBasisKeyOf(basis: string): 'contract' | 'consent' | 'legit
 
 /**
  * The segments of a space's page (UI-CONV-031): the owner's three more on the web, and Tools among them against an
- * agent that serves the tools of profile 3.4 (UI-CONV-050, PROF-DESC-009).
+ * agent that serves the tools of profile 3.4 (UI-CONV-050, PROF-DESC-009). Against an agent that serves the
+ * Notifications (PROF-DESC-011), every member's page has Notifications right after Conversations (UI-APPR-007);
+ * Personal has none: what Personal's tools ask is in the agent's Notifications (profile §3.12).
  */
-export type SpaceSegment = 'conversations' | 'memories' | 'about' | 'members' | 'tools' | 'settings' | 'activity'
+export type SpaceSegment =
+  | 'conversations'
+  | 'notifications'
+  | 'memories'
+  | 'about'
+  | 'members'
+  | 'tools'
+  | 'settings'
+  | 'activity'
 
 export function spaceSegmentsOf(
   space: Pick<SpaceInfo, 'kind' | 'role'>,
-  agent: { tools?: boolean } = {}
+  agent: { tools?: boolean; notifications?: boolean } = {}
 ): SpaceSegment[] {
-  const base: SpaceSegment[] = ['conversations', 'memories', 'about']
+  const base: SpaceSegment[] = [
+    'conversations',
+    ...(agent.notifications && space.kind !== 'personal' ? (['notifications'] as const) : []),
+    'memories',
+    'about',
+  ]
   if (space.role !== 'owner' || space.kind === 'personal') return base
   return [...base, 'members', ...(agent.tools ? (['tools'] as const) : []), 'settings', 'activity']
 }

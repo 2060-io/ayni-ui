@@ -12,6 +12,8 @@ export type SyncMessage =
   | { kind: 'tools-changed'; agentDid: string; change: unknown }
   /** one of the person's own accounts, or an attempt to connect one, changed (`ayni.connections.changed`) */
   | { kind: 'connections-changed'; agentDid: string; change: unknown }
+  /** a notification of the person entered, changed or ended in a list (`ayni.space.notifications.changed`) */
+  | { kind: 'notifications-changed'; agentDid: string; change: unknown }
 
 export interface SyncBus {
   tabId: string

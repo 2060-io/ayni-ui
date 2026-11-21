@@ -1,11 +1,13 @@
 /**
  * AG-UI events (runs and the session stream) to the local transcript and session state
- * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015/027, UI-CONV-045/046/047, UI-CAP-001, UI-APPR-002).
+ * (profile sections 5 to 7; UI-CONV-002/004/005/006/007/009/015/027, UI-CONV-045/046/047, UI-CAP-001, UI-APPR-002,
+ * UI-APPR-007).
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import { CONNECTIONS_CHANGED } from './connections.js'
 import { withoutVoiceEchoes } from './mediaMessages.js'
 import { MEMORY_UPDATE, MEMORY_UPDATED, memoryLineOf } from './memories.js'
+import { NOTIFICATIONS_CHANGED } from './notifications.js'
 import type { AgUiEvent } from './profileClient.js'
 import { spaceRefOf } from './spaces.js'
 import { messageSourcesOf, SPACE_TOOLS_CHANGED, withApprovalUpdate } from './tools.js'
@@ -25,6 +27,7 @@ export interface Reduction {
     | 'conversations'
     | 'tools'
     | 'connections'
+    | 'notifications'
   )[]
 }
 
@@ -443,14 +446,19 @@ export function reduce(
           }
           break
         }
-        case CUSTOM_EVENT.approvalRequest:
-          signals.push('approval')
-          break
+        // `ayni.approval.request` is withdrawn (agent D114): an approver's request is on their phone and in their
+        // Notifications, and nothing of it enters a conversation; one that still arrives does nothing
         case CUSTOM_EVENT.approvalUpdate:
           // the card of the approval, or of a confirmation, takes its new status where it is, on every device: a
-          // decision, the scope of an allow, the end of an allowance (UI-APPR-002, UI-CONV-045, UI-CONV-046)
+          // decision, the scope of an allow, the end of an allowance (UI-APPR-002, UI-APPR-006, UI-CONV-045, UI-CONV-046)
           t = withApprovalUpdate(t, value)
           signals.push('approval')
+          break
+        case NOTIFICATIONS_CHANGED:
+          // a notification of the person entered, changed or ended in the Notifications of a space or of the agent:
+          // the shell takes its count and reads the list on screen again (UI-APPR-007, PROF-TOOL-025); nothing of it
+          // enters the transcript
+          signals.push('notifications')
           break
         case SPACE_TOOLS_CHANGED:
           // a change of a space's tools applied or was dropped: the shell tells the screens that wait for it
