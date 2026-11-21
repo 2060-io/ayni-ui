@@ -86,7 +86,9 @@ describe('a message of the person the AI never received (UI-CONV-044)', () => {
     const meta = taken?.querySelector('.meta')
     expect(meta?.querySelector('.withheld-label')?.textContent).toBe('Not shared with the AI')
     expect(meta?.querySelector('.withheld-label svg')?.getAttribute('aria-hidden')).toBe('true')
-    expect(meta?.textContent).toMatch(/^Not shared with the AI·\d/)
+    // the label, then the time; a date comes first when the message is not of today, as just after midnight (it
+    // was created two minutes ago)
+    expect(meta?.textContent).toMatch(/^Not shared with the AI·([A-Z][a-z]{2} \d{1,2}, )?\d/)
     // the person's other message, and what the service's code wrote, stay as they are
     expect(bubble(el, 'Send me my badge')?.className).toBe('msg user')
     expect(bubble(el, 'A code is on its way.')?.className).toBe('msg assistant')
