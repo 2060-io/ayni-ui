@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.2](https://github.com/2060-io/ayni-ui/compare/v0.21.1...v0.21.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* **binding:** Show a new code on the link screen, and a dead code replaced by itself (UI-BIND-013, core 0.7.1) ([72265e7](https://github.com/2060-io/ayni-ui/commit/72265e76ee81c05f2649c26ebd4091df98d7c45e))
+* **binding:** Show a new code on the link screen, and a dead code replaced by itself (UI-BIND-013, core 0.7.1) ([46762d4](https://github.com/2060-io/ayni-ui/commit/46762d4aa04f9e714768f7e76a4ea27e596241c4))
+
 ## [0.21.1](https://github.com/2060-io/ayni-ui/compare/v0.21.0...v0.21.1) (2026-11-21)
 
 
