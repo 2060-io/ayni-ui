@@ -55,6 +55,7 @@ export const TOOLS_COPY = {
   'tools.paste': 'Paste the {{label}}',
   'tools.replace': 'Replace',
   'tools.badToken': '{{agent}} does not take this {{label}}.',
+  'tools.accountFieldsChanged': 'The fields of this account have changed. Open the tool again.',
   'tools.removeAccount': 'Remove account',
   'tools.removeAccountConfirm': 'Remove the account? {{tool}} stops working in this space until a new one is set.',
   'tools.asks': 'What each tool asks',

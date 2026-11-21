@@ -530,14 +530,17 @@ export class ProfileClient {
     return this.toolChange(token, 'PATCH', ProfileClient.toolsPath(spaceId, source), patch)
   }
 
-  /** The owner sets or replaces the space's account: `202`, waiting (PROF-TOOL-004). The token is sent and kept nowhere. */
+  /**
+   * The owner sets or replaces the space's account, every declared field together (`{ values: { <name>: <value> } }`):
+   * `202`, waiting (PROF-TOOL-004). The values are sent and kept nowhere.
+   */
   public async setSpaceToolAccount(
     token: string,
     spaceId: string,
     source: string,
-    secret: string
+    values: Record<string, string>
   ): Promise<SpaceToolAnswer> {
-    return this.toolChange(token, 'PUT', ProfileClient.toolsPath(spaceId, source, '/account'), { token: secret })
+    return this.toolChange(token, 'PUT', ProfileClient.toolsPath(spaceId, source, '/account'), { values })
   }
 
   /** The owner clears the space's account, at once (PROF-TOOL-004). */

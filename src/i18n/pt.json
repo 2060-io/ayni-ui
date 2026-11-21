@@ -817,6 +817,7 @@
     "paste": "Cole o {{label}}",
     "replace": "Substituir",
     "badToken": "{{agent}} não aceita este {{label}}.",
+    "accountFieldsChanged": "Os campos desta conta mudaram. Abra a ferramenta novamente.",
     "removeAccount": "Remover a conta",
     "removeAccountConfirm": "Remover a conta? {{tool}} deixa de funcionar neste espaço até que uma nova seja definida.",
     "asks": "O que cada ferramenta pede",

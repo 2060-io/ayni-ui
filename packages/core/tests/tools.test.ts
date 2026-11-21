@@ -5,6 +5,9 @@
 import { describe, expect, it } from 'vitest'
 import { progressOf } from '../src/conversationDesign.js'
 import {
+  accountValueFits,
+  accountValueOf,
+  accountValuesOf,
   awaitsConfirmation,
   bindingValueFits,
   canAdd,
@@ -24,9 +27,9 @@ import {
   ruleGroupsOf,
   spaceToolsChangeOf,
   spaceToolsOf,
+  TOKEN_MAX_LENGTH,
   takesTools,
   timeLeftOf,
-  tokenFits,
   toolApprovalOf,
   toolRefusalOf,
   toolRowStateOf,
@@ -42,8 +45,7 @@ const CRM_OWNER = {
   guests: false,
   account: {
     kind: 'space',
-    label: 'API token',
-    pattern: '^[A-Za-z0-9|]{20,200}$',
+    fields: [{ name: 'token', label: 'API token', pattern: '^[A-Za-z0-9|]{20,200}$' }],
     set: true,
     setAt: '2026-11-20T10:02:00Z',
     setBy: { name: 'Jonas Weber' },
@@ -66,6 +68,20 @@ const CRM_OWNER = {
     { name: 'export', title: 'Export', effect: 'external', rule: 'off', packRule: 'approval', stepUp: null },
   ],
   pending: null,
+}
+
+/** The account of X as its owner reads it: four keys, each a field of its own. */
+const X_ACCOUNT = {
+  kind: 'space',
+  fields: [
+    { name: 'api_key', label: 'API key', pattern: '^[A-Za-z0-9]{10,64}$' },
+    { name: 'api_secret', label: 'API secret', pattern: '^[A-Za-z0-9]{20,128}$' },
+    { name: 'access_token', label: 'Access token', pattern: '^[0-9]{1,20}-[A-Za-z0-9]{10,64}$' },
+    { name: 'access_token_secret', label: 'Access token secret', pattern: '^[A-Za-z0-9]{20,128}$' },
+  ],
+  set: false,
+  setAt: null,
+  setBy: null,
 }
 
 /** A confirmation card of a call of `create-note` (profile §6). */
@@ -97,8 +113,7 @@ describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
     expect(crm.add).toBe('auto')
     expect(crm.account).toEqual({
       kind: 'space',
-      label: 'API token',
-      pattern: '^[A-Za-z0-9|]{20,200}$',
+      fields: [{ name: 'token', label: 'API token', pattern: '^[A-Za-z0-9|]{20,200}$' }],
       set: true,
       setAt: '2026-11-20T10:02:00Z',
       setBy: { name: 'Jonas Weber' },
@@ -132,9 +147,33 @@ describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
     })
     expect(crm.add).toBeUndefined()
     expect(crm.tools[0]).toEqual({ title: 'Add a note', effect: 'write', rule: 'confirm', stepUp: null })
-    expect(crm.account).toEqual({ kind: 'space', label: '', set: false, setAt: null, setBy: null })
+    // a member's answer names the kind only: no field, no state of the account
+    expect(crm.account).toEqual({ kind: 'space', fields: [], set: false, setAt: null, setBy: null })
     expect(spaceToolsOf({ tools: [] })).toEqual([])
     expect(spaceToolsOf(undefined)).toEqual([])
+  })
+
+  it("reads one field per value of a space's account, in the agent's order (PROF-TOOL-001)", () => {
+    const [x] = spaceToolsOf({ tools: [{ ...CRM_OWNER, source: 'x', title: 'X', account: X_ACCOUNT }] })
+    expect(x.account.fields).toEqual(X_ACCOUNT.fields)
+    expect(x.account.set).toBe(false)
+    // a field with no name, or a name said twice, is not shown; a field with no label is named by its name
+    const [odd] = spaceToolsOf({
+      tools: [
+        {
+          ...CRM_OWNER,
+          account: {
+            kind: 'space',
+            fields: [{ label: 'Nameless' }, { name: 'token' }, { name: 'token', label: 'Again' }, 'junk'],
+          },
+        },
+      ],
+    })
+    expect(odd.account.fields).toEqual([{ name: 'token', label: 'token' }])
+    // the old single label and pattern are not read: the fields are
+    const [old] = spaceToolsOf({ tools: [{ ...CRM_OWNER, account: { kind: 'space', label: 'API token' } }] })
+    expect(old.account.fields).toEqual([])
+    expect(JSON.stringify(old.account)).not.toContain('API token')
   })
 
   it('reads the change that waits for the phone', () => {
@@ -207,15 +246,56 @@ describe("the owner's rules (UI-CONV-050, agent D98)", () => {
     ])
   })
 
-  it('checks a value against its binding, and a token against the account, before sending', () => {
+  it('checks a value against its binding, and each value of an account against its field, before sending', () => {
     expect(bindingValueFits({ pattern: '^[a-z0-9-]{1,64}$' }, 'sales-eu')).toBe(true)
     expect(bindingValueFits({ pattern: '^[a-z0-9-]{1,64}$' }, 'Sales EU')).toBe(false)
     expect(bindingValueFits({}, '')).toBe(false)
     expect(bindingValueFits({ pattern: '([' }, 'anything')).toBe(true)
-    expect(tokenFits({ pattern: '^[A-Za-z0-9|]{20,200}$' }, '7|abcdefghijklmnopqrstuvwxyz')).toBe(true)
-    expect(tokenFits({ pattern: '^[A-Za-z0-9|]{20,200}$' }, 'short')).toBe(false)
-    expect(tokenFits({}, '')).toBe(false)
-    expect(tokenFits({}, 'x'.repeat(4097))).toBe(false)
+    expect(accountValueFits({ pattern: '^[A-Za-z0-9|]{20,200}$' }, '7|abcdefghijklmnopqrstuvwxyz')).toBe(true)
+    expect(accountValueFits({ pattern: '^[A-Za-z0-9|]{20,200}$' }, 'short')).toBe(false)
+    expect(accountValueFits({}, '')).toBe(false)
+    expect(accountValueFits({}, 'x'.repeat(TOKEN_MAX_LENGTH))).toBe(true)
+    expect(accountValueFits({}, 'x'.repeat(TOKEN_MAX_LENGTH + 1))).toBe(false)
+    // a space or a line break inside a value is refused, with or without a pattern
+    expect(accountValueFits({}, 'abc def')).toBe(false)
+    expect(accountValueFits({}, 'abc\ndef')).toBe(false)
+  })
+
+  it('trims what a paste brings at either end of a value of an account, never what is inside it', () => {
+    expect(accountValueOf('  AbCdEfGhIjK\n')).toBe('AbCdEfGhIjK')
+    expect(accountValueOf('\r\n\tAbC dEf \n')).toBe('AbC dEf')
+  })
+
+  it('gives the values of an account to send, every field trimmed, or the fields that do not fit', () => {
+    const typed = {
+      api_key: 'AbCdEfGhIjK1 \n',
+      api_secret: '\tAbCdEfGhIjKlMnOpQrStUvWx',
+      access_token: '1234567890-AbCdEfGhIjKl',
+      access_token_secret: 'AbCdEfGhIjKlMnOpQrStUvWxYz  \r\n',
+    }
+    expect(accountValuesOf(X_ACCOUNT.fields, typed)).toEqual({
+      values: {
+        api_key: 'AbCdEfGhIjK1',
+        api_secret: 'AbCdEfGhIjKlMnOpQrStUvWx',
+        access_token: '1234567890-AbCdEfGhIjKl',
+        access_token_secret: 'AbCdEfGhIjKlMnOpQrStUvWxYz',
+      },
+      refused: [],
+    })
+    // one that does not fit its pattern, one with a space inside, one missing: nothing to send, each named in order
+    expect(
+      accountValuesOf(X_ACCOUNT.fields, {
+        ...typed,
+        api_key: 'short',
+        access_token: '1234567890-AbCdE fGhIjKl',
+        access_token_secret: undefined,
+      })
+    ).toEqual({ values: {}, refused: ['api_key', 'access_token', 'access_token_secret'] })
+    // a single token is one field
+    expect(accountValuesOf([{ name: 'token', label: 'API token' }], { token: ' 7|abc\n' })).toEqual({
+      values: { token: '7|abc' },
+      refused: [],
+    })
   })
 
   it('groups the tools by rule in About, loosest first, each with its own step-up, without those `off` (UI-CONV-049)', () => {
@@ -275,7 +355,27 @@ describe("the owner's rules (UI-CONV-050, agent D98)", () => {
       name: 'create-note',
       reason: 'looserThanPack',
     })
-    expect(toolRefusalOf({ status: 422, code: 'bad-token' })).toEqual({ at: 'token', reason: 'badToken' })
+    // a value of the space's account, at the field it names
+    expect(toolRefusalOf({ status: 422, code: 'bad-token', field: 'account.api_secret' })).toEqual({
+      at: 'account',
+      field: 'api_secret',
+      reason: 'badToken',
+    })
+    expect(toolRefusalOf({ status: 422, code: 'bad-token' })).toEqual({
+      at: 'account',
+      field: null,
+      reason: 'badToken',
+    })
+    // a field the agent does not declare, or one it misses
+    expect(toolRefusalOf({ status: 400, code: 'bad-request', field: 'account.pin' })).toEqual({
+      at: 'account',
+      field: 'pin',
+      reason: 'fieldsChanged',
+    })
+    expect(toolRefusalOf({ status: 400, code: 'bad-request', field: 'calls.nope' })).toEqual({
+      at: 'panel',
+      reason: 'other',
+    })
     expect(toolRefusalOf({ status: 409, code: 'confirmation-unavailable' })).toEqual({
       at: 'panel',
       reason: 'phoneNeeded',
