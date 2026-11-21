@@ -1,10 +1,14 @@
-/** Language, theme, sounds, install, about (UI-I18N-001, UI-THEME-003, UI-PLAT-005). */
+/**
+ * Language, theme, sounds, install, about and the version running (UI-I18N-001, UI-THEME-003, UI-PLAT-005,
+ * UI-PLAT-008).
+ */
 
 import { PROFILE_VERSION } from '@ayni.org/ayni-agui-profile'
 import { ArrowLeft, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18next, { LOCALES } from '../i18n/index.js'
+import { type AppUpdate, appUpdate, useNewVersion } from '../state/update.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { DevicesDialog } from './Devices.js'
 
@@ -35,10 +39,11 @@ const ACCENTS = [
   '#042f2e',
 ]
 
-export function Settings() {
+export function Settings({ update = appUpdate }: { update?: AppUpdate }) {
   const snap = useSnapshot()
   const hub = useHub()
   const { t } = useTranslation()
+  const newVersion = useNewVersion(update)
   const [canInstall, setCanInstall] = useState(!!deferredInstall)
   useEffect(() => {
     const onPrompt = () => setCanInstall(true)
@@ -143,7 +148,18 @@ export function Settings() {
         </div>
       ) : null}
       <h3>{t('settings.about')}</h3>
-      <div className="muted">{t('settings.version', { version: __APP_VERSION__ })}</div>
+      {/* the code running, and whether a newer one waits for Reload (UI-PLAT-008, UI-PLAT-007) */}
+      <div className="muted settings-version">{t('settings.version', { version: __APP_VERSION__ })}</div>
+      <div className="muted settings-core">{t('settings.core', { version: __CORE_VERSION__ })}</div>
+      {newVersion ? (
+        // not a live region: the shell's banner already announces it
+        <div className="banner info settings-update">
+          <span>{t('update.available')}</span>
+          <button type="button" className="btn small primary" onClick={() => void update.reload()}>
+            {t('update.reload')}
+          </button>
+        </div>
+      ) : null}
       <div className="muted">{t('settings.profile', { version: PROFILE_VERSION })}</div>
       <div className="column-actions">
         {snap.brand.links?.terms ? (

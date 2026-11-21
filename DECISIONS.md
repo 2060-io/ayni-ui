@@ -506,5 +506,41 @@
       `accountValueOf`, `accountValueFits` and `accountValuesOf` (they replace `tokenFits`),
       `ProfileClient.setSpaceToolAccount(token, spaceId, source, values)`, and `toolRefusalOf` answering
       `{ at: 'account', field, reason: 'badToken' | 'fieldsChanged' }` in place of `{ at: 'token' }`.
-42. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+42. **A new version says so, and Settings says which one runs** (2026-11-21, found by Fabrice on devnet: devnet went
+    from 0.19.0 to 0.20.0, which fixes the conversation list and the spaces after a link, and his browser kept the old
+    one: "I still do not see the spaces and conversations are not up to date"; then: "we should add on the ui
+    somewhere in settings the current version being used, that way I can be sure I'm running the proper version";
+    UI-PLAT-007, UI-PLAT-008).
+    - **Cause.** The service worker is generated in `prompt` mode (`registerType: 'prompt'`, `injectRegister: null`),
+      and `main.tsx` registered it with `registerSW({ immediate: true })` and no `onNeedRefresh`. A new worker
+      installed and waited; nothing told the person and nothing sent it `SKIP_WAITING`, so every reload was served by
+      the old worker from its precache until every tab of the app was closed.
+    - **The banner.** When a version waits (`onNeedRefresh`), a strip across the top of the shell, above the rail, the
+      list and the conversation, says "A new version of Ayni is available." with Reload (`update.available` and
+      `update.reload` in the four languages, `UPDATE_COPY` in the core, 0.6.1). It stays until the page reloads. Its
+      colours are those of `.banner.info` and `.btn.primary`: the words on the strip 15.44:1 in light, 14.33:1 in
+      dark; Reload's label 5.47:1 and 7.77:1; the button and its focus ring against the strip 4.76:1 and 8.47:1. Dark
+      by choice and dark by system take the same tokens; a test computes the figures from the stylesheet.
+    - **Reload.** It writes what every message form holds first (`hub.flushDrafts`), then `updateSW(true)` sends the
+      waiting worker `SKIP_WAITING`; when the new worker takes control, workbox-window's `controlling` reloads the
+      page (`onNeedReload`), once. A page the old worker did not control (opened with a hard reload) sees no change of
+      controller and reloads when the new worker is `activated`; when another tab already let it take over, Reload
+      only reloads. If the drafts cannot be written, the page stays, with the banner. The other tabs of the app reload
+      too when the new worker takes control, each after writing its own drafts.
+    - **Drafts.** A draft was written 400 ms after the last keystroke (UI-SHELL-010), so a Reload right after typing
+      would have lost its end. The message form now tells the hub what it holds at each change (`noteDraft`), and
+      `flushDrafts` writes what is not written yet; opening another conversation flushes too. A test types, presses
+      Reload at once, finds the text in the store when the update is sent, then in the message form of the next page.
+      Attachments picked and a voice note recorded but not sent are not kept, as before.
+    - **Checks.** The tab asks for a new version (`registration.update()`) each time it becomes visible again and every
+      hour while it stays open; a check that fails (offline, the server down) leaves it to the next one.
+    - **Still prompt.** `autoUpdate` would swap the version under someone in the middle of a sentence and reload every
+      tab without asking; `prompt` leaves it to the person, with a check at most an hour old, or made the moment they
+      come back to the tab. The registration stays explicit, so no push subscription ever exists (UI-PLAT-002).
+    - **Settings.** Under About, "Version <release>" (the line was there) and now "Core <version>", read from
+      `package.json` and `packages/core/package.json` by `vite.config.ts` at build time; before, the release came from
+      `npm_package_version`, which only a build started by a package script sets. While a version waits, Settings
+      shows the banner's words and the same Reload.
+    - The first version with the banner reaches a browser the old way: once every tab of the app is closed.
+43. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

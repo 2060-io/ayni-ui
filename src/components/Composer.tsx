@@ -69,13 +69,19 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
   const figure = contextFigureOf(session?.ayni)
   const contextLine = figure ? contextLineOf(figure) : null
 
-  // drafts per conversation (UI-SHELL-010)
+  // drafts per conversation (UI-SHELL-010): what the field held for the conversation left is written first
   useEffect(() => {
+    void hub.flushDrafts()
     setText(session?.draft ?? '')
   }, [sessionId])
+  /** The field's text as the person or an action sets it: the hub knows it at once, a reload writes it (UI-PLAT-007). */
+  const change = (value: string) => {
+    setText(value)
+    hub.noteDraft(sessionId, value)
+  }
   // edit and resend, or a reply started from a message: the field takes the text and the focus
   useEffect(() => {
-    if (prefill) setText(prefill.text)
+    if (prefill) change(prefill.text)
     if (prefill || replyTo) areaRef.current?.focus()
   }, [prefill, replyTo])
   useEffect(() => {
@@ -116,7 +122,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
         setReview(null)
       }
       const body = text
-      setText('')
+      change('')
       setPending([])
       if (closed) {
         // writing on a closed conversation wakes it up: the text goes out once the resumed session is bound
@@ -284,7 +290,7 @@ export function Composer({ sessionId, disabled }: { sessionId: string; disabled:
           aria-label={t('composer.placeholder')}
           value={text}
           disabled={disabled}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => change(e.target.value)}
           onKeyDown={onKey}
         />
         {recording ? (

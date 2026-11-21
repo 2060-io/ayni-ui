@@ -1335,6 +1335,20 @@ label.field {
 .banner.info {
   background: color-mix(in srgb, var(--accent) 10%, var(--bg));
 }
+/* a new version waits (UI-PLAT-007): a strip across the top of the shell, above the rail, list and conversation */
+.app.with-update {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.update-banner {
+  grid-column: 1 / -1;
+  justify-content: center;
+}
+/* the same, in Settings under the version running (UI-PLAT-008) */
+.settings-update {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-block: 6px;
+}
 
 .details {
   border-left: 1px solid var(--border);
