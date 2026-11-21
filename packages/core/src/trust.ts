@@ -144,7 +144,8 @@ export async function discoverAgent(
   if (!descriptorUrl.startsWith('https://') && !/^http:\/\/(localhost|127\.0\.0\.1)/.test(descriptorUrl)) {
     throw new TrustError('agent descriptors must be served over HTTPS', 'descriptor')
   }
-  const response = await fetchFn(descriptorUrl, { headers: { accept: 'application/json' } })
+  // like every call to an agent, with the cache mode no-store (UI-SESS-020): the descriptor changes with the agent
+  const response = await fetchFn(descriptorUrl, { headers: { accept: 'application/json' }, cache: 'no-store' })
   if (!response.ok) throw new TrustError(`descriptor not found (${response.status})`, 'descriptor')
   const descriptor = (await response.json()) as AgentDescriptor
   if (!descriptor || typeof descriptor.profileVersion !== 'string' || !descriptor.did || !descriptor.sessions)

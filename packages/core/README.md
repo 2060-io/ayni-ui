@@ -26,6 +26,10 @@ of look or wording on one of these surfaces starts here.
 
 The English wording of the browser's banner for a new version waiting to take over (UI-PLAT-007) is `UPDATE_COPY`.
 
+`ProfileClient` sends every call to the agent with the fetch cache mode `no-store`, and `discoverAgent` reads the
+descriptor with it (UI-SESS-020): no answer a browser or a proxy stored ever answers a call. The `fetch` a client gives
+`ProfileClient` receives the caller's `init` with `cache: 'no-store'` added.
+
 ## One conversation, every device
 
 A conversation shows the same transcript on every device of a person (AG-UI profile PROF-STREAM-005,

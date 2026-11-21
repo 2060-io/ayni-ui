@@ -542,5 +542,43 @@
       `npm_package_version`, which only a build started by a package script sets. While a version waits, Settings
       shows the banner's words and the same Reload.
     - The first version with the banner reaches a browser the old way: once every tab of the app is closed.
-43. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+43. **Every call to an agent goes with the cache mode `no-store`** (2026-11-21, found by Fabrice on devnet: in Chrome
+    on his Mac, the browser linked to the Dev Agent never showed his spaces and showed one of his two conversations,
+    for hours, after clearing cookies and site data and after linking again; a fresh Incognito window worked, then
+    broke the same way; UI-SESS-020, profile PROF-ERR-003, ayni-agent decision 71).
+    - **Cause.** The list is `GET {sessions}/conversations`, the same URL for every session; the token travels in
+      `Authorization`, which is no part of the browser's cache key. The agent's answers carried no `Cache-Control`.
+      Chromium holds a `410` with no freshness of its own as fresh for ever (as a `300`, `301` or `308`). Once the
+      browser got one `410` "session closed" for the list (a session closed by a supersede), it answered every later
+      list from its cache with that `410`, whatever the token, without asking the agent; only the CORS preflight went
+      out. The hub reads the spaces only after the list succeeds (`syncConversationsNow` then `loadSpacesWith`), so
+      they never showed, and each `410` retired one more session (UI-SESS-019). The devnet ingress logs show
+      `OPTIONS /agui/v3/sessions/conversations` and no `GET` from 16:15 to 18:39 UTC, but one, at 18:37:38, answered
+      `410`. The console then showed three `410` "session closed" for three
+      sessions, two of which never reached the agent, the third freshly bound. The phone is not affected.
+    - **The fix, here.** `ProfileClient` sends every call with `cache: 'no-store'`: it wraps the `fetch` it is given,
+      so every method, present and future, goes through it, the session stream, the runs, the uploads and the
+      attachments included, with the caller's own `init` kept. `discoverAgent` reads the descriptor with it too: the
+      descriptor changes with the agent (`refreshDescriptor`). The calls to the indexer and the trust graph are not
+      calls to an agent and keep the default mode. In `no-store` the browser neither reads its cache nor writes to
+      it, so a `410` stored by an earlier version, or by a proxy, answers nothing any more; with the agent's
+      `Cache-Control: no-store` (decision 71) nothing is stored in the first place. Both are needed: a browser that
+      already holds the `410` keeps serving it to a default-mode request even after the agent sends `no-store`, until
+      that entry is evicted.
+    - **What it costs.** An attachment's `200` may carry `private, max-age=300`; the browser no longer uses it. The UI
+      fetches an attachment once and shows it from an object URL, so nothing is fetched twice in practice.
+    - **The app.** The core is shared: once the Ayni app takes core 0.6.2, React Native's `fetch` (whatwg-fetch)
+      turns `cache: 'no-store'` on a `GET` into a `_=<time>` query parameter, which the agent ignores. Nothing else
+      changes there.
+    - **Headless Chrome (158), against a local API that answers `410` for one token and `200` otherwise.** With the
+      agent's headers of today and the default mode, the first call gets the `410` and the calls with two other
+      tokens get the same `410` from the cache, never reaching the API. With `Cache-Control: no-store` on the answer,
+      or with `cache: 'no-store'` on the calls, or both, those two calls reach the API and get `200`. With the `410`
+      already cached by a default-mode call, calls in `no-store` reach the API and get `200`; calls in the default
+      mode keep getting the cached `410` even once the API sends `no-store`.
+    - **Tests.** `packages/core/tests/noStore.test.ts`: every method of `ProfileClient` (found on its prototype, so a
+      method added later is covered) makes its call with `cache: 'no-store'`; the caller's method, headers, body and
+      signal are kept; the descriptor is read with it. Without the change all three fail (46 calls without it).
+    - Core 0.6.2.
+44. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
