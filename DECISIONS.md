@@ -439,5 +439,43 @@
     - The values, roles and English words are the core's (0.5.0: `CONVERSATION_DESIGN.toolCard` and
       `.untrustedNotice`, `CONVERSATION_COLORS.toolCard` and `.untrustedNotice`, `TOOLS_COPY`), for the app to draw
       the same.
-40. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+40. **One field per key of a space account** (2026-11-20, Fabrice, after setting up X for a space on devnet, whose
+    account needs four keys typed in one field joined by colons: "it is not UX friendly. There should be one field per
+    key/attribute."). The contract, written by the agent and the spec at the same time (ayni-agent and ayni-spec
+    branches `feat/space-account-fields` and `spec/space-account-fields`):
+    - **What the agent declares.** The owner's view of a source gives `account: { kind: "space", fields: [{ name,
+      label, pattern? }], set, setAt, setBy }`: one field per value, in the order to show, every one a secret. This
+      replaces the account's single `label` and `pattern`, which are no longer read: no fallback for an agent that
+      still sends them (its account shows no field). A member's view is unchanged (`kind` only, read as no field).
+    - **Setting it.** `PUT {sessions}/spaces/{id}/tools/{source}/account` with `{ values: { <name>: <value> } }`, every
+      declared field together; the answer is as before (`202` with `pending`, the outcome on
+      `ayni.space.tools.changed`). `422 bad-token` with `field: "account.<name>"` is shown at that field in the words of
+      UI-CONV-052 ("<agent> does not take this <label>."). A `400` naming an `account.` field, or a `bad-token` naming a
+      field the panel does not show, means the agent declares other fields than those on screen: the list is read
+      again, the fields show empty as the agent now declares them, and the account says "This value is not in the
+      form <agent> expects." (the table's words for a value refused, as no row of the table is about this).
+    - **The fields.** One uncontrolled `type="password"` field per declared field, in the agent's order, its label
+      above it and "Paste the <label>" in it, with autocomplete, autocorrect, spell checking and the common password
+      managers turned off, as the token's field was. Save sends all of them in one request and is enabled only when
+      every field holds something other than spaces; Enter in any field is Save. Only whether each field holds
+      something is kept in React state, never a value.
+    - **Checked before sending.** Each value is trimmed of the spaces and line breaks a paste brings at either end
+      (Fabrice's keys were refused before this, most likely for a trailing space or line break), then refused when it
+      is longer than 4096 characters, has a space or line break inside it, or does not match its field's `pattern`. A
+      value refused this way is not sent: it stays in its field with the message, and so do the others; nothing goes
+      until each fits.
+    - **Emptied.** Every field is emptied as its request leaves, whatever the agent answers (a `422` asks to type them
+      again), and goes with the panel when the owner goes back to All tools, to another segment or another page. No
+      value is in the snapshot, the store, a draft, a notice or a log; the tests look for each in the page, the
+      snapshot and the store.
+    - **Once set.** The account reads "Set by <name> on <date>" with Replace and Remove account, and no field. Replace
+      shows the fields again, empty, with Save and Cancel; Cancel hides them and what was typed goes with them. While
+      the account's change waits, the code and the time left take the place of Replace (or of Save, for an account
+      not set yet, its fields disabled). The status line no longer starts with the account's label: there is no
+      single label any more, and each field has its own.
+    - The core is 0.6.0: `SpaceToolAccountField`, `SpaceToolAccount.fields` (its `label` and `pattern` removed),
+      `accountValueOf`, `accountValueFits` and `accountValuesOf` (they replace `tokenFits`),
+      `ProfileClient.setSpaceToolAccount(token, spaceId, source, values)`, and `toolRefusalOf` answering
+      `{ at: 'account', field, reason: 'badToken' | 'fieldsChanged' }` in place of `{ at: 'token' }`.
+41. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

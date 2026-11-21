@@ -1,7 +1,8 @@
 /**
  * The tools of a space (profile 3.4 §3.10; agent D97, D98): the owner's Tools segment with each state of a source and
  * its panel (UI-CONV-050), a change that waits for the owner's phone and its outcomes on `ayni.space.tools.changed`,
- * each refusal where it belongs; the token typed and never kept or shown back; what members read in About
+ * each refusal where it belongs; the account typed in one masked field per value the agent declares, never kept or
+ * shown back; what members read in About
  * (UI-CONV-031, UI-CONV-049); the activity of tools (UI-CONV-051); and nothing of it against a 3.3 agent.
  */
 import type { SpaceInfo } from '@ayni.org/ayni-ui-core'
@@ -48,8 +49,7 @@ const crm = (over: Record<string, unknown> = {}) => ({
   guests: false,
   account: {
     kind: 'space',
-    label: 'API token',
-    pattern: '^[A-Za-z0-9|]{20,200}$',
+    fields: [{ name: 'token', label: 'API token', pattern: '^[A-Za-z0-9|]{20,200}$' }],
     set: false,
     setAt: null,
     setBy: null,
@@ -78,8 +78,7 @@ const READY = crm({
   state: 'ready',
   account: {
     kind: 'space',
-    label: 'API token',
-    pattern: '^[A-Za-z0-9|]{20,200}$',
+    fields: [{ name: 'token', label: 'API token', pattern: '^[A-Za-z0-9|]{20,200}$' }],
     set: true,
     setAt: '2026-11-20T10:02:00Z',
     setBy: { name: 'Jonas Weber' },
@@ -143,6 +142,21 @@ const rowTexts = (el: HTMLElement) =>
 const open = async (el: HTMLElement, title: string) =>
   click([...el.querySelectorAll<HTMLElement>('.tool-row-main')].find((b) => b.textContent?.includes(title)))
 const tokenField = (el: HTMLElement) => el.querySelector<HTMLInputElement>('input[type="password"]')
+/** The masked fields of the account, in the order shown. */
+const accountFields = (el: HTMLElement) => [
+  ...el.querySelectorAll<HTMLInputElement>('.tool-section[aria-label="Account"] input[type="password"]'),
+]
+/** The label of each field of the account, without the message under it. */
+const accountLabels = (el: HTMLElement) =>
+  [...el.querySelectorAll('.tool-section[aria-label="Account"] label.field')].map((l) => l.childNodes[0]?.textContent)
+const accountSave = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('.account-save')
+/** Replace (for an account set), the token typed in its field, and the account's Save. */
+async function sendToken(el: HTMLElement, token = TOKEN) {
+  const replace = byText(el, '.tool-section[aria-label="Account"] button', 'Replace')
+  if (replace) await click(replace)
+  await type(tokenField(el), token)
+  await click(accountSave(el))
+}
 
 describe('the segments of a space (UI-CONV-031, PROF-DESC-009)', () => {
   it('gives its owner Members, Tools, Settings and Activity, against an agent that serves tools', async () => {
@@ -207,11 +221,15 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     const fixed = el.querySelector('.tool-fixed')
     expect(fixed?.textContent).toBe('Regioneu-1Set by Fleet support')
     expect(fixed?.querySelector('input')).toBeNull()
-    expect(el.querySelector('.tool-account-status')?.textContent).toBe('API tokenSet by Jonas Weber on Nov 20, 2026')
+    expect(el.querySelector('.tool-account-status')?.textContent).toBe('Set by Jonas Weber on Nov 20, 2026')
+    // an account set shows no field, only Replace and Remove account; Replace shows the field, empty
+    expect(tokenField(el)).toBeNull()
+    expect(byText(el, '.tool-actions button', 'Remove account')).toBeTruthy()
+    await click(byText(el, 'button', 'Replace'))
     // the token field: masked, never prefilled
     expect(tokenField(el)?.value).toBe('')
     expect(tokenField(el)?.placeholder).toBe('Paste the API token')
-    expect(byText(el, 'button', 'Replace')).toBeTruthy()
+    expect(accountLabels(el)).toEqual(['API token'])
     // each tool by its title, its effect in words, the rules no looser than the pack's, the step-up said
     const rows = [...el.querySelectorAll('.tool-rule-row')]
     // the step-up after the tool's title, never after the rule's words
@@ -246,13 +264,14 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     ])
     await until(() => el.querySelector('.tool-row'))
     await open(el, 'Relaticle CRM')
-    const field = tokenField(el) as HTMLInputElement
-    field.value = TOKEN
     await click(byText(el, 'button', 'Replace'))
+    const field = tokenField(el) as HTMLInputElement
+    await type(field, TOKEN)
+    await click(accountSave(el))
     // emptied as the request left, and never shown back
     expect(field.value).toBe('')
     await until(() => el.querySelector('.tool-pending'))
-    expect(agent.find('PUT', `${TOOLS_PATH}/relaticle/account`)[0].body).toEqual({ token: TOKEN })
+    expect(agent.find('PUT', `${TOOLS_PATH}/relaticle/account`)[0].body).toEqual({ values: { token: TOKEN } })
     expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(
       /^Confirm on your phone · Code 48 21 [45]:\d\d left$/
     )
@@ -277,7 +296,9 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     await until(() => el.querySelector('.tool-change-outcome')?.textContent === 'Saved')
     expect(el.querySelector('.tool-pending')).toBeNull()
     expect(agent.find('GET', TOOLS_PATH).length).toBeGreaterThan(reads)
-    expect(tokenField(el)?.value).toBe('')
+    // set: no field, Replace again
+    expect(tokenField(el)).toBeNull()
+    expect(byText(el, 'button', 'Replace')).toBeTruthy()
     await click(byText(el, 'button', 'All tools'))
     expect(rowTexts(el)[0]?.state).toBe('Ready')
   })
@@ -289,8 +310,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     ])
     await until(() => el.querySelector('.tool-row'))
     await open(el, 'Relaticle CRM')
-    ;(tokenField(el) as HTMLInputElement).value = TOKEN
-    await click(byText(el, 'button', 'Replace'))
+    await sendToken(el)
     await until(() => el.querySelector('.tool-pending'))
     await announce(hub, {
       spaceId: SALES.id,
@@ -301,8 +321,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     })
     await until(() => el.querySelector('.tool-change-outcome'))
     expect(el.querySelector('.tool-change-outcome')?.textContent).toBe('Not confirmed on your phone. Nothing changed.')
-    ;(tokenField(el) as HTMLInputElement).value = TOKEN
-    await click(byText(el, 'button', 'Replace'))
+    await sendToken(el)
     await until(() => el.querySelector('.tool-pending'))
     // what was heard before this change started waiting does not end it
     await new Promise((r) => setTimeout(r, 50))
@@ -377,8 +396,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
       ])
       await until(() => el.querySelector('.tool-row'))
       await open(el, 'Relaticle CRM')
-      ;(tokenField(el) as HTMLInputElement).value = TOKEN
-      await click(byText(el, 'button', 'Replace'))
+      await sendToken(el)
       await until(() => el.querySelector('.tool-error'))
       expect(el.querySelector('.tool-section[aria-label="Account"] .tool-error')?.textContent, error).toBe(words)
       teardown()
@@ -401,8 +419,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     ])
     await until(() => el.querySelector('.tool-row'))
     await open(el, 'Relaticle CRM')
-    ;(tokenField(el) as HTMLInputElement).value = TOKEN
-    await click(byText(el, 'button', 'Replace'))
+    await sendToken(el)
     await until(() => el.querySelector('.tool-error'))
     expect(el.querySelector('.tool-error')?.textContent).toBe(
       'Your phone must be connected to Fleet support to confirm this change.'
@@ -416,11 +433,10 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     ])
     await until(() => el.querySelector('.tool-row'))
     await open(el, 'Relaticle CRM')
-    // a token that does not match the account's pattern: nothing is sent, and the field is empty
-    ;(tokenField(el) as HTMLInputElement).value = 'short'
-    await click(byText(el, 'button', 'Replace'))
+    // a token that does not match the account's pattern: nothing is sent, and it stays in its field
+    await sendToken(el, 'short')
     expect(agent.find('PUT', `${TOOLS_PATH}/relaticle/account`)).toHaveLength(0)
-    expect(tokenField(el)?.value).toBe('')
+    expect(tokenField(el)?.value).toBe('short')
     expect(el.querySelector('.field-error')?.textContent?.trim()).toBe('Fleet support does not take this API token.')
     // a value that does not match the binding's pattern: nothing is sent
     const workspace = byText(el, 'label.field', /^Workspace/)?.querySelector('input')
@@ -488,12 +504,12 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     ])
     await until(() => el.querySelector('.tool-row'))
     await open(el, 'Relaticle CRM')
-    ;(tokenField(el) as HTMLInputElement).value = TOKEN
-    await click(byText(el, 'button', 'Replace'))
+    await sendToken(el)
     await until(() => el.querySelector('.tool-section[aria-label="Account"] .tool-pending'))
     // a binding, another token and a looser rule would be refused while it waits: none is offered
     expect(byText(el, 'label.field', /^Workspace/)?.querySelector('input')?.disabled).toBe(true)
-    expect(tokenField(el)?.disabled).toBe(true)
+    expect(tokenField(el)).toBeNull()
+    expect(byText(el, '.tool-section[aria-label="Account"] button', 'Replace')).toBeUndefined()
     const select = () => el.querySelectorAll<HTMLSelectElement>('.tool-rule-row select')[2] as HTMLSelectElement
     expect(select().disabled).toBe(false)
     expect([...select().options].map((o) => [o.value, o.disabled])).toEqual([
@@ -541,7 +557,9 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     expect(agent.find('DELETE', `${TOOLS_PATH}/relaticle/account`)).toHaveLength(0)
     await click(byText(el, '.tool-confirm button', 'Remove account'))
     await until(() => agent.find('DELETE', `${TOOLS_PATH}/relaticle/account`).length === 1)
-    await until(() => el.querySelector('.tool-account-status')?.textContent === 'API tokenNot set')
+    await until(() => el.querySelector('.tool-account-status')?.textContent === 'Not set')
+    // not set: the field shows again, empty
+    expect(tokenField(el)?.value).toBe('')
     await click(byText(el, 'button', 'Remove from Sales EU'))
     expect(el.querySelector('.tool-confirm')?.textContent).toContain(
       'Remove Relaticle CRM from Sales EU? Its account and settings are deleted.'
@@ -597,6 +615,255 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
   it('says why the list could not be read', async () => {
     const { el } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ error: 'boom', message: 'agent down' }, 500)]])
     await until(() => el.querySelector('.banner.warning'))
+  })
+})
+
+/** X needs four keys: one masked field each, in the agent's order (PROF-TOOL-001, PROF-TOOL-004). */
+const X_FIELDS = [
+  { name: 'api_key', label: 'API key', pattern: '^[A-Za-z0-9]{10,64}$' },
+  { name: 'api_secret', label: 'API secret', pattern: '^[A-Za-z0-9]{20,128}$' },
+  { name: 'access_token', label: 'Access token', pattern: '^[0-9]{1,20}-[A-Za-z0-9]{10,64}$' },
+  { name: 'access_token_secret', label: 'Access token secret', pattern: '^[A-Za-z0-9]{20,128}$' },
+]
+const X_VALUES = {
+  api_key: 'XkEyXkEyXkEy',
+  api_secret: 'XsEcReTXsEcReTXsEcReT01',
+  access_token: '1234567890-XtOkEnXtOkEn',
+  access_token_secret: 'XtSeCrEtXtSeCrEtXtSeCrEt9',
+}
+const X = {
+  source: 'x',
+  title: 'X',
+  description: 'Posts of the team',
+  state: 'setup',
+  add: 'owner',
+  guests: false,
+  account: { kind: 'space', fields: X_FIELDS, set: false, setAt: null, setBy: null },
+  bindings: [],
+  tools: [{ name: 'post', title: 'Post', effect: 'external', rule: 'confirm', packRule: 'confirm', stepUp: null }],
+  pending: null,
+}
+const X_SET = {
+  ...X,
+  state: 'ready',
+  account: { ...X.account, set: true, setAt: '2026-11-20T10:02:00Z', setBy: { name: 'Jonas Weber' } },
+}
+const X_ACCOUNT = `${TOOLS_PATH}/x/account`
+
+/** Types each value in its field, in the fields' order. */
+async function fill(el: HTMLElement, values: Record<string, string>) {
+  const fields = accountFields(el)
+  for (const [i, f] of X_FIELDS.entries()) await type(fields[i], values[f.name] ?? '')
+}
+const errorAt = (el: HTMLElement, label: string) =>
+  byText(el, '.tool-section[aria-label="Account"] label.field', new RegExp(`^${label}`))
+    ?.querySelector('.field-error')
+    ?.textContent?.trim()
+
+/** Nothing of these values in the page, the snapshot or the device store. */
+function holdsNone(el: HTMLElement, hub: Hub, values: Record<string, string>) {
+  // @ts-expect-error private: the device store
+  const store = hub.store as { [key: string]: unknown }
+  const stored = JSON.stringify(Object.values(store).map((v) => (v instanceof Map ? [...v.values()] : v)))
+  for (const value of Object.values(values)) {
+    expect(el.textContent).not.toContain(value)
+    expect(el.innerHTML).not.toContain(value)
+    expect(JSON.stringify(hub.getSnapshot())).not.toContain(value)
+    expect(stored).not.toContain(value)
+  }
+}
+
+describe('one field per key of a space account (UI-CONV-050, PROF-TOOL-004)', () => {
+  it('shows the four keys of X as four masked fields, in order, each labelled; Save once each holds a value', async () => {
+    const { el } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ tools: [X] })]])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    expect(accountLabels(el)).toEqual(['API key', 'API secret', 'Access token', 'Access token secret'])
+    const fields = accountFields(el)
+    expect(fields.map((f) => f.type)).toEqual(['password', 'password', 'password', 'password'])
+    expect(fields.map((f) => f.placeholder)).toEqual([
+      'Paste the API key',
+      'Paste the API secret',
+      'Paste the Access token',
+      'Paste the Access token secret',
+    ])
+    // never prefilled, nothing suggested, corrected or filled in by the browser
+    for (const f of fields) {
+      expect(f.value).toBe('')
+      expect(f.getAttribute('autocomplete')).toBe('off')
+      expect(f.getAttribute('autocorrect')).toBe('off')
+      expect(f.getAttribute('spellcheck')).toBe('false')
+      expect(f.getAttribute('data-1p-ignore')).toBe('true')
+    }
+    expect(el.querySelector('.tool-account-status')?.textContent).toBe('Not set')
+    expect(accountSave(el)?.disabled).toBe(true)
+    await fill(el, { ...X_VALUES, access_token_secret: '' })
+    expect(accountSave(el)?.disabled).toBe(true)
+    // spaces only do not hold a value
+    await type(fields[3], '   ')
+    expect(accountSave(el)?.disabled).toBe(true)
+    await type(fields[3], X_VALUES.access_token_secret)
+    expect(accountSave(el)?.disabled).toBe(false)
+  })
+
+  it('sends every field together, trimmed, empties them all, and keeps none of them anywhere', async () => {
+    const { el, hub, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [X] })],
+      [`PUT ${X_ACCOUNT}`, () => json({ tool: pending(X) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    // pasted with a line break and spaces at either end: accepted, sent without them
+    await fill(el, {
+      ...X_VALUES,
+      api_key: `${X_VALUES.api_key}\n  `,
+      access_token_secret: `  ${X_VALUES.access_token_secret} \r\n`,
+    })
+    await click(accountSave(el))
+    // emptied as the request left
+    expect(accountFields(el).map((f) => f.value)).toEqual(['', '', '', ''])
+    await until(() => agent.find('PUT', X_ACCOUNT).length === 1)
+    expect(agent.find('PUT', X_ACCOUNT)[0].body).toEqual({ values: X_VALUES })
+    await until(() => el.querySelector('.tool-section[aria-label="Account"] .tool-pending'))
+    holdsNone(el, hub, X_VALUES)
+  })
+
+  it('sends nothing while a value does not fit: it stays in its field, with the message, the others too', async () => {
+    const { el, hub, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [X] })],
+      [`PUT ${X_ACCOUNT}`, () => json({ tool: pending(X) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    await fill(el, { ...X_VALUES, api_secret: 'tooShort' })
+    await click(accountSave(el))
+    expect(agent.find('PUT', X_ACCOUNT)).toHaveLength(0)
+    expect(accountFields(el).map((f) => f.value)).toEqual([
+      X_VALUES.api_key,
+      'tooShort',
+      X_VALUES.access_token,
+      X_VALUES.access_token_secret,
+    ])
+    expect(errorAt(el, 'API secret')).toBe('Fleet support does not take this API secret.')
+    expect(el.querySelectorAll('.tool-section[aria-label="Account"] .field-error')).toHaveLength(1)
+    expect(accountFields(el)[1]?.getAttribute('aria-invalid')).toBe('true')
+    // a space inside a value, once trimmed, is refused at its field
+    await type(accountFields(el)[1], X_VALUES.api_secret)
+    await type(accountFields(el)[2], '1234567890-XtOkEn XtOkEn')
+    await click(accountSave(el))
+    expect(agent.find('PUT', X_ACCOUNT)).toHaveLength(0)
+    expect(errorAt(el, 'Access token')).toBe('Fleet support does not take this Access token.')
+    expect(errorAt(el, 'API secret')).toBeUndefined()
+    expect(accountFields(el)[2]?.value).toBe('1234567890-XtOkEn XtOkEn')
+    holdsNone(el, hub, X_VALUES)
+  })
+
+  it('shows a 422 that names `account.api_secret` at the API secret field', async () => {
+    const { el, hub, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [X] })],
+      [`PUT ${X_ACCOUNT}`, () => json({ error: 'bad-token', field: 'account.api_secret' }, 422)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    await fill(el, X_VALUES)
+    await click(accountSave(el))
+    await until(() => errorAt(el, 'API secret'))
+    expect(agent.find('PUT', X_ACCOUNT)).toHaveLength(1)
+    expect(errorAt(el, 'API secret')).toBe('Fleet support does not take this API secret.')
+    expect(el.querySelectorAll('.tool-section[aria-label="Account"] .field-error')).toHaveLength(1)
+    expect(el.querySelector('.tool-error')).toBeNull()
+    // the values went with the request: every field is empty, to be typed again
+    expect(accountFields(el).map((f) => f.value)).toEqual(['', '', '', ''])
+    expect(accountSave(el)?.disabled).toBe(true)
+    holdsNone(el, hub, X_VALUES)
+  })
+
+  it('reads the fields again when the agent names one it does not declare (a `400`)', async () => {
+    let tools: unknown[] = [X]
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools })],
+      [`PUT ${X_ACCOUNT}`, () => json({ error: 'bad-request', field: 'account.api_key' }, 400)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    await fill(el, X_VALUES)
+    tools = [{ ...X, account: { ...X.account, fields: X_FIELDS.slice(1) } }]
+    const reads = agent.find('GET', TOOLS_PATH).length
+    await click(accountSave(el))
+    await until(() => el.querySelector('.tool-section[aria-label="Account"] .tool-error'))
+    expect(el.querySelector('.tool-section[aria-label="Account"] .tool-error')?.textContent).toBe(
+      'This value is not in the form Fleet support expects.'
+    )
+    await until(() => agent.find('GET', TOOLS_PATH).length > reads)
+    await until(() => accountLabels(el).length === 3)
+    expect(accountLabels(el)).toEqual(['API secret', 'Access token', 'Access token secret'])
+  })
+
+  it('empties every field when the panel is left, and when the segment is', async () => {
+    const { el, hub } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ tools: [X] })]])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    await fill(el, X_VALUES)
+    await click(byText(el, 'button', 'All tools'))
+    await open(el, 'X')
+    expect(accountFields(el).map((f) => f.value)).toEqual(['', '', '', ''])
+    expect(accountSave(el)?.disabled).toBe(true)
+    await fill(el, X_VALUES)
+    await click(byText(el, '[role="tab"]', 'About'))
+    await click(byText(el, '[role="tab"]', 'Tools'))
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    expect(accountFields(el).map((f) => f.value)).toEqual(['', '', '', ''])
+    holdsNone(el, hub, X_VALUES)
+  })
+
+  it('shows an account set as set, when and by whom; Replace shows the empty fields again', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [X_SET] })],
+      [`PUT ${X_ACCOUNT}`, () => json({ tool: pending(X_SET) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    expect(el.querySelector('.tool-account-status')?.textContent).toBe('Set by Jonas Weber on Nov 20, 2026')
+    expect(accountFields(el)).toHaveLength(0)
+    expect(byText(el, '.tool-actions button', 'Remove account')).toBeTruthy()
+    await click(byText(el, 'button', 'Replace'))
+    expect(accountLabels(el)).toEqual(['API key', 'API secret', 'Access token', 'Access token secret'])
+    expect(accountFields(el).map((f) => f.value)).toEqual(['', '', '', ''])
+    // Cancel hides them, and what was typed goes with them
+    await fill(el, X_VALUES)
+    await click(byText(el, '.tool-section[aria-label="Account"] button', 'Cancel'))
+    expect(accountFields(el)).toHaveLength(0)
+    await click(byText(el, 'button', 'Replace'))
+    expect(accountFields(el).map((f) => f.value)).toEqual(['', '', '', ''])
+    await fill(el, X_VALUES)
+    await click(accountSave(el))
+    await until(() => el.querySelector('.tool-section[aria-label="Account"] .tool-pending'))
+    expect(agent.find('PUT', X_ACCOUNT)[0].body).toEqual({ values: X_VALUES })
+    // sent: the fields are gone, the code in place of Replace
+    expect(accountFields(el)).toHaveLength(0)
+  })
+
+  it('shows a single token as one field', async () => {
+    const single = {
+      ...X,
+      source: 'github',
+      title: 'GitHub',
+      account: { kind: 'space', fields: [{ name: 'token', label: 'API token' }], set: false },
+    }
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [single] })],
+      [`PUT ${TOOLS_PATH}/github/account`, () => json({ tool: pending(single) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'GitHub')
+    expect(accountLabels(el)).toEqual(['API token'])
+    expect(accountFields(el)).toHaveLength(1)
+    expect(accountFields(el)[0]?.placeholder).toBe('Paste the API token')
+    await type(accountFields(el)[0], ' ghp_Abc123 ')
+    await click(accountSave(el))
+    await until(() => agent.find('PUT', `${TOOLS_PATH}/github/account`).length === 1)
+    expect(agent.find('PUT', `${TOOLS_PATH}/github/account`)[0].body).toEqual({ values: { token: 'ghp_Abc123' } })
   })
 })
 

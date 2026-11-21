@@ -2345,16 +2345,16 @@ export class Hub {
   }
 
   /**
-   * The owner sets or replaces the space's account (PROF-TOOL-004, UI-CONV-050). The token goes to the agent and
-   * nowhere else: no store, no draft, no log, no notice of this page holds it.
+   * The owner sets or replaces the space's account, one value per declared field (PROF-TOOL-004, UI-CONV-050). The
+   * values go to the agent and nowhere else: no store, no draft, no log, no notice of this page holds them.
    */
   public setSpaceToolAccount(
     agentDid: string,
     spaceId: string,
     source: string,
-    secret: string
+    values: Record<string, string>
   ): Promise<SpaceToolAnswer> {
-    return this.withAgent(agentDid, (client, token) => client.setSpaceToolAccount(token, spaceId, source, secret))
+    return this.withAgent(agentDid, (client, token) => client.setSpaceToolAccount(token, spaceId, source, values))
   }
 
   public clearSpaceToolAccount(agentDid: string, spaceId: string, source: string): Promise<SpaceTool> {

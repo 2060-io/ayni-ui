@@ -4,11 +4,13 @@
  * account, what each of its tools asks, who can use it, and Remove. The settings (bindings and rules) and the account
  * are saved by two Saves. A change that grants something waits for the owner's phone: its Save becomes the code and
  * the time left, a stream stays open so that `ayni.space.tools.changed` reaches this page, and it can be withdrawn; a
- * change that only narrows applies at once, also while another waits. The token of a space's account is typed in a
- * masked field that is never prefilled, is emptied as its request leaves, and is kept nowhere.
+ * change that only narrows applies at once, also while another waits. A space's account is typed in one masked field
+ * per value its agent declares, in the agent's order: never prefilled, sent all together once each holds a value that
+ * fits, emptied as their request leaves and with the panel, and kept nowhere.
  */
 import {
   type AgentRecord,
+  accountValuesOf,
   bindingValueFits,
   canAdd,
   changeOutcomeKeyOf,
@@ -20,10 +22,10 @@ import {
   ruleChoicesFor,
   type SpaceInfo,
   type SpaceTool,
+  type SpaceToolAccountField,
   type SpaceToolAnswer,
   type ToolRule,
   timeLeftOf,
-  tokenFits,
   toolRefusalOf,
   toolRowStateOf,
 } from '@ayni.org/ayni-ui-core'
@@ -76,6 +78,7 @@ export function ToolsSegment({ agent, space }: { agent: AgentRecord; space: Spac
   if (tool)
     return (
       <ToolPanel
+        key={tool.source}
         agent={agent}
         space={space}
         tool={tool}
@@ -180,8 +183,12 @@ function ToolPanel({
   })
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState<'account' | 'remove' | null>(null)
-  // the token: never in React state, a draft or a store; read once at Save, the field emptied as the request leaves
-  const tokenRef = useRef<HTMLInputElement>(null)
+  // the values of the account: never in React state, a draft or a store; read once at Save, the fields emptied as the
+  // request leaves and gone with the panel. Only whether each field holds something is kept, for the Save.
+  const accountRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const [filled, setFilled] = useState<Record<string, boolean>>({})
+  // once the account is set, its fields show again only for Replace
+  const [replacing, setReplacing] = useState(false)
   const now = useNow(!!state.waiting)
 
   // what the agent says the tool is now, once a change applied or the list was read again; while settings wait for
@@ -224,8 +231,12 @@ function ToolPanel({
       })
     // applied at once: a change that waits meanwhile, of another control, goes on waiting
     else setState((s) => ({ waiting: s.waiting, outcome: { from, key: 'saved' }, error: null }))
+    if (from === 'account') setReplacing(false)
     onTool(answer.tool)
   }
+
+  const accountFields = tool.account.fields ?? []
+  const badTokenWords = (field: SpaceToolAccountField) => t('tools.badToken', { agent: agent.name, label: field.label })
 
   const refused = (e: unknown, from: From) => {
     if (!(e instanceof ProfileError)) {
@@ -241,9 +252,15 @@ function ToolPanel({
       // the rule in force stays
       setRules(toolRules())
       setFieldErrors({ [`calls.${r.name}`]: t('tools.looserThanPack', { agent: agent.name }) })
-    } else if (r.at === 'token')
-      setFieldErrors({ token: t('tools.badToken', { agent: agent.name, label: tool.account.label ?? '' }) })
-    else {
+    } else if (r.at === 'account') {
+      const field = accountFields.find((f) => f.name === r.field)
+      if (field && r.reason === 'badToken') setFieldErrors({ [`account.${field.name}`]: badTokenWords(field) })
+      else {
+        // the agent declares other fields than those shown: they are read again, and shown empty
+        setState((s) => ({ ...s, error: { from, text: t('tools.badValue', { agent: agent.name }) } }))
+        onReload()
+      }
+    } else {
       const text =
         r.reason === 'phoneNeeded'
           ? t('tools.phoneNeeded', { agent: agent.name })
@@ -325,17 +342,32 @@ function ToolPanel({
     )
   }
 
-  const saveToken = () => {
-    const field = tokenRef.current
-    if (!field) return
-    const secret = field.value
-    // emptied as soon as it is read: nothing typed in it is ever shown back
-    field.value = ''
-    if (!tokenFits(tool.account, secret)) {
-      setFieldErrors({ token: t('tools.badToken', { agent: agent.name, label: tool.account.label ?? '' }) })
+  /** Empties every field of the account: nothing typed in them is ever shown back. */
+  const emptyAccount = () => {
+    for (const input of Object.values(accountRefs.current)) if (input) input.value = ''
+    setFilled({})
+  }
+
+  /**
+   * The Save of the account (UI-CONV-050): every field, trimmed and checked against its pattern; one that does not fit
+   * keeps its value and shows why, and nothing is sent; else all go in one request, and the fields are emptied.
+   */
+  const saveAccount = () => {
+    if (!accountFields.length || !accountFields.every((f) => filled[f.name])) return
+    const { values, refused } = accountValuesOf(
+      accountFields,
+      Object.fromEntries(accountFields.map((f) => [f.name, accountRefs.current[f.name]?.value ?? '']))
+    )
+    if (refused.length) {
+      setFieldErrors(
+        Object.fromEntries(
+          accountFields.filter((f) => refused.includes(f.name)).map((f) => [`account.${f.name}`, badTokenWords(f)])
+        )
+      )
       return
     }
-    void send('account', () => hub.setSpaceToolAccount(agent.did, space.id, tool.source, secret))
+    emptyAccount()
+    void send('account', () => hub.setSpaceToolAccount(agent.did, space.id, tool.source, values))
   }
 
   /** A change that only narrows applies at once, also while another waits (PROF-TOOL-003). */
@@ -412,6 +444,9 @@ function ToolPanel({
 
   const ownerBindings = tool.bindings.filter((b) => b.setBy === 'owner')
   const account = tool.account
+  // the fields of the account: until it is set, and then for Replace
+  const typing = !account.set || replacing
+  const accountComplete = accountFields.length > 0 && accountFields.every((f) => filled[f.name])
   const date = (iso: string | null | undefined) =>
     iso ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(iso)) : ''
   // while a change waits, only what narrows can be sent: a binding, a token or a looser rule would be refused
@@ -485,44 +520,75 @@ function ToolPanel({
         <section className="space-section tool-section" aria-label={t('tools.accountTitle')}>
           <h4 className="section-label">{t('tools.accountTitle')}</h4>
           <div className="tool-account-status">
-            <span>{account.label}</span>
             <span className="muted small">
               {account.set
                 ? t('tools.accountSetBy', { name: account.setBy?.name ?? '', date: date(account.setAt) })
                 : t('tools.notSet')}
             </span>
           </div>
-          <label className="field">
-            <span className="sr-only">{account.label}</span>
-            <input
-              ref={tokenRef}
-              className="input"
-              type="password"
-              name={`token-${tool.source}`}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              data-1p-ignore="true"
-              data-lpignore="true"
-              placeholder={t('tools.paste', { label: account.label })}
-              disabled={waiting}
-              aria-invalid={fieldErrors.token ? true : undefined}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  saveToken()
-                }
-              }}
-            />
-            {fieldError('token')}
-          </label>
+          {typing
+            ? accountFields.map((f) => (
+                <label key={f.name} className="field">
+                  {f.label}
+                  <input
+                    ref={(input) => {
+                      accountRefs.current[f.name] = input
+                    }}
+                    className="input"
+                    type="password"
+                    name={`account-${tool.source}-${f.name}`}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-1p-ignore="true"
+                    data-lpignore="true"
+                    placeholder={t('tools.paste', { label: f.label })}
+                    disabled={waiting}
+                    aria-invalid={fieldErrors[`account.${f.name}`] ? true : undefined}
+                    onChange={(e) => {
+                      const holds = e.currentTarget.value.trim() !== ''
+                      setFilled((all) => (all[f.name] === holds ? all : { ...all, [f.name]: holds }))
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        saveAccount()
+                      }
+                    }}
+                  />
+                  {fieldError(`account.${f.name}`)}
+                </label>
+              ))
+            : null}
           <div className="tool-actions">
-            {state.waiting?.from === 'account' ? null : (
-              <button type="button" className="btn" disabled={busy || waiting} onClick={saveToken}>
-                {account.set ? t('tools.replace') : t('tools.save')}
+            {state.waiting?.from === 'account' ? null : typing ? (
+              <button
+                type="button"
+                className="btn account-save"
+                disabled={busy || waiting || !accountComplete}
+                onClick={saveAccount}
+              >
+                {t('tools.save')}
+              </button>
+            ) : (
+              <button type="button" className="btn" disabled={busy || waiting} onClick={() => setReplacing(true)}>
+                {t('tools.replace')}
               </button>
             )}
+            {replacing && account.set ? (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setFieldErrors({})
+                  setReplacing(false)
+                  setFilled({})
+                }}
+              >
+                {t('app.cancel')}
+              </button>
+            ) : null}
             {account.set ? (
               <button
                 type="button"
