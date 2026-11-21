@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.2](https://github.com/2060-io/ayni-ui/compare/v0.20.1...v0.20.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* **core:** every call to an agent goes with the cache mode no-store (UI-SESS-020, core 0.6.2) ([9324841](https://github.com/2060-io/ayni-ui/commit/932484131f6e0b2fbed297f2d0844e389ca5e646))
+* **core:** every call to an agent goes with the cache mode no-store (UI-SESS-020, core 0.6.2) ([d4a522e](https://github.com/2060-io/ayni-ui/commit/d4a522eb5ad39ad5d9aeb35d64b0b8c70ed289ae))
+
 ## [0.20.1](https://github.com/2060-io/ayni-ui/compare/v0.20.0...v0.20.1) (2026-11-21)
 
 
