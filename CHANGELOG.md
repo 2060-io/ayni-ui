@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.21.0](https://github.com/2060-io/ayni-ui/compare/v0.20.2...v0.21.0) (2026-11-21)
+
+
+### Features
+
+* **accounts:** Your accounts, the sign-in in a new tab, the Connect card and the workspace chosen from the owner's account ([c9f3aec](https://github.com/2060-io/ayni-ui/commit/c9f3aeca72b5c497eb9d547c1081150eda49ad28))
+* **core:** each person's own accounts, the Connect card and personal in the shapes of 3.4, profile 3.5 (core 0.7.0) ([0259427](https://github.com/2060-io/ayni-ui/commit/0259427d2c3b76cc7cee2b06a86dfdc3be19790b))
+* tools phase 2, each person's own accounts (Your accounts, sign-in, Connect card, profile 3.5) ([ef0996d](https://github.com/2060-io/ayni-ui/commit/ef0996d0f6c133143f2a072a69d2286a4daf2103))
+
+
+### Bug Fixes
+
+* **accounts:** a tool that uses another source's account opens that source's row; clientIds by place, "" naming nothing ([d80c205](https://github.com/2060-io/ayni-ui/commit/d80c205633a564e143130a6554e43d57383bf567))
+
 ## [0.20.2](https://github.com/2060-io/ayni-ui/compare/v0.20.1...v0.20.2) (2026-11-21)
 
 
