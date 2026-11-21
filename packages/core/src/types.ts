@@ -92,6 +92,11 @@ export interface SessionRecord {
   idleTimeoutSeconds?: number
   /** the agent asked the phone to re-link this provisional session */
   rebindAsked?: boolean
+  /**
+   * the provisional session was opened to start a new conversation (`newConversation`, PROF-CONV-006): a new code
+   * for it opens its replacement the same way (UI-BIND-013)
+   */
+  newConversation?: boolean
   deviceHandle?: string
   /** a device secret the agent handed with this session, moved to the agent record once seen */
   deviceSecret?: string

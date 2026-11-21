@@ -866,14 +866,16 @@ export class Hub {
    * Under the agent's opening lock. A conversation already open here is reused (UI-SESS-014); with a
    * session bound the new one is its sibling and carries no proof; otherwise the device proof binds it
    * silently on a paired device (UI-BIND-011), and a rejected or missing proof leaves it provisional,
-   * for the binding screen.
+   * for the binding screen. `replacing` is the record of a link the new session takes the place of, its transcript
+   * and its place in the list included (UI-BIND-013); on screen, the new session is on screen in the same change.
    */
   private async openNow(
     agentDid: string,
     resume: ResumeTarget | undefined,
     fresh: boolean,
     quiet = false,
-    spaceId?: string
+    spaceId?: string,
+    replacing?: SessionRecord
   ): Promise<{ session: SessionRecord; reused: boolean }> {
     // its turn has come, perhaps after another tab's opening: the secret and the sessions are read as they are now
     await this.reload()
@@ -892,7 +894,7 @@ export class Hub {
     // the sibling of the latest binding (UI-SESS-019)
     const bound = this.boundOf(agentDid)
     const locale = this.snapshot.prefs.locale ?? navigator.language
-    const old = this.previousRecord(resume)
+    const old = replacing ?? this.previousRecord(resume)
     const now = new Date().toISOString()
     let session: SessionRecord
     if (bound) {
@@ -1010,6 +1012,8 @@ export class Hub {
         conversationId: created.conversationId ?? resume?.conversationId ?? old?.conversationId,
         resumedFromSessionId: created.resumedFromSessionId ?? resume?.sessionId,
         pendingText: created.state === 'bound' ? undefined : resume?.text,
+        // a new code for it opens its replacement the same way (UI-BIND-013)
+        newConversation: fresh && created.state !== 'bound' ? true : undefined,
       }
     }
     if (old) {
@@ -1028,6 +1032,9 @@ export class Hub {
     await this.store.putSession(session)
     await this.serial(async () => this.store.putTranscript(await this.inheritTranscript(session, old)))
     if (session.conversationId) await this.collapseConversations(agentDid, session.sessionId)
+    // the link on screen stays on screen: never a moment with neither the old record nor the new one (UI-BIND-013)
+    if (replacing && this.snapshot.selectedSessionId === replacing.sessionId)
+      this.snapshot = { ...this.snapshot, selectedSessionId: session.sessionId }
     await this.reload()
     this.bus?.post({ kind: 'changed', what: 'sessions' })
     return { session, reused: false }
@@ -1412,6 +1419,91 @@ export class Hub {
     const { client, token } = this.clientOf(session)
     const binding = await client.refreshBinding(sessionId, token)
     await this.saveSession({ ...session, binding })
+  }
+
+  private readonly renewing = new Map<string, Promise<SessionRecord | undefined>>()
+
+  /**
+   * Show a new code (UI-BIND-013): the link on screen gets a new invitation and a new binding code, in place and
+   * with no reload. Material that expired on a session still waiting is refreshed on that session (UI-BIND-006,
+   * PROF-BIND-007). Before it expires the agent refreshes nothing, and the phone refuses an invitation it received
+   * already (a scan that did not complete); and a session that closed before the phone linked it takes no new
+   * material. Then a new provisional session, opened as the first one was, takes its place: its transcript, its
+   * title and its place in the list, on screen if it was, and the session it replaces is ended on the agent, so that
+   * none stays waiting (PROF-SESS-005). Asked again while it runs, it is the same renewal. Resolves with the session
+   * that shows the new code, or nothing when another tab replaced the link already.
+   */
+  public newBindingCode(sessionId: string): Promise<SessionRecord | undefined> {
+    const running = this.renewing.get(sessionId)
+    if (running) return running
+    const renewal = this.renewBinding(sessionId).finally(() => this.renewing.delete(sessionId))
+    this.renewing.set(sessionId, renewal)
+    return renewal
+  }
+
+  private async renewBinding(sessionId: string): Promise<SessionRecord | undefined> {
+    const shown = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+    if (!shown || !awaitsLink(shown)) return undefined
+    const agent = this.snapshot.agents.find((a) => a.did === shown.agentDid)
+    if (!agent) throw new Error('agent not found')
+    if (!this.canConnect(agent)) throw new Error('agent is not trusted')
+    if (shown.state === 'provisional' && shown.sessionToken && !bindingLive(shown.binding)) {
+      try {
+        await this.refreshBinding(sessionId)
+        const refreshed = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+        // the agent's clock may say the material is still good (`409` with it): then a new session, not the same code
+        if (refreshed?.binding?.bindingCode !== shown.binding?.bindingCode) return refreshed
+      } catch (e) {
+        // the session's own window ended meanwhile (`expired`): a new session takes its place
+        if (!refusesToken(e)) throw e
+      }
+    }
+    const renewed = await this.withOpening(shown.agentDid, async () => {
+      // its turn has come, perhaps after another tab's: a link another tab replaced already is that tab's
+      await this.reload()
+      const old = this.snapshot.sessions.find((s) => s.sessionId === sessionId)
+      if (!old || !awaitsLink(old)) return undefined
+      const opened = await this.openNow(
+        old.agentDid,
+        { sessionId: old.resumedFromSessionId, conversationId: old.conversationId, text: old.pendingText },
+        !!old.newConversation,
+        false,
+        old.newConversation ? old.spaceId : undefined,
+        old
+      )
+      return { ...opened, old }
+    })
+    if (!renewed) return undefined
+    const { session, reused, old } = renewed
+    this.stopLeading(old.sessionId)
+    // ended on the agent, not left to expire there: the phone can no longer link it (PROF-SESS-005)
+    if (old.state === 'provisional' && old.sessionToken) {
+      const { client, token } = this.clientOf(old)
+      await client
+        .close(old.sessionId, token)
+        .catch((e) => warn(`the session ${old.sessionId} a new code replaced could not be ended on the agent`, e))
+    }
+    if (reused) {
+      // the conversation got a session meanwhile: the link's record leaves, and that session is on screen
+      await this.store.deleteSession(old.sessionId)
+      await this.store.deleteTranscript(old.sessionId)
+      if (this.snapshot.selectedSessionId === old.sessionId)
+        this.snapshot = { ...this.snapshot, selectedSessionId: session.sessionId }
+      await this.reload()
+      this.bus?.post({ kind: 'changed', what: 'sessions' })
+    }
+    const onScreen = [old.sessionId, session.sessionId].includes(this.snapshot.selectedSessionId ?? '')
+    if (onScreen) this.selectSession(session.sessionId)
+    if (!reused) void this.lead(session.sessionId, onScreen || undefined)
+    // bound at once (a sibling of a session that bound meanwhile): as an opening does
+    if (session.state === 'bound') {
+      if (!reused) {
+        await this.loadHistory(session.sessionId).catch(() => undefined)
+        await this.syncLogged(session.agentDid, session.sessionId)
+      }
+      if (old.pendingText) await this.send(session.sessionId, old.pendingText)
+    }
+    return this.snapshot.sessions.find((s) => s.sessionId === session.sessionId) ?? session
   }
 
   public async closeConversation(sessionId: string, silent = false): Promise<void> {
@@ -2842,6 +2934,16 @@ function spaceFieldsOf(listed: unknown, record?: SessionRecord): Pick<SessionRec
  * The agent refuses the token itself (profile §9, UI-SESS-019): the session is closed or superseded (410), the token
  * is unknown (401), or it is another session's (404). Such a token is never sent again.
  */
+/** A link that waits for the phone, or whose session closed before the phone linked it (UI-BIND-013). */
+function awaitsLink(s: SessionRecord): boolean {
+  return s.state === 'provisional' || (s.state === 'closed' && !s.principal && !s.archived)
+}
+
+/** Binding material the phone can still use: shown and not expired (UI-BIND-006). */
+function bindingLive(binding: SessionRecord['binding']): boolean {
+  return !!binding && Date.parse(binding.expiresAt) > Date.now()
+}
+
 function refusesToken(e: unknown): e is ProfileError {
   return e instanceof ProfileError && (e.status === 401 || e.status === 404 || e.status === 410)
 }

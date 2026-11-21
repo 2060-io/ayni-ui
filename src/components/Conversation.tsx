@@ -1,4 +1,4 @@
-/** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional. */
+/** The conversation pane (UI-CONV-*, UI-SESS-003/007/009, UI-TRUST-004/007, UI-CAP-001, UI-SHELL-014): banners, transcript, composer; binding while provisional, and a new code when its session closes (UI-BIND-013). */
 import { ACTIVITY, CLOSURE_REASONS } from '@ayni.org/ayni-agui-profile'
 import {
   CLOSURE_REASON_KEYS,
@@ -74,6 +74,12 @@ export function Conversation() {
   const session = snap.sessions.find((s) => s.sessionId === snap.selectedSessionId)
   const agent = snap.agents.find((a) => a.did === session?.agentDid)
   const transcript = session ? snap.transcripts[session.sessionId] : undefined
+  // a link on screen stays the link screen when its session closes before the phone linked it: the screen shows a
+  // new code there, where an empty conversation and its message form would have been (UI-BIND-013)
+  const [linkShown, setLinkShown] = useState<string>()
+  useEffect(() => {
+    if (session?.state === 'provisional') setLinkShown(session.sessionId)
+  }, [session?.state, session?.sessionId])
   // each "updated a memory" line after the reply of its turn (UI-CONV-035)
   const messages = useMemo(() => placeMemoryLines(transcript?.messages ?? []), [transcript?.messages])
   // what waits for the agent to finish answering, the same on every device (UI-CONV-025)
@@ -205,7 +211,10 @@ export function Conversation() {
   }
 
   const trustBlocked = agent.trust.result !== 'trusted' && !agent.trustAcknowledged
-  const closed = session.state === 'closed'
+  const linking =
+    session.state === 'provisional' ||
+    (session.state === 'closed' && linkShown === session.sessionId && !session.principal)
+  const closed = session.state === 'closed' && !linking
   // routine closures (idle, by the person, by the agent) say nothing: writing wakes the conversation (D26);
   // channel-level closures need the person's attention once (UI-SESS-009)
   const attention = closed && ['supersede', 'channelClosed', 'credentialInvalid'].includes(session.closedReason ?? '')
@@ -253,7 +262,7 @@ export function Conversation() {
             ) : null}
           </span>
         </div>
-        {session.state !== 'provisional' ? (
+        {!linking ? (
           <button
             type="button"
             className={['icon-btn', search ? 'on' : ''].join(' ')}
@@ -334,7 +343,7 @@ export function Conversation() {
           {t(reasonKey)} {t('closure.writeToReconnect')}
         </div>
       ) : null}
-      {search && session.state !== 'provisional' ? (
+      {search && !linking ? (
         <search className="search-bar" aria-label={t('conversation.search')}>
           <input
             ref={searchInput}
@@ -402,7 +411,7 @@ export function Conversation() {
           </button>
         </search>
       ) : null}
-      {session.state === 'provisional' ? (
+      {linking ? (
         <Binding session={session} />
       ) : (
         <>
