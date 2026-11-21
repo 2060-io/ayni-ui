@@ -22,11 +22,23 @@ export type ToolRule = 'none' | 'confirm' | 'approval' | 'off'
 export type ToolStepUp = 'device' | 'face-match' | 'document'
 export type SpaceToolState = 'available' | 'setup' | 'ready' | 'off'
 
-/** Whose account a source's calls run with; for a space's account, whether it is set, when and by whom, never it. */
+/**
+ * One value of a space's account, as its owner's answer declares it (PROF-TOOL-001): one masked field each, labelled by
+ * `label`, the value checked against `pattern` before it is sent. Every field is a secret.
+ */
+export interface SpaceToolAccountField {
+  name: string
+  label: string
+  pattern?: string
+}
+
+/**
+ * Whose account a source's calls run with; for a space's account, the fields its owner fills in (one per value, in
+ * the order to show; none in a member's answer) and whether it is set, when and by whom, never a value.
+ */
 export interface SpaceToolAccount {
   kind: ToolAccountKind
-  label?: string
-  pattern?: string
+  fields?: SpaceToolAccountField[]
   set?: boolean
   setAt?: string | null
   setBy?: { name: string } | null
@@ -159,6 +171,22 @@ const spaceRefOf = (v: unknown): { id: string; title: string } | undefined => {
   return typeof s.id === 'string' ? { id: s.id, title: str(s.title) } : undefined
 }
 
+/** The fields of a space's account, in the agent's order; one with no name, or a name said twice, is not shown. */
+function accountFieldsOf(value: unknown): SpaceToolAccountField[] {
+  const seen = new Set<string>()
+  const fields: SpaceToolAccountField[] = []
+  for (const f of list(value)) {
+    if (typeof f.name !== 'string' || !f.name || seen.has(f.name)) continue
+    seen.add(f.name)
+    fields.push({
+      name: f.name,
+      label: str(f.label, f.name),
+      ...(typeof f.pattern === 'string' ? { pattern: f.pattern } : {}),
+    })
+  }
+  return fields
+}
+
 /** A space's tool as the agent gives it, with what is missing filled in; null for one with no source. */
 export function spaceToolOf(value: unknown): SpaceTool | null {
   const t = obj(value)
@@ -178,8 +206,7 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
       kind,
       ...(kind === 'space'
         ? {
-            label: str(account.label),
-            ...(typeof account.pattern === 'string' ? { pattern: account.pattern } : {}),
+            fields: accountFieldsOf(account.fields),
             set: account.set === true,
             setAt: typeof account.setAt === 'string' ? account.setAt : null,
             setBy: typeof setBy.name === 'string' ? { name: setBy.name } : null,
@@ -340,13 +367,42 @@ export function bindingValueFits(binding: Pick<SpaceToolBinding, 'pattern'>, val
   }
 }
 
-/** The longest token the agent takes (PROF-TOOL-004). */
+/** The longest value of a space's account the agent takes (PROF-TOOL-004). */
 export const TOKEN_MAX_LENGTH = 4096
 
-/** Whether a token may be sent (PROF-TOOL-004): not empty, not too long, matching the account's pattern. */
-export function tokenFits(account: Pick<SpaceToolAccount, 'pattern'>, token: string): boolean {
-  if (!token || token.length > TOKEN_MAX_LENGTH) return false
-  return bindingValueFits({ pattern: account.pattern }, token)
+/**
+ * A value of a space's account as it is checked and sent: without the spaces and line breaks a paste brings at either
+ * end (PROF-TOOL-004).
+ */
+export function accountValueOf(typed: string): string {
+  return typed.trim()
+}
+
+/**
+ * Whether a value of a space's account may be sent (PROF-TOOL-004), once trimmed: not empty, not too long, with no
+ * space or line break inside it, and matching its field's pattern.
+ */
+export function accountValueFits(field: Pick<SpaceToolAccountField, 'pattern'>, value: string): boolean {
+  if (!value || value.length > TOKEN_MAX_LENGTH || /\s/.test(value)) return false
+  return bindingValueFits({ pattern: field.pattern }, value)
+}
+
+/**
+ * The values of a space's account to send (`PUT …/account` with `{ values }`, PROF-TOOL-004): every declared field,
+ * trimmed; `refused` names, in the fields' order, those whose value does not fit, and then nothing may be sent.
+ */
+export function accountValuesOf(
+  fields: readonly SpaceToolAccountField[],
+  typed: Readonly<Record<string, string | undefined>>
+): { values: Record<string, string>; refused: string[] } {
+  const values: Record<string, string> = {}
+  const refused: string[] = []
+  for (const field of fields) {
+    const value = accountValueOf(typed[field.name] ?? '')
+    if (accountValueFits(field, value)) values[field.name] = value
+    else refused.push(field.name)
+  }
+  return { values: refused.length ? {} : values, refused }
 }
 
 /** One group of a source's tools in About (UI-CONV-049): the tools of one rule and one step-up, by their titles. */
@@ -404,7 +460,11 @@ export function changeOutcomeKeyOf(
 export function toolRefusalOf(error: { status?: number; code?: string; field?: string } | undefined):
   | { at: 'binding'; name: string; reason: 'badBinding' | 'pinnedByPack' }
   | { at: 'rule'; name: string; reason: 'looserThanPack' }
-  | { at: 'token'; reason: 'badToken' }
+  /**
+   * a value of the space's account (`account.<name>`): `field` the one named, null when none is; `fieldsChanged` when
+   * the agent named a field it does not declare, or one it misses (a `400`)
+   */
+  | { at: 'account'; field: string | null; reason: 'badToken' | 'fieldsChanged' }
   | {
       at: 'panel'
       reason:
@@ -424,7 +484,10 @@ export function toolRefusalOf(error: { status?: number; code?: string; field?: s
   if (code === 'bad-binding' || code === 'pinned-by-pack')
     return { at: 'binding', name: named, reason: code === 'bad-binding' ? 'badBinding' : 'pinnedByPack' }
   if (code === 'looser-than-pack') return { at: 'rule', name: named, reason: 'looserThanPack' }
-  if (code === 'bad-token') return { at: 'token', reason: 'badToken' }
+  const accountField = field.startsWith('account.') ? field.slice('account.'.length) : null
+  if (code === 'bad-token') return { at: 'account', field: accountField, reason: 'badToken' }
+  if (error?.status === 400 && accountField !== null)
+    return { at: 'account', field: accountField, reason: 'fieldsChanged' }
   const reason =
     code === 'confirmation-unavailable'
       ? 'phoneNeeded'

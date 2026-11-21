@@ -15,7 +15,7 @@ const TOOL = {
   source: 'relaticle',
   title: 'Relaticle CRM',
   state: 'setup',
-  account: { kind: 'space', label: 'API token', set: false },
+  account: { kind: 'space', fields: [{ name: 'token', label: 'API token' }], set: false },
   bindings: [],
   tools: [],
   pending: null,
@@ -70,15 +70,16 @@ describe("a space's tools (PROF-TOOL-001..005)", () => {
     ).toBe(202)
   })
 
-  it("sets the space's account with the token in the body, and clears it", async () => {
+  it("sets the space's account with every value in the body, by field, and clears it", async () => {
     const { client, calls } = agent((method) =>
       method === 'PUT' ? json({ tool: PENDING }, 202) : json({ tool: TOOL })
     )
-    expect((await client.setSpaceToolAccount('t', 'spc_sales', 'relaticle', '7|abc')).status).toBe(202)
+    const values = { api_key: 'k', api_secret: 's', access_token: '1-t', access_token_secret: 'ts' }
+    expect((await client.setSpaceToolAccount('t', 'spc_sales', 'relaticle', values)).status).toBe(202)
     expect(calls[0]).toMatchObject({
       method: 'PUT',
       path: '/spaces/spc_sales/tools/relaticle/account',
-      body: { token: '7|abc' },
+      body: { values },
     })
     const cleared = await client.clearSpaceToolAccount('t', 'spc_sales', 'relaticle')
     expect(calls[1]).toMatchObject({
@@ -109,10 +110,15 @@ describe("a space's tools (PROF-TOOL-001..005)", () => {
     expect(error).toBeInstanceOf(ProfileError)
     expect(error).toMatchObject({ status: 422, code: 'looser-than-pack', field: 'calls.create-note' })
     const phone = agent(() => json({ error: 'confirmation-unavailable' }, 409))
-    expect(await phone.client.setSpaceToolAccount('t', 's', 'r', 'x').catch((e) => e)).toMatchObject({
+    expect(await phone.client.setSpaceToolAccount('t', 's', 'r', { token: 'x' }).catch((e) => e)).toMatchObject({
       status: 409,
       code: 'confirmation-unavailable',
     })
+    // a value of the account the agent does not take, by the field it names
+    const bad = agent(() => json({ error: 'bad-token', field: 'account.api_secret' }, 422))
+    expect(
+      await bad.client.setSpaceToolAccount('t', 's', 'x', { api_key: 'k', api_secret: 's' }).catch((e) => e)
+    ).toMatchObject({ status: 422, code: 'bad-token', field: 'account.api_secret' })
   })
 })
 
