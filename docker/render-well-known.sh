@@ -6,6 +6,8 @@
 #   ANDROID_CERT_FINGERPRINTS   comma-separated SHA-256 fingerprints of the Android signing certificates
 #                               (empty until the signing key exists: Android then verifies nothing, iOS still works)
 # Both files are plain JSON; iOS reads apple-app-site-association without an extension as application/json.
+# The Apple file also lists the app under webcredentials: iOS closes the app's sign-in session (ASWebAuthenticationSession)
+# on an https return to this domain only when the domain names the app there (ayni-spec PROF-TOOL-018, app APP-CONV-054).
 set -eu
 OUT="${1:?output directory}"
 APP_ID="${APP_ID:-org.ayni.app}"
@@ -24,6 +26,9 @@ cat > "$OUT/.well-known/apple-app-site-association" <<JSON
         ]
       }
     ]
+  },
+  "webcredentials": {
+    "apps": ["${APPLE_TEAM_ID}.${APP_ID}"]
   }
 }
 JSON

@@ -30,6 +30,8 @@ describe('app-link association files (CC-WEB-001)', () => {
         components: [{ '/': '/app/*', comment: 'Ayni app links (AG-UI profile 3.1 section 10)' }],
       },
     ])
+    // the sign-in session of the app closes on an https return to this domain only when it lists the app here
+    expect(aasa.webcredentials).toEqual({ apps: ['Y5A6KQ62S7.org.ayni.app.dev'] })
     expect(assetlinks).toEqual([
       {
         relation: ['delegate_permission/common.handle_all_urls'],
@@ -45,6 +47,7 @@ describe('app-link association files (CC-WEB-001)', () => {
   it('stays valid JSON with no fingerprints yet and defaults to the mainnet id', () => {
     const { aasa, assetlinks } = render({ APPLE_TEAM_ID: 'Y5A6KQ62S7' })
     expect(aasa.applinks.details[0].appIDs).toEqual(['Y5A6KQ62S7.org.ayni.app'])
+    expect(aasa.webcredentials.apps).toEqual(['Y5A6KQ62S7.org.ayni.app'])
     expect(assetlinks[0].target).toEqual({
       namespace: 'android_app',
       package_name: 'org.ayni.app',
