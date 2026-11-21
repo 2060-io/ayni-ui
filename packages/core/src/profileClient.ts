@@ -96,8 +96,10 @@ export class ProfileClient {
     private readonly sessionsUrl: string,
     fetchFn: typeof fetch = fetch
   ) {
-    // a browser's fetch refuses to run as a method of another object ("Illegal invocation")
-    this.fetchFn = (input, init) => fetchFn(input, init)
+    // a browser's fetch refuses to run as a method of another object ("Illegal invocation"). Every call goes with the
+    // cache mode no-store (UI-SESS-020, PROF-ERR-003): a browser keys its cache on the URL and not on the token, and a
+    // stored `410` of the list once answered the list of every later session, without the agent being asked
+    this.fetchFn = (input, init) => fetchFn(input, { ...init, cache: 'no-store' })
   }
 
   private url(path = ''): string {
