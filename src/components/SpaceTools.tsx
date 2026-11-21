@@ -256,8 +256,8 @@ function ToolPanel({
       const field = accountFields.find((f) => f.name === r.field)
       if (field && r.reason === 'badToken') setFieldErrors({ [`account.${field.name}`]: badTokenWords(field) })
       else {
-        // the agent declares other fields than those shown: they are read again, and shown empty
-        setState((s) => ({ ...s, error: { from, text: t('tools.badValue', { agent: agent.name }) } }))
+        // the fields changed since the panel was read (UI-CONV-052): they are read again, and shown empty
+        setState((s) => ({ ...s, error: { from, text: t('tools.accountFieldsChanged') } }))
         onReload()
       }
     } else {

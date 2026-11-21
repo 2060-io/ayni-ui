@@ -449,11 +449,13 @@
       still sends them (its account shows no field). A member's view is unchanged (`kind` only, read as no field).
     - **Setting it.** `PUT {sessions}/spaces/{id}/tools/{source}/account` with `{ values: { <name>: <value> } }`, every
       declared field together; the answer is as before (`202` with `pending`, the outcome on
-      `ayni.space.tools.changed`). `422 bad-token` with `field: "account.<name>"` is shown at that field in the words of
-      UI-CONV-052 ("<agent> does not take this <label>."). A `400` naming an `account.` field, or a `bad-token` naming a
-      field the panel does not show, means the agent declares other fields than those on screen: the list is read
-      again, the fields show empty as the agent now declares them, and the account says "This value is not in the
-      form <agent> expects." (the table's words for a value refused, as no row of the table is about this).
+      `ayni.space.tools.changed`). The words are those of UI-CONV-052 as ayni-spec #103 settles them. `422 bad-token`
+      with `field: "account.<name>"`, and the panel's own check of a field's pattern, are shown at that field with
+      the label of that field: "<agent> does not take this <label>.", such as "Fleet support does not take this
+      Access token.". A `400` naming an `account.` field means the fields changed since the panel was read: the list
+      is read again, the fields show empty as the agent now declares them, and the account says, under its Save,
+      "The fields of this account have changed. Open the tool again." (`tools.accountFieldsChanged`, in the four
+      languages). A `bad-token` naming a field the panel does not show is taken as the same case and says the same.
     - **The fields.** One uncontrolled `type="password"` field per declared field, in the agent's order, its label
       above it and "Paste the <label>" in it, with autocomplete, autocorrect, spell checking and the common password
       managers turned off, as the token's field was. Save sends all of them in one request and is enabled only when
@@ -474,6 +476,7 @@
       not set yet, its fields disabled). The status line no longer starts with the account's label: there is no
       single label any more, and each field has its own.
     - The core is 0.6.0: `SpaceToolAccountField`, `SpaceToolAccount.fields` (its `label` and `pattern` removed),
+      `TOOLS_COPY['tools.accountFieldsChanged']`,
       `accountValueOf`, `accountValueFits` and `accountValuesOf` (they replace `tokenFits`),
       `ProfileClient.setSpaceToolAccount(token, spaceId, source, values)`, and `toolRefusalOf` answering
       `{ at: 'account', field, reason: 'badToken' | 'fieldsChanged' }` in place of `{ at: 'token' }`.

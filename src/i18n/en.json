@@ -805,6 +805,7 @@
     "paste": "Paste the {{label}}",
     "replace": "Replace",
     "badToken": "{{agent}} does not take this {{label}}.",
+    "accountFieldsChanged": "The fields of this account have changed. Open the tool again.",
     "removeAccount": "Remove account",
     "removeAccountConfirm": "Remove the account? {{tool}} stops working in this space until a new one is set.",
     "asks": "What each tool asks",

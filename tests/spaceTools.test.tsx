@@ -747,8 +747,14 @@ describe('one field per key of a space account (UI-CONV-050, PROF-TOOL-004)', ()
     expect(errorAt(el, 'API secret')).toBe('Fleet support does not take this API secret.')
     expect(el.querySelectorAll('.tool-section[aria-label="Account"] .field-error')).toHaveLength(1)
     expect(accountFields(el)[1]?.getAttribute('aria-invalid')).toBe('true')
-    // a space inside a value, once trimmed, is refused at its field
+    // an access token with no dash: the words name that field's label (UI-CONV-052)
     await type(accountFields(el)[1], X_VALUES.api_secret)
+    await type(accountFields(el)[2], '1234567890XtOkEnXtOkEn')
+    await click(accountSave(el))
+    expect(agent.find('PUT', X_ACCOUNT)).toHaveLength(0)
+    expect(errorAt(el, 'Access token')).toBe('Fleet support does not take this Access token.')
+    expect(errorAt(el, 'API secret')).toBeUndefined()
+    // a space inside a value, once trimmed, is refused at its field
     await type(accountFields(el)[2], '1234567890-XtOkEn XtOkEn')
     await click(accountSave(el))
     expect(agent.find('PUT', X_ACCOUNT)).toHaveLength(0)
@@ -778,7 +784,7 @@ describe('one field per key of a space account (UI-CONV-050, PROF-TOOL-004)', ()
     holdsNone(el, hub, X_VALUES)
   })
 
-  it('reads the fields again when the agent names one it does not declare (a `400`)', async () => {
+  it('says the fields changed when a `400` names a field of the account, and reads them again (UI-CONV-052)', async () => {
     let tools: unknown[] = [X]
     const { el, agent } = await ownersTools([
       [`GET ${TOOLS_PATH}`, () => json({ tools })],
@@ -792,11 +798,30 @@ describe('one field per key of a space account (UI-CONV-050, PROF-TOOL-004)', ()
     await click(accountSave(el))
     await until(() => el.querySelector('.tool-section[aria-label="Account"] .tool-error'))
     expect(el.querySelector('.tool-section[aria-label="Account"] .tool-error')?.textContent).toBe(
-      'This value is not in the form Fleet support expects.'
+      'The fields of this account have changed. Open the tool again.'
     )
     await until(() => agent.find('GET', TOOLS_PATH).length > reads)
     await until(() => accountLabels(el).length === 3)
     expect(accountLabels(el)).toEqual(['API secret', 'Access token', 'Access token secret'])
+    // nothing is said at a field: the words are the account's
+    expect(el.querySelectorAll('.tool-section[aria-label="Account"] .field-error')).toHaveLength(0)
+  })
+
+  it('says the fields changed for a `bad-token` that names a field the panel does not show', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [X] })],
+      [`PUT ${X_ACCOUNT}`, () => json({ error: 'bad-token', field: 'account.pin' }, 422)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'X')
+    await fill(el, X_VALUES)
+    const reads = agent.find('GET', TOOLS_PATH).length
+    await click(accountSave(el))
+    await until(() => el.querySelector('.tool-section[aria-label="Account"] .tool-error'))
+    expect(el.querySelector('.tool-section[aria-label="Account"] .tool-error')?.textContent).toBe(
+      'The fields of this account have changed. Open the tool again.'
+    )
+    await until(() => agent.find('GET', TOOLS_PATH).length > reads)
   })
 
   it('empties every field when the panel is left, and when the segment is', async () => {
