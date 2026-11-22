@@ -117,5 +117,29 @@ in place of the one the device holds (`withheldTextsOf`, a message's `withheld: 
 The English wording of these surfaces is `CONNECTIONS_COPY`, the table of UI-CONV-058 row by row, keyed by its path in
 the translation files.
 
+## Profile 3.5 as amended on 2026-11-21: the Notifications (agent D114)
+
+Approvals reach each person once. An approver finds an approval nowhere in their conversations: on their phone and in
+the Notifications of the space (an approval of a space's tool) or of the agent (any other); the requester sees one card,
+in the conversation where they asked, replaced in place by each status. The wire types of §3.12 are written here
+(`NotificationItem`, `NotificationApproval`, `NotificationsPage`, `NotificationsChange`), with tolerant readers
+(`notificationsPageOf`, `notificationOf`, `notificationApprovalOf`, `notificationsChangeOf`). `ProfileClient` reads the
+lists (`notifications(token, spaceId | null, before?, limit?)`, 50 by default, 200 at most) and sends Decide on your
+phone (`resendApproval`); a space carries `notificationsWaiting`; `parseAppLink` reads
+`/app/service/{did}/spaces/{spaceId}/notifications?approval=` and `/app/service/{did}/notifications?approval=`
+(PROF-LINK-005). The reducer signals `ayni.space.notifications.changed` and no longer reacts to the withdrawn
+`ayni.approval.request`. A decision from the Notifications is `approval.decide` and a withdrawal `approval.cancel`, both
+ending with `noTurn: "decision"`; a refusal is a `RunError` whose code is `decide-on-phone` or `not-eligible`.
+
+| Surface | Functions |
+| --- | --- |
+| Against which agent (PROF-DESC-011) | `takesNotifications` (`features.notifications`), `spaceSegmentsOf(space, { notifications })` (Notifications right after Conversations, for every member; none in Personal, whose approvals are the agent's) |
+| The badges (PROF-TOOL-025) | `notificationsWaitingOf` (a space's), `withSpaceCount` (the agent's number after an event or a read, never added up), `NOTIFICATIONS_CHANGED` |
+| An item (UI-APPR-002, UI-APPR-007, UI-APPR-008) | `notificationControlsOf` (Approve and Reject, Decide on your phone, or nothing), `notificationHeadingOf`, `notificationStatusOf` (the time left, the person's own decision, who decided and when, "you"), `decidedAtOf`, `approvalRefusalOf` |
+| The requester's card (UI-APPR-005, UI-APPR-006) | `cardStatusOf` (waiting for the owner, then the outcome where it waited), `drawsApprovalCard` (a conversation never draws an approver's request, UI-APPR-001) |
+
+The English wording is `NOTIFICATIONS_COPY`, the rows of the table of UI-CONV-052 for the Notifications and the card,
+keyed by its path in the translation files.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

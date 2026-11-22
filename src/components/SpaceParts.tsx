@@ -8,6 +8,7 @@ import {
   hasOtherSpace,
   isPersonsMessage,
   membersLineOf,
+  notificationsWaitingOf,
   ProfileError,
   personalSpaceOf,
   type SessionRecord,
@@ -27,6 +28,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { NotificationsBadge } from './ApprovalWords.js'
 import { Dialog } from './Dialog.js'
 
 const KIND_ICON = { personal: User, team: Users, organization: Building2 }
@@ -143,7 +145,13 @@ export function SpaceRows({ agent, query }: { agent: AgentRecord; query: string 
                       .join(' · ')}
               </span>
             </span>
-            {space.unread ? <span className="count">{space.unread}</span> : <span />}
+            {/* the space's notifications that wait for the person, beside its unread messages (PROF-TOOL-025) */}
+            <span className="space-counts">
+              {hub.takesNotifications(agent.did) ? (
+                <NotificationsBadge count={notificationsWaitingOf(space)} bell />
+              ) : null}
+              {space.unread ? <span className="count">{space.unread}</span> : null}
+            </span>
           </button>
         )
       })}

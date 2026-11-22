@@ -3,12 +3,13 @@
  * (UI-CONV-004/006/021, UI-APPR-*, UI-CAP-*).
  */
 import type { ApprovalActivity, CapabilityActivity, FlowActivity, MenuActivity } from '@ayni.org/ayni-agui-profile'
-import { isClosedFlow, type SessionRecord, toolApprovalOf } from '@ayni.org/ayni-ui-core'
+import { cardStatusOf, isClosedFlow, type SessionRecord, toolApprovalOf } from '@ayni.org/ayni-ui-core'
 import { BadgeCheck, Smartphone } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub } from '../state/useHub.js'
+import { approvalStatusWords } from './ApprovalWords.js'
 import { ToolApprovalCard } from './Tools.js'
 
 export function MenuCard({ sessionId, menu }: { sessionId: string; menu: MenuActivity }) {
@@ -51,6 +52,11 @@ export function ApprovalCard({
   return <PlainApprovalCard sessionId={sessionId} approval={approval} />
 }
 
+/**
+ * The requester's card of an approval that carries no action: an elevation request, or an approval of another kind
+ * (UI-APPR-004, UI-APPR-005). Its status in the words of UI-CONV-052, replaced in place; Withdraw while it waits, which
+ * starts no turn. An approver never sees it here: their request is in their Notifications (UI-APPR-001).
+ */
 function PlainApprovalCard({
   sessionId,
   approval,
@@ -60,11 +66,24 @@ function PlainApprovalCard({
 }) {
   const hub = useHub()
   const { t, i18n } = useTranslation()
-  const [note, setNote] = useState('')
+  const [sending, setSending] = useState(false)
+  const [notSent, setNotSent] = useState(false)
   const status = approval.status ?? 'PENDING'
   const kind = approval.kind ?? 'sensitivity'
+  const words = approvalStatusWords(cardStatusOf(approval), t, i18n.language, Date.now())
+  const withdraw = async () => {
+    setSending(true)
+    setNotSent(false)
+    try {
+      await hub.cancelApproval(sessionId, approval.approvalId ?? '')
+    } catch {
+      setNotSent(true)
+    } finally {
+      setSending(false)
+    }
+  }
   return (
-    <section className="card" aria-label={t('approval.title')}>
+    <section className="card" aria-label={t('approval.title')} data-status={status}>
       <h3>{t(`approval.${kind}`)}</h3>
       {approval.requester ? (
         <div className="row">
@@ -88,9 +107,9 @@ function PlainApprovalCard({
           <span>{approval.justification}</span>
         </div>
       ) : null}
-      <div className="row">
+      <div className="row" role={status === 'PENDING' ? undefined : 'status'}>
         <span>{t('approval.title')}</span>
-        <span>{t(`approval.status.${status}`)}</span>
+        <span>{words}</span>
       </div>
       {approval.grantExpiresAt ? (
         <div className="muted">
@@ -100,55 +119,16 @@ function PlainApprovalCard({
       {status === 'PENDING' && approval.expiresAt ? (
         <div className="muted">{t('approval.expires', { time: formatTime(approval.expiresAt, i18n.language) })}</div>
       ) : null}
-      {status === 'PENDING' && approval.canDecide && approval.approvalId ? (
-        <>
-          <input
-            className="input"
-            placeholder={t('approval.note')}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-          <div className="actions">
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() =>
-                void hub.act(sessionId, {
-                  kind: 'approval.decide',
-                  approvalId: approval.approvalId ?? '',
-                  decision: 'approve',
-                  note: note || undefined,
-                })
-              }
-            >
-              {t('approval.approve')}
-            </button>
-            <button
-              type="button"
-              className="btn danger"
-              onClick={() =>
-                void hub.act(sessionId, {
-                  kind: 'approval.decide',
-                  approvalId: approval.approvalId ?? '',
-                  decision: 'reject',
-                  note: note || undefined,
-                })
-              }
-            >
-              {t('approval.reject')}
-            </button>
-          </div>
-        </>
-      ) : null}
       {status === 'PENDING' && approval.own && approval.approvalId ? (
         <div className="actions">
-          <button
-            type="button"
-            className="btn"
-            onClick={() => void hub.act(sessionId, { kind: 'approval.cancel', approvalId: approval.approvalId ?? '' })}
-          >
+          <button type="button" className="btn" disabled={sending} onClick={() => void withdraw()}>
             {t('approval.withdraw')}
           </button>
+        </div>
+      ) : null}
+      {notSent ? (
+        <div className="tool-error" role="alert">
+          {t('tools.card.notSent')}
         </div>
       ) : null}
     </section>

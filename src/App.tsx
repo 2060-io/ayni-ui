@@ -12,6 +12,7 @@ import { MessageInfo } from './components/Details.js'
 import { Directory } from './components/Directory.js'
 import { KeepsPage } from './components/Keeps.js'
 import { MemorySheet } from './components/Memories.js'
+import { NotificationsPage } from './components/Notifications.js'
 import { PhonePage } from './components/PhonePage.js'
 import { ProofOfTrust } from './components/ProofOfTrust.js'
 import { Rail } from './components/Rail.js'
@@ -90,6 +91,8 @@ function Shell({ update }: { update: AppUpdate }) {
       <SharedConversationView />
     ) : snap.view === 'accounts' ? (
       <AccountsPage />
+    ) : snap.view === 'notifications' ? (
+      <NotificationsPage />
     ) : (
       <Conversation />
     )

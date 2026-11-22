@@ -1,8 +1,8 @@
 /**
  * App links (AG-UI profile 3.1 §10, UI-LINK-001..003, D38): HTTPS links on the network's app-link domain, which is
- * the web UI's own host. Parsing reads only the profile's parameters (`q`, a DID, a segment, `to`, `amount`, `memo`,
- * `oob`) and ignores every other one; the UI opens the matching web route in place when one exists and shows
- * "on your phone" with the destination named otherwise. Links navigate, never act.
+ * the web UI's own host. Parsing reads only the profile's parameters (`q`, a DID, a space's id, a segment, `to`,
+ * `amount`, `memo`, `oob`, `approval`, PROF-LINK-003) and ignores every other one; the UI opens the matching web route
+ * in place when one exists and shows "on your phone" with the destination named otherwise. Links navigate, never act.
  */
 
 export type AppLinkDestination =
@@ -11,8 +11,17 @@ export type AppLinkDestination =
   | { path: 'scan' }
   | { path: 'explore'; q?: string; create?: boolean }
   | { path: 'wallet'; segment?: 'documents' | 'history' | 'card' | 'send'; id?: string }
-  /** `accounts`: Your accounts of that agent (`/app/service/{did}/accounts`, profile 3.5, PROF-LINK-004) */
-  | { path: 'service'; did: string; accounts?: true }
+  /**
+   * `accounts`: Your accounts of that agent (`/app/service/{did}/accounts`, profile 3.5, PROF-LINK-004);
+   * `notifications`: its Notifications, a space's (`/app/service/{did}/spaces/{spaceId}/notifications`) or the agent's
+   * (`/app/service/{did}/notifications`), with the item of `?approval=` selected (PROF-LINK-005, agent D114)
+   */
+  | {
+      path: 'service'
+      did: string
+      accounts?: true
+      notifications?: { spaceId?: string; approval?: string }
+    }
   | { path: 'settings'; section?: 'backup' | 'devices' }
   | { path: 'connect'; oob?: string }
   | { path: 'unknown' }
@@ -41,7 +50,7 @@ export function parseAppLink(href: string, origin: string): AppLinkDestination {
     .filter(Boolean)
     .map((p) => decodeURIComponent(p))
   if (parts[0] !== 'app') return { path: 'unknown' }
-  const [, head, second, third] = parts
+  const [, head, second, third, fourth, fifth] = parts
   const params = url.searchParams
   switch (head) {
     case 'home':
@@ -64,14 +73,22 @@ export function parseAppLink(href: string, origin: string): AppLinkDestination {
       if (parts.length === 4 && second === 'card' && third) return { path: 'wallet', segment: 'card', id: third }
       return { path: 'unknown' }
     }
-    case 'service':
+    case 'service': {
       if (!second?.startsWith('did:')) return { path: 'unknown' }
       if (parts.length === 3) return { path: 'service', did: second }
       // where the agent sends the browser after a sign-in: the link carries no outcome, and nothing but the place is
       // read from it (PROF-LINK-004)
-      return parts.length === 4 && third === 'accounts'
-        ? { path: 'service', did: second, accounts: true }
-        : { path: 'unknown' }
+      if (parts.length === 4 && third === 'accounts') return { path: 'service', did: second, accounts: true }
+      // the Notifications that list an approval, from the sheet of its request on the phone: the item is only shown
+      // selected, never decided (PROF-LINK-005)
+      const approval = params.get('approval')?.trim()
+      const selected = approval ? { approval } : {}
+      if (parts.length === 4 && third === 'notifications')
+        return { path: 'service', did: second, notifications: selected }
+      if (parts.length === 6 && third === 'spaces' && fourth && fifth === 'notifications')
+        return { path: 'service', did: second, notifications: { spaceId: fourth, ...selected } }
+      return { path: 'unknown' }
+    }
     case 'settings':
       if (parts.length === 2) return { path: 'settings' }
       return parts.length === 3 && (second === 'backup' || second === 'devices')
@@ -121,6 +138,8 @@ export function destinationKey(destination: AppLinkDestination): string {
     case 'explore':
       return destination.create ? 'exploreCreate' : 'explore'
     case 'service':
+      if (destination.notifications)
+        return destination.notifications.spaceId ? 'spaceNotifications' : 'serviceNotifications'
       return destination.accounts ? 'serviceAccounts' : 'service'
     case 'settings':
       return destination.section === 'backup'

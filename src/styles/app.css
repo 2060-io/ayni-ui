@@ -2776,6 +2776,7 @@ mark.hit.current {
 .space-page,
 .keeps-page,
 .accounts-page,
+.notifications-page,
 .admin-page,
 .shared-view {
   display: flex;
@@ -3658,4 +3659,88 @@ mark.hit.current {
   gap: 8px;
   font-size: 13px;
   color: var(--text);
+}
+
+/* ---- the Notifications of a space and of the agent (UI-APPR-001, 002, 006..009; agent D114) ---------------------- */
+
+/* a list of the person's items, newest first; each item is the transcript's card, the width of the list */
+.notifications {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.notification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card.notification {
+  max-width: none;
+  align-self: stretch;
+}
+/* the item a link names (PROF-LINK-005): its edge in the accent */
+.card.notification.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.notification-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.notification-time {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+.card.notification .input {
+  margin-top: 10px;
+}
+/* "Sent to your phone": a tint of the accent over the card, the words in the text colour */
+.notification-notice {
+  font-size: 13px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+/* the requester's card: its outcome where the waiting line was, with its icon (UI-APPR-006) */
+.tool-approval .tool-approval-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* the badge of what waits (PROF-TOOL-025): on the segment, the space's row and the agent's menu entry */
+.notifications-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.space-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.space-counts .notifications-count {
+  margin-left: 0;
+}
+.menu-popover button.menu-with-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }

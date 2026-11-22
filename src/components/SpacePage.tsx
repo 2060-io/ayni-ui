@@ -1,13 +1,15 @@
 /**
  * A space's page, in the main pane where a conversation opens (UI-CONV-031): its header, then Conversations, Your
  * memories and About; for its owner, on the web, Members, Tools, Settings and Activity (UI-CONV-040, UI-CONV-050,
- * UI-CONV-041), Tools against an agent that serves them. A space the person left says so, and offers no new
- * conversation (UI-CONV-043).
+ * UI-CONV-041), Tools against an agent that serves them. Against an agent that serves the Notifications, every
+ * member's page has Notifications right after Conversations, with the badge of what waits there (UI-APPR-007). A space
+ * the person left says so, and offers no new conversation (UI-CONV-043).
  */
 import {
   type AgentRecord,
   isPersonalConversation,
   lawfulBasisKeyOf,
+  notificationsWaitingOf,
   type SharedConversation,
   type SpaceInfo,
   type SpaceSegment,
@@ -18,9 +20,11 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { NotificationsBadge } from './ApprovalWords.js'
 import { Avatar } from './Avatar.js'
 import { ConversationRow } from './Column.js'
 import { MemoryList } from './Memories.js'
+import { NotificationList } from './Notifications.js'
 import { ActivitySegment, MembersSegment, SettingsSegment } from './SpaceAdmin.js'
 import { languageName, membersLong, organizationNameOf, SpaceIcon, spaceTitle, useSpaceDetail } from './SpaceParts.js'
 import { ToolsSegment } from './SpaceTools.js'
@@ -50,7 +54,10 @@ export function SpacePage() {
     )
   const title = spaceTitle(space, t)
   const kind = t(`spaces.kind.${space.kind}`)
-  const segments = spaceSegmentsOf(space, { tools: hub.takesTools(agent.did) })
+  const segments = spaceSegmentsOf(space, {
+    tools: hub.takesTools(agent.did),
+    notifications: hub.takesNotifications(agent.did),
+  })
   const segment: SpaceSegment = segments.includes(ref.segment) ? ref.segment : 'conversations'
   const left = space.state === 'left'
   return (
@@ -87,12 +94,15 @@ export function SpacePage() {
             onClick={() => hub.setSpaceSegment(s)}
           >
             {t(`spaces.segments.${s}`)}
+            {s === 'notifications' ? <NotificationsBadge count={notificationsWaitingOf(space)} /> : null}
           </button>
         ))}
       </div>
       <div className="space-body" role="tabpanel">
         {segment === 'conversations' ? (
           <ConversationsSegment agent={agent} space={space} />
+        ) : segment === 'notifications' ? (
+          <NotificationList key={space.id} agent={agent} spaceId={space.id} focus={ref.approvalId} />
         ) : segment === 'memories' ? (
           <MemoriesSegment agent={agent} space={space} />
         ) : segment === 'about' ? (

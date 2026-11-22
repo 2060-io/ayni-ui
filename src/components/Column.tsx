@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { linkOf } from '../state/link.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { NotificationsBadge } from './ApprovalWords.js'
 import { Avatar } from './Avatar.js'
 import { DevicesDialog } from './Devices.js'
 import { CreateSpaceDialog, SpaceRows, spaceTitle } from './SpaceParts.js'
@@ -253,6 +254,21 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
                 }}
               >
                 {t('column.keeps', { agent: agent.name })}
+              </button>
+            ) : null}
+            {hub.takesNotifications(agent.did) && link.linked ? (
+              // the approvals no space holds, with the badge of what waits there (UI-APPR-007, PROF-TOOL-025)
+              <button
+                type="button"
+                role="menuitem"
+                className="menu-with-count"
+                onClick={() => {
+                  setMenuOpen(false)
+                  hub.openNotifications(agent.did)
+                }}
+              >
+                <span>{t('notifications.title')}</span>
+                <NotificationsBadge count={snap.agentNotifications[agent.did]} />
               </button>
             ) : null}
             {hub.takesConnections(agent.did) && link.linked ? (

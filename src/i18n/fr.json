@@ -161,7 +161,7 @@
     "voicePosition": "Position dans la note vocale",
     "download": "Télécharger",
     "menuAnswered": "Répondu",
-    "approvals": "Approbations",
+    "menu": "Menu",
     "requestElevation": "Demander un accès",
     "thinking": "Réflexion…",
     "context": "Contexte {{used}} / {{max}}",
@@ -245,7 +245,29 @@
     "asksYou": "{{requester}} demande votre approbation",
     "waitingFor": "En attente de l'approbation de {{approver}}",
     "waiting": "En attente d'approbation",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "approvedBy": "Approuvée par {{name}}",
+    "rejectedBy": "Refusée par {{name}}",
+    "approvedByYou": "Approuvée par vous",
+    "rejectedByYou": "Refusée par vous",
+    "approvedByYouWaiting": "Approuvée par vous · En attente d'autres approbateurs",
+    "rejectedByYouWaiting": "Refusée par vous · En attente d'autres approbateurs",
+    "notAnswered": "Sans réponse à temps",
+    "withdrawn": "Retirée"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Aucune notification.",
+    "sentByYou": "Envoyée par vous",
+    "decidedAt": "{{outcome}} · {{time}}",
+    "decideOnPhone": "Décider sur votre téléphone",
+    "sentToPhone": "Envoyée sur votre téléphone",
+    "phoneUnreachable": "{{agent}} ne peut pas joindre l'app Ayni de votre téléphone.",
+    "more": "Afficher plus",
+    "waiting": "{{count}} en attente",
+    "ended": "Cette demande est terminée.",
+    "notEligible": "Vous ne pouvez plus décider de cette demande.",
+    "notSent": "Votre réponse n'a pas été envoyée. Réessayez."
   },
   "elevation": {
     "title": "Demander un accès",
@@ -496,7 +518,9 @@
       "settingsDevices": "les appareils liés",
       "connect": "cette invitation",
       "unknown": "cette page",
-      "serviceAccounts": "Vos comptes"
+      "serviceAccounts": "Vos comptes",
+      "serviceNotifications": "les Notifications",
+      "spaceNotifications": "les Notifications d'un espace"
     }
   },
   "spaces": {
@@ -533,6 +557,7 @@
     "ownerLineYou": "{{kind}} · il vous appartient",
     "segments": {
       "conversations": "Conversations",
+      "notifications": "Notifications",
       "memories": "Vos souvenirs",
       "about": "À propos",
       "members": "Membres",

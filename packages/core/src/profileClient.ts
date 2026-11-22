@@ -19,6 +19,7 @@ import {
   connectionsOf,
 } from './connections.js'
 import { type AboutMe, aboutMeOf, type Memories, memoriesOf } from './memories.js'
+import { NOTIFICATIONS_PAGE, type NotificationsPage, notificationsPageOf } from './notifications.js'
 import {
   type AdminChangesPage,
   type AdminRoleEntry,
@@ -653,6 +654,38 @@ export class ProfileClient {
     return ProfileClient.connectionIn(
       await this.send(token, 'DELETE', `/connections/accounts/${encodeURIComponent(accountId)}`)
     )
+  }
+
+  // ---- the Notifications of a space and of the agent (§3.12, agent D114)
+
+  /**
+   * The Notifications of a space, or the agent's for `spaceId` null, newest first (PROF-TOOL-024): the approvals the
+   * person may decide, could decide while they waited, or asked for. `before`, the id of the last one read.
+   */
+  public async notifications(
+    token: string,
+    spaceId: string | null,
+    before?: string,
+    limit: number = NOTIFICATIONS_PAGE.default
+  ): Promise<NotificationsPage> {
+    const query = new URLSearchParams({
+      limit: String(Math.min(Math.max(1, Math.floor(limit)), NOTIFICATIONS_PAGE.max)),
+      ...(before ? { before } : {}),
+    })
+    const path = spaceId ? `/spaces/${encodeURIComponent(spaceId)}/notifications` : '/notifications'
+    return notificationsPageOf(await this.getJson(token, `${path}?${query}`))
+  }
+
+  /**
+   * Decide on your phone (PROF-TOOL-026): the request of an approval to attest sent to the person's phone again, the
+   * one it held closed; `202` with its expiry. `404`, `409 not-pending` and `409 confirmation-unavailable` reach the
+   * caller.
+   */
+  public async resendApproval(token: string, approvalId: string): Promise<{ expiresAt: string }> {
+    const body = (await this.send(token, 'POST', `/approvals/${encodeURIComponent(approvalId)}/resend`)) as
+      | { expiresAt?: unknown }
+      | undefined
+    return { expiresAt: typeof body?.expiresAt === 'string' ? body.expiresAt : '' }
   }
 
   /** The people of the employee list whose name contains `q`, for the member picker (PROF-DIR-001). */

@@ -715,5 +715,71 @@
       `410` gets a new session; after each, the agent holds one provisional session, the one on screen; the words in
       the four languages; the colours. All seven fail without the change.
     - Core 0.7.1.
-46. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+46. **Approvals reach each person once: the Notifications** (2026-11-21, found by Fabrice on devnet and decided by him;
+    ayni-spec #116: agent D114, the AG-UI profile 3.5 amended in place; UI-APPR-001, 002, 005, 006, UI-CONV-052 and
+    UI-LINK-001 amended, UI-APPR-007 to 009). One post on X showed as four requests on the owner's phone: the agent had
+    written the approval's card into each of his bound sessions, every conversation being its own session. Built against
+    the spec while the agent and the app are built at the same time, with the fake agent of the tests; the wire is the
+    spec's.
+    - **Against which agent.** The Notifications, their badges and the agent's entry are shown, and their lists asked,
+      only of an agent that declares `features.notifications` (PROF-DESC-011). The wire types, readers and rules are in
+      the core (`notifications.ts`), the English words in `NOTIFICATIONS_COPY`; the app starts from both. Core 0.8.0.
+    - **The approver.** A conversation never draws an approver's request (`drawsApprovalCard`: an approval whose
+      `canDecide` is true and `own` is not), not even one an earlier agent wrote; `ayni.approval.request` does nothing;
+      the conversation's menu button is "Menu", with no badge of approvals (the agent's menu carries no Approvals item).
+      The rail's mark of approvals stays, read from bound sessions only: never from the state a closed session was left
+      with (UI-APPR-009).
+    - **Where they are.** A space's page has the segment Notifications right after Conversations, for every member
+      (`spaceSegmentsOf(space, { notifications })`). Personal has none: what Personal's tools ask is in the agent's
+      Notifications (profile §3.12), so its tab would always be empty. The agent's Notifications are a page of the main
+      pane (view `notifications`), from the agent's menu once the browser is linked, as Your accounts is.
+    - **An item.** The transcript's card, the width of the list: "<requester> asks for your approval" (or "Sent by you"),
+      the request's time, the action's title and the space's on lines of their own, the exact action as the card shows it
+      ("With <requester>'s own account" for a personal account), an elevation's tool, purpose and justification, then its
+      status and its controls. The status is the time left ("4:32 left") while the person may decide it, "Approved by
+      you · Waiting for other approvers" after their own decision, "Approved by <name> · <date and time>" or "Rejected by
+      ..." once decided ("you" when the decider's name is the one the person's session shows), "Not answered in time",
+      "Withdrawn"; a request the person sent reads the requester's line ("Waiting for <owner>'s approval"). An `article`
+      named by its heading, the action's title and its status, its controls after.
+    - **Deciding.** Approve and Reject, with the optional note, for an approval that needs no attestation: an
+      `approval.decide` run through the latest bound session of the person, whose events reach no transcript (no turn,
+      nothing added to any conversation); its refusals `decide-on-phone` (the item turns to Decide on your phone at once)
+      and `not-eligible` are said under it, and the list is read again. An approval to attest (`attested: true`) shows
+      Decide on your phone in their place, which sends `POST {sessions}/approvals/{id}/resend` and then says "Sent to your
+      phone", or "<agent> cannot reach the Ayni app on your phone." for `409 confirmation-unavailable`; `approval.decide`
+      is never sent for it.
+    - **Kept current.** Each list is read when it opens, on every `ayni.space.notifications.changed` (heard on this
+      tab's streams, or by another tab, which tells the others), after a decision, and each time the tab comes back in
+      front; a stream of the agent is held open while a list is on screen, so that a decision on the phone shows. A read
+      asked while one is in flight is made once more after it: every open stream of the person hears the event, and the
+      requester's item changes status with the same `waiting` and `count`, so the events are not told apart. A list read
+      again asks for as many items as are on screen (50 to 200). The badges are the agent's numbers as they come: a
+      space's `notificationsWaiting` from `GET /spaces`, the event's `count` and each list's `waiting`; the agent's entry
+      is read with the spaces (`GET /notifications?limit=1`). Heard on three streams, one approval still counts 1.
+    - **Paging and links.** Newest first, more read as the end of the list comes into view, and with Show more from the
+      keyboard. A link (`/app/service/{did}/spaces/{spaceId}/notifications?approval=`, or
+      `/app/service/{did}/notifications?approval=`) opens the list with that item selected (an accent edge,
+      `aria-current`, focused), reading on up to ten pages to find it; it decides nothing.
+    - **The requester.** One card, where she asked: "Waiting for <owner>'s approval" (or "Waiting for approval"), then the
+      outcome in that same line, with its icon ("Approved by Jonas Weber", "Rejected by ...", "Not answered in time",
+      "Withdrawn"), from `ayni.approval.update` and the activity replaced under its message id. Cancel (and Withdraw on an
+      elevation's card) sends `approval.cancel` as a decision run: no turn, and the card turns to Withdrawn where it is.
+      The Approval/Pending row of the tool card is gone; the approver's controls on any card too.
+    - **Words.** Approve and Reject stay the card's words. New: `notifications.*`, `spaces.segments.notifications`,
+      `approval.approvedBy` and the other status words of UI-CONV-052, `conversation.menu` (in place of
+      `conversation.approvals`), `link.destination.serviceNotifications` and `spaceNotifications`, in the four languages.
+      This client's own, for cases the table does not name: Show more, "<n> waiting" (the badge for a screen reader),
+      "This request has ended.", "You can no longer decide this request.", "Your answer was not sent. Try again."
+    - **Colours.** Light, and dark by choice and by system (the same tokens), WCAG 2.2: the badge's number 5.47:1 and
+      7.77:1, its edge on the page 5.47:1 and 10.06:1 and on a selected tab or row 4.63:1 and 8.12:1; an item's text
+      16.98:1 and 16.12:1, its muted lines 4.63:1 and 6.99:1; the selected edge 5.47:1 and 10.06:1; Sent to your phone
+      14.81:1 and 13.39:1; a refusal 13.87:1 and 15.37:1; Approve and Decide on your phone 5.47:1 and 7.77:1. A test
+      computes them from the stylesheet.
+    - **Tests.** `packages/core/tests/notifications.test.ts`, `tests/notifications.test.tsx` (an approver with three
+      conversations sees no card in any and one item, the badge 1; the agent's entry; nothing without the feature;
+      Approve with a note and no turn; Decide on your phone and its refusal; the refusal `decide-on-phone`; past items;
+      the empty list and Show more; read again on the event, from another tab and on the tab's return; a link's item
+      selected; the requester's card in place and Cancel; no waiting without a card; the words; the colours), and the
+      tests of the approval card and of the account line amended to the approver's item.
+47. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
