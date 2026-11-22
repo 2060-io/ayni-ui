@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.22.0](https://github.com/2060-io/ayni-ui/compare/v0.21.2...v0.22.0) (2026-11-22)
+
+
+### Features
+
+* **approvals:** approvals reach each person once, in the Notifications of a space and of the agent (agent D114, core 0.8.0) ([54fce4a](https://github.com/2060-io/ayni-ui/commit/54fce4a8b3e84d15b9b5d5a5310cf247c1c7706d))
+* **approvals:** approvals reach each person once, in the Notifications of a space and of the agent (UI-APPR-001..009) ([f161e03](https://github.com/2060-io/ayni-ui/commit/f161e03d887ead5b644afdcd72b68d4d92d21ba2))
+* **core:** the Notifications of a space and of the agent, Decide on your phone, the requester's one card (agent D114, core 0.8.0) ([75a673f](https://github.com/2060-io/ayni-ui/commit/75a673fbbdebb772eed3630b53ccfab0cad1a6d9))
+
 ## [0.21.2](https://github.com/2060-io/ayni-ui/compare/v0.21.1...v0.21.2) (2026-11-21)
 
 
