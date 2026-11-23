@@ -51,6 +51,7 @@ import { Composer } from './Composer.js'
 import { type HighlightSpec, highlight } from './Highlight.js'
 import { type AppLinkSpec, Markdown } from './Markdown.js'
 import { MemoryLine } from './Memories.js'
+import { MenuEntry } from './MenuEntry.js'
 import { MessageTools, type Popover, ReactionPill, useLongPress } from './MessageActions.js'
 import { SpaceComposerChip, SpaceHeaderChip, spaceOfSession, spaceTitle } from './SpaceParts.js'
 import { ConfirmationCard } from './Tools.js'
@@ -310,16 +311,16 @@ export function Conversation() {
               </button>
             ))}
             {session.ayni?.purposes?.length ? (
-              <button
-                type="button"
-                role="menuitem"
+              // the agent's items have their words alone, as in the app; this client's own entry has its icon
+              <MenuEntry
+                entry="elevation"
                 onClick={() => {
                   setMenuOpen(false)
                   setElevation(true)
                 }}
               >
                 {t('conversation.requestElevation')}
-              </button>
+              </MenuEntry>
             ) : null}
           </div>
         ) : null}
