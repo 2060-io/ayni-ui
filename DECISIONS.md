@@ -875,5 +875,20 @@
       (no `resume`), `packages/core/tests/mediaMessages.test.ts` (the person's text kept beside a note),
       `tests/confirmationCard.test.tsx` (no `client.profileVersion`), `tests/spacesColumn.test.tsx` (What <agent> keeps
       for an agent of 3.1). Each fails without the change.
-51. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+51. **"This service lets visitors in." on the trust card** (2026-11-23, Fabrice reviewing the clean spec, ayni-spec
+    #123: UI-TRUST-008, PROF-DESC-012). Core 0.11.0.
+    - **The line.** For an agent whose descriptor declares `features.visitors`, the Proof of Trust card shows "This
+      service lets visitors in." right under the verdict and its reasons. It comes from the descriptor, so it shows at
+      once, without waiting for the registry. Any other agent, `visitors` absent, `false` or not a boolean, shows nothing
+      of it. `letsVisitorsIn` and `PROOF_OF_TRUST_COPY.visitors` in the core, `.pot-visitors` in the stylesheet, in the
+      text colour at 14px; the Ayni app shows the same line on the service's page (APP-SESS-023).
+    - **My choices:** the place, under the verdict; the words in Spanish, French and Portuguese ("Este servicio admite
+      visitantes.", "Ce service accepte les visiteurs.", "Este serviço aceita visitantes.").
+    - **The agent** declares `features.visitors` from ayni-agent #118 on; before it, no agent does and no card shows the
+      line.
+    - **Tests.** `tests/visitorsLine.test.tsx` (the line under the verdict with `visitors: true`, nothing with nothing,
+      `false` or `"yes"`), `packages/core/tests/proofOfTrustDesign.test.ts` (`letsVisitorsIn`, the English words),
+      `tests/proofOfTrustDesign.test.ts` (the stylesheet against the design, the English file against the core's
+      words). The render test fails without the change.
+52. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

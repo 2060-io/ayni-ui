@@ -12,6 +12,7 @@ import {
   PROOF_OF_TRUST_DESIGN as D,
   didSearchUrl,
   identityStepOf,
+  letsVisitorsIn,
   loadTrustDetails,
   otherCredentialLine,
   type ProofOfTrustText,
@@ -143,6 +144,8 @@ export function ProofOfTrust({
               ))}
             </ul>
           ) : null}
+          {/* the agent lets a person in without authenticating, as its descriptor declares (UI-TRUST-008) */}
+          {letsVisitorsIn(agent.descriptor.features) ? <p className="pot-visitors">{t('pot.visitors')}</p> : null}
           {error ? <div className="banner warning">{error}</div> : null}
           {!details && !error ? (
             <div className="pot-loading">

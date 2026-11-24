@@ -8,6 +8,7 @@ import {
   fillText,
   formatTime,
   identityStepOf,
+  letsVisitorsIn,
   otherCredentialLine,
   schemaLabel,
   shortDid,
@@ -28,6 +29,13 @@ const card = (over: Partial<CredentialCard>): CredentialCard => ({
 })
 
 describe('what the Proof of Trust shows', () => {
+  it('says a service lets visitors in only when its descriptor declares features.visitors (UI-TRUST-008)', () => {
+    expect(letsVisitorsIn({ visitors: true })).toBe(true)
+    expect(t('visitors')).toBe('This service lets visitors in.')
+    for (const features of [{}, { visitors: false }, { visitors: 'yes' }, null, undefined])
+      expect(letsVisitorsIn(features)).toBe(false)
+  })
+
   it('takes the verdict from the registry once loaded, from the agent before', () => {
     expect(verdictOf(null, 'trusted')).toBe('trusted')
     expect(verdictOf({ trusted: true }, 'untrusted')).toBe('trusted')

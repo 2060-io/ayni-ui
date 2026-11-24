@@ -167,5 +167,12 @@ and its answers. `clientDescription(browser)` is `{ name, version, platform: "we
 no `resume`: the profile has no interrupts. The text that only repeated a voice note's transcription, which an agent
 of an earlier revision sent, is no longer dropped (`withoutVoiceEchoes` is gone): no agent sends it.
 
+## Profile 3.5.2: a service that lets visitors in
+
+`letsVisitorsIn(features)` says whether the agent's descriptor declares `features.visitors` (PROF-DESC-012): the agent
+lets a person in without authenticating, as a visitor. The Proof of Trust card then shows
+`PROOF_OF_TRUST_COPY.visitors`, "This service lets visitors in.", under the verdict, with the design's `visitors` size
+and colour (UI-TRUST-008), and nothing of it for any other agent.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.
