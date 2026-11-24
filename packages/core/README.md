@@ -19,6 +19,7 @@ The browser draws with CSS and the Ayni app with React Native styles. What the t
 | A conversation | `CONVERSATION_DESIGN`, `CONVERSATION_COLORS` | `replyQuoteOf`, `reactionPillOf`, `plainText`, `progressOf` (the agent is working), `contextFigureOf` and `contextLineOf` (the context line under the message form), `isWithheld` (a message of the person the AI never received, drawn as an outline: the reducer marks it from `ayni.messages.withheld` and from history's `metadata.modelVisible`), the memory line as a chip (`memoryChip`), the exact action of a tool call on its card and the amber notice of untrusted content (`toolCard`, `untrustedNotice`), and its English wording (`CONVERSATION_COPY`) |
 | The home page (rail and column) | `HOME_DESIGN`, `HOME_COLORS` | `TRUST_MARK`, `CONTROLLER_KIND_ICON`, `formatTime` |
 | The Proof of Trust | `PROOF_OF_TRUST_DESIGN`, `PROOF_OF_TRUST_COLORS` | `verdictOf`, `identityStepOf`, `accreditationLine`, `otherCredentialLine`, `claimRows`, and its English wording (`PROOF_OF_TRUST_COPY`) |
+| The menus of an agent and of a conversation | each client's own: a sheet in the app, a popover in the browser | `MENU_ICON`, the icon of each entry by its key (a lucide name) |
 
 The browser's stylesheet is the reference: tests in this repository compare it, and the English translation file,
 with these values, so a change made on one side only fails. The app builds its styles from the same values. A change

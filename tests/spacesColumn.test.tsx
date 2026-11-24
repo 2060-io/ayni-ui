@@ -3,13 +3,17 @@
  * "N more spaces", each with its kind, members, activity and unread count, which the agent's total includes; the
  * column's search matches space titles; with Personal alone the card is what it was; the rail shows no space. The
  * agent's menu offers New space to a creator (UI-CONV-039), what the agent keeps (UI-CONV-033) and Roles to an admin
- * (UI-CONV-042).
+ * (UI-CONV-042). Each entry of the agent's menu and of a conversation's shows its icon, the same as in the app
+ * (MENU_ICON).
  */
+import { MENU_ICON, type MenuEntryKey } from '@ayni.org/ayni-ui-core'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { Column } from '../src/components/Column.js'
+import { Column, ConversationRow } from '../src/components/Column.js'
+import { MenuEntry } from '../src/components/MenuEntry.js'
 import { Rail } from '../src/components/Rail.js'
 import {
   AGENT,
+  agentRecord,
   byText,
   click,
   DEPOT,
@@ -27,6 +31,7 @@ import {
   type,
   until,
 } from './spacesFixture.js'
+import { css, rule } from './stylesheet.js'
 
 beforeAll(setup)
 afterEach(teardown)
@@ -193,5 +198,151 @@ describe("the agent's menu (UI-CONV-033, UI-CONV-039, UI-CONV-042)", () => {
     expect(items).not.toContain('New space')
     expect(items).not.toContain('What Fleet support keeps about you')
     expect(TEMPLATES).toHaveLength(1)
+  })
+})
+
+/**
+ * The entries of the open menu as [its words, the lucide name of its icon]. The icon comes first, before the words, and
+ * is hidden from assistive technology; lucide marks the icon it draws with its own name (`lucide-<name>`).
+ */
+const iconOf = (entry: Element) => {
+  const icon = entry.firstElementChild
+  if (icon?.tagName.toLowerCase() !== 'svg' || icon.getAttribute('aria-hidden') !== 'true') return undefined
+  return [...icon.classList].find((c) => c.startsWith('lucide-'))?.slice('lucide-'.length)
+}
+const entriesOf = (menu: Element | null) =>
+  [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])].map((e) => [
+    e.querySelector('.menu-label')?.textContent,
+    iconOf(e),
+  ])
+
+describe("each entry of the agent's menu shows its icon, the same as in the app (MENU_ICON, APP-HOME-020)", () => {
+  const open = async (el: HTMLElement) => {
+    await click(el.querySelector('.agent-row [aria-label="Agent options"]'))
+    return el.querySelector('.agent-row [role="menu"]')
+  }
+
+  it('a linked agent: every entry with its icon, the count of the Notifications after the words, Remove in red', async () => {
+    const hub = await tab({
+      sessions: conversations,
+      spaces: SPACES,
+      features: { notifications: true, connections: true },
+      profileVersion: '3.5',
+      snapshot: { admins: { [AGENT]: true }, agentNotifications: { [AGENT]: 2 } },
+    })
+    const el = await render(hub, <Column />)
+    const menu = await open(el)
+    // the app's icons for its entries (ayni-app serviceMenu.ts); New space and Roles are the browser's alone
+    expect(entriesOf(menu)).toEqual([
+      ['Linked devices', 'monitor-smartphone'],
+      ['Disconnect from this agent', 'unplug'],
+      ['Show archived conversations', 'archive'],
+      ['New space', 'plus'],
+      ['What Fleet support keeps about you', 'book-user'],
+      ['Notifications', 'bell'],
+      ['Your accounts', 'key-round'],
+      ['Roles', 'user-cog'],
+      ['Remove agent', 'trash'],
+    ])
+    for (const [key, words] of [
+      ['devices', 'Linked devices'],
+      ['disconnect', 'Disconnect from this agent'],
+      ['archived', 'Show archived conversations'],
+      ['newSpace', 'New space'],
+      ['keeps', 'What Fleet support keeps about you'],
+      ['notifications', 'Notifications'],
+      ['accounts', 'Your accounts'],
+      ['roles', 'Roles'],
+      ['remove', 'Remove agent'],
+    ] as const)
+      expect(entriesOf(menu).find(([w]) => w === words)?.[1]).toBe(MENU_ICON[key])
+    // the words name the entry: the icon adds nothing to it
+    const notifications = byText(el, '[role="menuitem"]', /^Notifications/)
+    expect(notifications?.lastElementChild?.className).toBe('notifications-count')
+    expect(notifications?.textContent).toBe('Notifications2, 2 waiting')
+    const remove = byText(el, '[role="menuitem"]', 'Remove agent')
+    expect(remove?.classList.contains('danger')).toBe(true)
+    expect(remove?.textContent).toBe('Remove agent')
+    // each icon is drawn in its entry's colour: the text's, in the light and the dark theme, and the danger red
+    for (const icon of menu?.querySelectorAll('svg') ?? []) expect(icon.getAttribute('stroke')).toBe('currentColor')
+  })
+
+  it('draws every icon the core names, the entries of the app alone included, by that name', async () => {
+    const keys = Object.keys(MENU_ICON) as MenuEntryKey[]
+    const el = await render(
+      await tab(),
+      <div role="menu">
+        {keys.map((key) => (
+          <MenuEntry key={key} entry={key} onClick={() => undefined}>
+            {key}
+          </MenuEntry>
+        ))}
+      </div>
+    )
+    expect(entriesOf(el.querySelector('[role="menu"]'))).toEqual(keys.map((key) => [key, MENU_ICON[key]]))
+  })
+
+  it('the stylesheet lays an entry out as the app does: the icon, the words, the count at the end', () => {
+    expect(rule('.menu-popover button.menu-entry')).toMatchObject({ display: 'flex', 'align-items': 'center' })
+    expect(rule('.menu-popover button.menu-entry svg').flex).toBe('none')
+    expect(rule('.menu-entry .menu-label').flex).toBe('1')
+    // an entry that cannot be undone in the danger red, its icon with it
+    expect(css).toMatch(/\.menu-popover button\.danger,[^{]*\{\s*color: var\(--danger\);/)
+  })
+
+  it('the archived conversations shown: Show active conversations, with the icon of the conversations', async () => {
+    const hub = await tab({ sessions: conversations, spaces: SPACES, snapshot: { archivedView: { [AGENT]: true } } })
+    const el = await render(hub, <Column />)
+    expect(entriesOf(await open(el))).toContainEqual(['Show active conversations', 'messages-square'])
+  })
+
+  it("an agent this browser is not linked to: Link again, with the icon of the app's Reconnect", async () => {
+    const hub = await tab({
+      spaces: SPACES,
+      snapshot: { agents: [{ ...agentRecord(), deviceHandle: undefined, deviceSecret: undefined }] as never },
+    })
+    const el = await render(hub, <Column />)
+    expect(entriesOf(await open(el))).toEqual([
+      ['Link again', 'plug'],
+      ['Show archived conversations', 'archive'],
+      ['New space', 'plus'],
+      ['Remove agent', 'trash'],
+    ])
+  })
+})
+
+describe("each entry of a conversation's menu shows its icon, the same as in the app (APP-CONV-008/040)", () => {
+  const open = async (session: ReturnType<typeof record>, features: Record<string, unknown> = {}) => {
+    const hub = await tab({ sessions: [session], spaces: SPACES, features, profileVersion: '3.5' })
+    const el = await render(hub, <ConversationRow session={hub.getSnapshot().sessions[0]} selected={false} />)
+    await click(el.querySelector('[aria-label="Agent options"]'))
+    return { el, menu: el.querySelector('[role="menu"]') }
+  }
+
+  it('Rename, Share with the space, what the agent keeps, Your accounts, Archive', async () => {
+    const { menu } = await open(record({ sessionId: 's3', title: 'Caliper check', spaceId: TRUCK.id }), {
+      connections: true,
+    })
+    expect(entriesOf(menu)).toEqual([
+      ['Rename', 'pencil'],
+      ['Share with Truck 14 recall', 'share-2'],
+      ['What Fleet support keeps about you', 'book-user'],
+      ['Your accounts', 'key-round'],
+      ['Archive', 'archive'],
+    ])
+  })
+
+  it('shared and archived: Stop sharing, Unarchive, and Close for good in red', async () => {
+    const { el, menu } = await open(
+      record({ sessionId: 's3', title: 'Caliper check', spaceId: TRUCK.id, shared: true, archived: true })
+    )
+    expect(entriesOf(menu)).toEqual([
+      ['Rename', 'pencil'],
+      ['Stop sharing', 'link-2-off'],
+      ['What Fleet support keeps about you', 'book-user'],
+      ['Unarchive', 'archive-restore'],
+      ['Close for good', 'trash'],
+    ])
+    expect(byText(el, '[role="menuitem"]', 'Close for good')?.classList.contains('danger')).toBe(true)
   })
 })

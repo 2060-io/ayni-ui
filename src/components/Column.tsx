@@ -34,6 +34,7 @@ import { useHub, useSnapshot } from '../state/useHub.js'
 import { NotificationsBadge } from './ApprovalWords.js'
 import { Avatar } from './Avatar.js'
 import { DevicesDialog } from './Devices.js'
+import { MenuEntry } from './MenuEntry.js'
 import { CreateSpaceDialog, SpaceRows, spaceTitle } from './SpaceParts.js'
 import { ShareSourcesDialog } from './Tools.js'
 import { useDismiss } from './useDismiss.js'
@@ -199,31 +200,30 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
           <MoreVertical size={D.smallButton.iconSize} />
         </button>
         {menuOpen ? (
+          // each entry with its icon, the same as the app's (MENU_ICON, APP-HOME-020)
           <div className="menu-popover" role="menu" style={{ top: 40 }}>
             {link.linked ? (
-              <button
-                type="button"
-                role="menuitem"
+              <MenuEntry
+                entry="devices"
                 onClick={() => {
                   setMenuOpen(false)
                   setDevicesOpen(true)
                 }}
               >
                 {t('column.devices')}
-              </button>
+              </MenuEntry>
             ) : (
-              <button type="button" role="menuitem" onClick={() => run(() => hub.connect(agent.did))}>
+              <MenuEntry entry="reconnect" onClick={() => run(() => hub.connect(agent.did))}>
                 {t('column.linkAgain')}
-              </button>
+              </MenuEntry>
             )}
             {agent.deviceSecret ? (
-              <button type="button" role="menuitem" onClick={() => run(() => hub.disconnectAgent(agent.did))}>
+              <MenuEntry entry="disconnect" onClick={() => run(() => hub.disconnectAgent(agent.did))}>
                 {t('column.disconnect')}
-              </button>
+              </MenuEntry>
             ) : null}
-            <button
-              type="button"
-              role="menuitem"
+            <MenuEntry
+              entry={archivedView ? 'active' : 'archived'}
               onClick={() => {
                 setMenuOpen(false)
                 hub.toggleArchivedView(agent.did)
@@ -231,79 +231,68 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
               }}
             >
               {archivedView ? t('column.showActive') : t('column.showArchived')}
-            </button>
+            </MenuEntry>
             {spaces?.templates.length ? (
-              <button
-                type="button"
-                role="menuitem"
+              <MenuEntry
+                entry="newSpace"
                 onClick={() => {
                   setMenuOpen(false)
                   setCreatingSpace(true)
                 }}
               >
                 {t('column.newSpace')}
-              </button>
+              </MenuEntry>
             ) : null}
             {speaks33 && link.linked ? (
-              <button
-                type="button"
-                role="menuitem"
+              <MenuEntry
+                entry="keeps"
                 onClick={() => {
                   setMenuOpen(false)
                   hub.openKeeps(agent.did)
                 }}
               >
                 {t('column.keeps', { agent: agent.name })}
-              </button>
+              </MenuEntry>
             ) : null}
             {hub.takesNotifications(agent.did) && link.linked ? (
               // the approvals no space holds, with the badge of what waits there (UI-APPR-007, PROF-TOOL-025)
-              <button
-                type="button"
-                role="menuitem"
-                className="menu-with-count"
+              <MenuEntry
+                entry="notifications"
                 onClick={() => {
                   setMenuOpen(false)
                   hub.openNotifications(agent.did)
                 }}
+                after={<NotificationsBadge count={snap.agentNotifications[agent.did]} />}
               >
-                <span>{t('notifications.title')}</span>
-                <NotificationsBadge count={snap.agentNotifications[agent.did]} />
-              </button>
+                {t('notifications.title')}
+              </MenuEntry>
             ) : null}
             {hub.takesConnections(agent.did) && link.linked ? (
               // the person's own accounts at external services (UI-CONV-053)
-              <button
-                type="button"
-                role="menuitem"
+              <MenuEntry
+                entry="accounts"
                 onClick={() => {
                   setMenuOpen(false)
                   hub.openAccounts(agent.did)
                 }}
               >
                 {t('accounts.menu')}
-              </button>
+              </MenuEntry>
             ) : null}
             {snap.admins[agent.did] ? (
-              <button
-                type="button"
-                role="menuitem"
+              <MenuEntry
+                entry="roles"
                 onClick={() => {
                   setMenuOpen(false)
                   hub.openAdmin(agent.did)
                 }}
               >
                 {t('column.roles')}
-              </button>
+              </MenuEntry>
             ) : null}
-            <button
-              type="button"
-              role="menuitem"
-              className="danger"
-              onClick={() => run(() => hub.removeAgent(agent.did))}
-            >
+            <MenuEntry entry="remove" danger onClick={() => run(() => hub.removeAgent(agent.did))}>
               {t('column.remove')}
-            </button>
+            </MenuEntry>
           </div>
         ) : null}
       </div>
@@ -477,10 +466,10 @@ export function ConversationRow({
         <MoreVertical size={D.conversationRow.menuIconSize} />
       </button>
       {menu ? (
+        // each entry with its icon, the same as the app's for a conversation (MENU_ICON, APP-CONV-008/040)
         <div className="menu-popover" role="menu" style={{ top: 36 }}>
-          <button
-            type="button"
-            role="menuitem"
+          <MenuEntry
+            entry="rename"
             onClick={() => {
               setMenu(false)
               const next = prompt(t('column.rename'), title)
@@ -488,11 +477,10 @@ export function ConversationRow({
             }}
           >
             {t('column.rename')}
-          </button>
+          </MenuEntry>
           {s.conversationId && ofSpace && (s.shared || space.rules.handover) && space.state === 'active' ? (
-            <button
-              type="button"
-              role="menuitem"
+            <MenuEntry
+              entry={s.shared ? 'unshare' : 'share'}
               onClick={() =>
                 act(async () => {
                   if (s.shared) return hub.setShared(s.sessionId, false)
@@ -503,43 +491,43 @@ export function ConversationRow({
               }
             >
               {s.shared ? t('spaces.stopSharing') : t('spaces.share', { space: spaceName })}
-            </button>
+            </MenuEntry>
           ) : null}
           {agent && hub.speaks33(agent.did) ? (
-            <button
-              type="button"
-              role="menuitem"
+            <MenuEntry
+              entry="keeps"
               onClick={() => {
                 setMenu(false)
                 hub.openKeeps(agent.did)
               }}
             >
               {t('column.keeps', { agent: agent.name })}
-            </button>
+            </MenuEntry>
           ) : null}
           {agent && hub.takesConnections(agent.did) ? (
-            <button
-              type="button"
-              role="menuitem"
+            <MenuEntry
+              entry="accounts"
               onClick={() => {
                 setMenu(false)
                 hub.openAccounts(agent.did)
               }}
             >
               {t('accounts.menu')}
-            </button>
+            </MenuEntry>
           ) : null}
           {s.conversationId ? (
-            <button type="button" role="menuitem" onClick={() => act(() => hub.setArchived(s.sessionId, !s.archived))}>
+            <MenuEntry
+              entry={s.archived ? 'unarchive' : 'archive'}
+              onClick={() => act(() => hub.setArchived(s.sessionId, !s.archived))}
+            >
               {s.archived ? t('column.unarchive') : t('column.archive')}
-            </button>
+            </MenuEntry>
           ) : null}
           {/* archived, or never bound: a conversation the person opened and will not link leaves without the phone */}
           {s.archived || s.state === 'provisional' ? (
-            <button
-              type="button"
-              role="menuitem"
-              className="danger"
+            <MenuEntry
+              entry="close"
+              danger
               onClick={() => {
                 setMenu(false)
                 if (!confirm(t('column.closeForGoodConfirm'))) return
@@ -547,7 +535,7 @@ export function ConversationRow({
               }}
             >
               {t('column.closeForGood')}
-            </button>
+            </MenuEntry>
           ) : null}
         </div>
       ) : null}

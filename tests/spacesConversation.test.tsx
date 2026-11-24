@@ -281,3 +281,33 @@ describe('the line "<agent> updated a memory" (UI-CONV-035)', () => {
     expect(el.querySelector('.transcript')?.textContent).not.toMatch(/memor/i)
   })
 })
+
+describe('the menu of a conversation, in its header (APP-CONV-008)', () => {
+  it("this client's entry shows its icon, the same as in the app (MENU_ICON); the agent's items their words alone", async () => {
+    const s1 = record({
+      sessionId: 's1',
+      ayni: {
+        contextualMenu: { items: [{ id: 'help', label: 'Help' }] },
+        purposes: [{ id: 'audit', label: 'Audit' }],
+        pendingApprovals: 0,
+        generating: [],
+        principal: null,
+      } as never,
+    })
+    const hub = await tab({
+      sessions: [s1],
+      transcripts: [transcript('s1', [])],
+      spaces: SPACES,
+      snapshot: { selectedSessionId: 's1', view: 'conversation', leaders: { s1: true } },
+    })
+    const el = await render(hub, <Conversation />)
+    await click(el.querySelector('.conv-header [aria-label="Menu"]'))
+    const help = byText(el, '[role="menuitem"]', 'Help')
+    expect(help?.querySelector('svg')).toBeNull()
+    // Request elevation in the app
+    const elevation = byText(el, '[role="menuitem"]', 'Request access')
+    const icon = elevation?.firstElementChild
+    expect(icon?.getAttribute('class')).toContain('lucide-shield-plus')
+    expect(icon?.getAttribute('aria-hidden')).toBe('true')
+  })
+})

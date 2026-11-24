@@ -781,5 +781,27 @@
       the empty list and Show more; read again on the event, from another tab and on the tab's return; a link's item
       selected; the requester's card in place and Cancel; no waiting without a card; the words; the colours), and the
       tests of the approval card and of the account line amended to the approver's item.
-47. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+47. **Each entry of a menu shows its icon, the same as in the app** (2026-11-23, found by Fabrice on devnet: "in the
+    home, in the 3 dots menu of the agent card on the web ui, the icons are missing (they are present on the app)").
+    The agent's menu on its card, and a conversation's menus, were words alone; the app draws each entry with its icon
+    (APP-HOME-020, APP-CONV-008/040).
+    - **One table.** `MENU_ICON` in the core (core 0.8.1): the icon of each entry by the app's key of the entry, as a
+      lucide name, the app's entries the browser does not draw included, so the app can read the same table. An entry
+      that means the same shows the same icon: Link again is the app's Reconnect (`plug`, the way back after
+      Disconnect's `unplug`); What <agent> keeps and Your accounts have the same icons in the agent's menu and in a
+      conversation's. The browser's own entries: New space `plus` (the icon of New space where a space is chosen),
+      Roles `user-cog` (`shield-check` is the trust mark on the same card, `users` a team space). Unarchive is
+      `archive-restore`, the drawing lucide 1.66 calls `archive-arrow-up`.
+    - **Where.** The agent's menu (`Column`), a conversation's menu from its row (`ConversationRow`), and Request access
+      in the conversation's header menu; the agent's own items there keep their words alone, as in the app. The tile's
+      menu (Pin, Unpin) and a message's menu had their icons already.
+    - **Looks.** `MenuEntry`: the icon (16 px, as the browser's other menus), the words, then a count (the
+      Notifications' badge) at the end. The icon is drawn in the entry's colour (`currentColor`): the text's in the
+      light and the dark theme, the danger red for Remove agent and Close for good. It is `aria-hidden`: the words
+      name the entry. The size is not shared: the app's menu is a sheet with its own.
+    - **Tests.** `tests/spacesColumn.test.tsx`: each entry of the agent's menu, linked, in the archived view and not
+      linked, and of a conversation's, with its icon by its lucide name; every name of the table drawn; the layout in
+      the stylesheet. `tests/spacesConversation.test.tsx`: Request access with its icon, the agent's item without.
+      Each fails without the change.
+48. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
