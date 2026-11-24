@@ -3,11 +3,13 @@
  * PROF-TOOL-024..027, PROF-DESC-011, PROF-LINK-005; agent D114; UI-APPR-001, 002, 005..009). An approver finds an
  * approval nowhere but on their phone and in the Notifications of the space, for an approval of a space's tool, or of
  * the agent, for any other: never as a card in a conversation. The requester sees one card, in the conversation where
- * they asked, replaced in place by each status, and their own requests in the Notifications, read-only. The wire types
- * are written here until the profile package that lists them is the one every client has; the rules a screen follows
- * (what an item offers, the words of its status, which card a conversation draws) are here too, so that the browser
- * and the Ayni app apply the same ones.
+ * they asked, replaced in place by each status, and their own requests in the Notifications, read-only. The kinds of
+ * notification and a notice's body are the profile package's (3.5.4); an approval and an item are written here as the
+ * readers fill them (an approval's `by` is the name, an item carries its `approval` or its `notice` by its kind); the
+ * rules a screen follows (what an item offers, the words of its status, which card a conversation draws) are here too,
+ * so that the browser and the Ayni app apply the same ones.
  */
+import type { GovernanceNoticeBody, GovernanceNoticeKind, NotificationKind } from '@ayni.org/ayni-agui-profile'
 import {
   type ApprovalPolicyView,
   type ApprovalProgress,
@@ -23,17 +25,18 @@ import { type ApprovalStatus, isConfirmation, type ToolAction, toolActionOf } fr
 /** The live event of a notification of the person that entered, changed or ended in a list (PROF-TOOL-025). */
 export const NOTIFICATIONS_CHANGED = 'ayni.space.notifications.changed'
 
-/** The notices of a space's governance (profile 3.5.4, PROF-TOOL-038; agent D142). */
-export type GovernanceNoticeKind = 'owner-changed' | 'policy-attention' | 'no-approver' | 'space-without-owner'
+/**
+ * The notices of a space's governance (`GovernanceNoticeKind`, profile 3.5.4, PROF-TOOL-038; agent D142) and the kinds
+ * of notification, an approval or a notice (`NotificationKind`, agent D114, D142), are the profile package's; the
+ * package lists no notice kinds, so the list is here.
+ */
+export type { GovernanceNoticeKind, NotificationKind }
 export const GOVERNANCE_NOTICE_KINDS: readonly GovernanceNoticeKind[] = [
   'owner-changed',
   'policy-attention',
   'no-approver',
   'space-without-owner',
 ]
-
-/** The kinds of notification: an approval, or a notice of a space's governance (agent D114, D142). */
-export type NotificationKind = 'approval' | GovernanceNoticeKind
 
 /** One decision an approver made (`decisions` of §3.12). */
 export interface ApprovalDecision {
@@ -82,19 +85,7 @@ export interface NotificationApproval {
  * (`tool`, `requester`); `space-without-owner` to the stewards, in the agent's Notifications (`template`,
  * `formerOwner`). `resolvedAt` once what it reports is resolved.
  */
-export interface GovernanceNotice {
-  space: { id: string; title: string }
-  how?: OwnerChange
-  from?: { name: string } | null
-  to?: { name: string } | null
-  reason?: string
-  tool?: { source: string; title: string }
-  entries?: ProgressEntry[]
-  requester?: { displayName: string }
-  template?: { id: string; title: string }
-  formerOwner?: { name: string } | null
-  resolvedAt?: string
-}
+export type GovernanceNotice = GovernanceNoticeBody
 
 /**
  * An item of the Notifications (PROF-TOOL-024): an approval, or a notice of a space's governance. `waiting`: the person

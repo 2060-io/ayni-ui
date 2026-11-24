@@ -15,8 +15,8 @@ importers:
         specifier: 1.0.2
         version: 1.0.2(zod@3.25.76)
       '@ayni.org/ayni-agui-profile':
-        specifier: ^3.1.0
-        version: 3.1.0
+        specifier: ^3.5.4
+        version: 3.5.4
       '@ayni.org/ayni-ui-core':
         specifier: workspace:*
         version: link:packages/core
@@ -85,8 +85,8 @@ importers:
   packages/core:
     dependencies:
       '@ayni.org/ayni-agui-profile':
-        specifier: ^3.1.0
-        version: 3.1.0
+        specifier: ^3.5.4
+        version: 3.5.4
       idb:
         specifier: ^8.0.4
         version: 8.0.4
@@ -128,8 +128,8 @@ packages:
     resolution: {integrity: sha512-YnVzxDxLaqL0t7Q4wfcgHZjg55Wm6y5EaO7Bhu3q9J7wq/8iw3PhsnWiOQhYekx4VexnbkgWpTT6n+QIV7kczw==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
-  '@ayni.org/ayni-agui-profile@3.1.0':
-    resolution: {integrity: sha512-twDIlcloL4qItwwD5du0ErAl84AWy6ckTQqWwFLOWOn99nhIaKf6b7Erq5uxMOqf2Nlqzfhyj1mqzKxNgkoIRg==}
+  '@ayni.org/ayni-agui-profile@3.5.4':
+    resolution: {integrity: sha512-cgJyFy3taHBEkRxp+AahKdtzI4W+Wai6kko1YQn/3v7sQPeapgmuW08ZAq9WGdWfUfgv3yue+uuwTWOjsJfOtQ==}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -2593,7 +2593,7 @@ snapshots:
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.3
 
-  '@ayni.org/ayni-agui-profile@3.1.0': {}
+  '@ayni.org/ayni-agui-profile@3.5.4': {}
 
   '@babel/code-frame@7.29.7':
     dependencies:
