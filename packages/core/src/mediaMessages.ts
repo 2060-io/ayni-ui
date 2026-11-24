@@ -20,24 +20,6 @@ export function targetIdOf(message: TranscriptMessage): string {
   return isAttachment(message) ? (message.entryId ?? message.id) : message.id
 }
 
-/**
- * A voice note shows once (UI-MEDIA-007, PROF-MAP-006): its attachment, with the transcription under it. An agent
- * of an earlier revision also gave that transcription as a text message of the person, under the id of the note's
- * entry: such a text is dropped wherever the note itself is held, from history as from what a device kept. Words
- * the person added to a note are not the transcription, and stay.
- */
-export function withoutVoiceEchoes<T extends TranscriptMessage>(messages: readonly T[]): T[] {
-  const said = new Map<string, string>()
-  for (const message of messages) {
-    if (!isAttachment(message) || !message.entryId || mediaKindOf(message) !== 'voice') continue
-    const words = (message.content as { textRepr?: unknown }).textRepr
-    if (typeof words === 'string') said.set(message.entryId, words)
-  }
-  if (!said.size) return messages as T[]
-  const kept = messages.filter((m) => !(m.role === 'user' && said.get(m.id) === m.content))
-  return kept.length === messages.length ? (messages as T[]) : kept
-}
-
 /** What a media message is, for the quote of a reply and for its menu. */
 export type MediaKind = 'image' | 'voice' | 'video' | 'file'
 

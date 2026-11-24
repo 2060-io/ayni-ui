@@ -142,6 +142,26 @@ describe('a run that gets no turn', () => {
   })
 })
 
+describe('the body of a run (PROF-RUN-002, PROF-RUN-003)', () => {
+  it('carries the new message and the action, and never `resume`: the profile has no interrupts (UI-CONV-008 gone)', async () => {
+    let body: Record<string, unknown> = {}
+    const fetchFn = (async (_url: string, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body))
+      return new Response('', { status: 200, headers: { 'content-type': 'text/event-stream' } })
+    }) as typeof fetch
+    const client = new ProfileClient('https://agent.test/agui/v3/sessions', fetchFn)
+    await client.run(
+      's1',
+      'tok',
+      { runId: 'r1', text: 'hello', resume: [{ interruptId: 'i1', status: 'resolved' }] } as never,
+      () => undefined,
+      new AbortController().signal
+    )
+    expect(body.messages).toEqual([{ id: 'u_r1', role: 'user', content: 'hello' }])
+    expect(body).not.toHaveProperty('resume')
+  })
+})
+
 describe('a message sent during a run whose sending failed', () => {
   const held: TranscriptMessage[] = [
     user('u_r1', 'first'),

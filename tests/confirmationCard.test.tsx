@@ -3,8 +3,8 @@
  * its buttons, the answer on its way and failing, each outcome, the allowance and Stop allowing, untrusted content, a
  * card whose message was deleted (UI-CONV-045, UI-CONV-046); no working indicator under a card that waits, Stop kept;
  * the requester's card of the approval of a tool call, and no card of it for an approver (UI-APPR-006, UI-APPR-001,
- * amended by agent D114); and the sessions this browser
- * creates say profile 3.4 (UI-SESS-018).
+ * amended by agent D114); and the sessions this browser creates describe it with no version of the profile
+ * (PROF-SESS-014; UI-SESS-018 is gone).
  */
 import type { TranscriptMessage } from '@ayni.org/ayni-ui-core'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
@@ -399,8 +399,8 @@ describe('the approval of a tool call (UI-APPR-006)', () => {
   })
 })
 
-describe('the sessions this browser creates (UI-SESS-018, PROF-SESS-016)', () => {
-  it('carry `client.profileVersion: "3.5"` (amended by phase 2: Connect cards are shown in sessions of 3.5)', async () => {
+describe('the sessions this browser creates (PROF-SESS-014)', () => {
+  it('describe the web client and the browser, with no `client.profileVersion` (UI-SESS-018 is gone)', async () => {
     const agent = fakeAgent([
       [
         'POST ',
@@ -417,14 +417,14 @@ describe('the sessions this browser creates (UI-SESS-018, PROF-SESS-016)', () =>
           ),
       ],
     ])
-    const hub = await tab({ sessions: [record({ sessionId: 's1' })], features: { tools: true }, profileVersion: '3.4' })
+    // an agent of any version: the description is the same (PROF-SESS-014)
+    const hub = await tab({ sessions: [record({ sessionId: 's1' })], features: { tools: true }, profileVersion: '3.0' })
     await hub.newConversation(AGENT).catch(() => undefined)
     const created = agent.find('POST', '')
     expect(created).toHaveLength(1)
-    expect((created[0].body as { client: Record<string, unknown> }).client).toMatchObject({
-      name: 'ayni-ui',
-      platform: 'web',
-      profileVersion: '3.5',
-    })
+    const client = (created[0].body as { client: Record<string, unknown> }).client
+    expect(client).toMatchObject({ name: 'ayni-ui', platform: 'web' })
+    expect(typeof client.description).toBe('string')
+    expect(client).not.toHaveProperty('profileVersion')
   })
 })

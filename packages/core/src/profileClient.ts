@@ -83,7 +83,6 @@ export interface RunInput {
   runId: string
   text?: string
   action?: AyniAction
-  resume?: { interruptId: string; status: 'resolved' | 'cancelled'; payload?: unknown }[]
 }
 
 async function parseError(response: Response): Promise<ProfileError> {
@@ -283,7 +282,6 @@ export class ProfileClient {
       tools: [],
       context: [],
       forwardedProps: input.action ? { ayni: input.action } : undefined,
-      resume: input.resume,
     }
     const response = await this.fetchFn(this.url(`/${sessionId}/runs`), {
       method: 'POST',

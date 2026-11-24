@@ -1,13 +1,6 @@
 /** Reactions and replies on a media message (UI-CONV-024, APP-MSG-005, PROF-RUN-009/010). */
 import { describe, expect, it } from 'vitest'
-import {
-  isAttachment,
-  lastAttachments,
-  quoteLabel,
-  quoteOf,
-  targetIdOf,
-  withoutVoiceEchoes,
-} from '../src/mediaMessages.js'
+import { isAttachment, lastAttachments, quoteLabel, quoteOf, targetIdOf } from '../src/mediaMessages.js'
 import { emptyTranscript, mergeHistory, reactionsOf, reduce, toTranscriptMessage } from '../src/reducer.js'
 import type { TranscriptMessage } from '../src/types.js'
 
@@ -99,32 +92,10 @@ describe('a media message', () => {
   })
 })
 
-describe('a voice note shows once (UI-MEDIA-007, PROF-MAP-006)', () => {
-  const note = (id: string, entryId: string, words: string): TranscriptMessage => ({
-    id,
-    role: 'activity',
-    activityType: 'ayni.attachment',
-    content: { type: 'voice', role: 'user', textRepr: words, attachmentId: id },
-    at,
-    entryId,
-  })
+describe('a voice note and the words of the person (UI-MEDIA-007, PROF-MAP-006)', () => {
   const said = (id: string, content: string): TranscriptMessage => ({ id, role: 'user', content, at })
 
-  it('drops the text that only repeats the transcription of a note held with it', () => {
-    const messages = [said('msg_0', 'hello'), note('att_1', 'msg_1', 'Call me back'), said('msg_1', 'Call me back')]
-    expect(withoutVoiceEchoes(messages).map((m) => m.id)).toEqual(['msg_0', 'att_1'])
-  })
-
-  it('keeps words the person added to a note, a text that only says the same, and any other attachment', () => {
-    const caption = [note('att_1', 'msg_1', 'Call me back'), said('msg_1', 'For the meeting')]
-    expect(withoutVoiceEchoes(caption)).toBe(caption)
-    const sameWords = [note('att_1', 'msg_1', 'Call me back'), said('msg_2', 'Call me back')]
-    expect(withoutVoiceEchoes(sameWords)).toBe(sameWords)
-    const file = [picture('att_3', 'msg_3', { textRepr: 'A picture' }), said('msg_3', 'A picture')]
-    expect(withoutVoiceEchoes(file)).toBe(file)
-  })
-
-  it('reads history from an agent that gives both as one note, and cleans what a device kept', () => {
+  it("drops none of the person's messages beside a note: the agent never gives its transcription as a text", () => {
     const page = [
       {
         id: 'att_1',
@@ -135,17 +106,7 @@ describe('a voice note shows once (UI-MEDIA-007, PROF-MAP-006)', () => {
       },
       { id: 'msg_1', role: 'user', content: 'Call me back', metadata: { createdAt: at } },
     ]
-    const fresh = mergeHistory(emptyTranscript('s1'), page, null)
-    expect(fresh.messages.map((m) => m.id)).toEqual(['att_1'])
-    // the device kept both from an earlier reading: the next one puts it right
-    const kept = {
-      ...emptyTranscript('s1'),
-      messages: [note('att_1', 'msg_1', 'Call me back'), said('msg_1', 'Call me back')],
-    }
-    expect(mergeHistory(kept, page, null).messages.map((m) => m.id)).toEqual(['att_1'])
-  })
-
-  it('drops the text when the note arrives on a stream after it', () => {
+    expect(mergeHistory(emptyTranscript('s1'), page, null).messages.map((m) => m.id)).toEqual(['att_1', 'msg_1'])
     const held = { ...emptyTranscript('s1'), messages: [said('msg_1', 'Call me back')] }
     const session = { sessionId: 's1', agentDid: 'did:x', unreadCount: 0 } as never
     const next = reduce(held, session, {
@@ -154,6 +115,6 @@ describe('a voice note shows once (UI-MEDIA-007, PROF-MAP-006)', () => {
       activityType: 'ayni.attachment',
       content: { type: 'voice', role: 'user', textRepr: 'Call me back', attachmentId: 'att_1', entryId: 'msg_1' },
     } as never)
-    expect(next.transcript.messages.map((m) => m.id)).toEqual(['att_1'])
+    expect(next.transcript.messages.map((m) => m.id)).toEqual(['msg_1', 'att_1'])
   })
 })

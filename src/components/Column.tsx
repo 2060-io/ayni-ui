@@ -133,7 +133,6 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
     const space = spaces?.spaces.find((x) => x.id === s.spaceId)
     return withSpaces && space && space.kind !== 'personal' ? space.title : undefined
   }
-  const speaks33 = hub.speaks33(agent.did)
   // linked is the device pairing, not a session open at this moment (UI-AGENTS-007)
   const link = linkOf(agent, snap.sessions)
   const unread = snap.sessions.filter((s) => s.agentDid === agent.did).reduce((n, s) => n + s.unreadCount, 0)
@@ -244,7 +243,7 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
                 {t('column.newSpace')}
               </MenuEntry>
             ) : null}
-            {speaks33 && link.linked ? (
+            {link.linked ? (
               <MenuEntry
                 entry="keeps"
                 onClick={() => {
@@ -494,7 +493,7 @@ export function ConversationRow({
               {s.shared ? t('spaces.stopSharing') : t('spaces.share', { space: spaceName })}
             </MenuEntry>
           ) : null}
-          {agent && hub.speaks33(agent.did) ? (
+          {agent ? (
             <MenuEntry
               entry="keeps"
               onClick={() => {
