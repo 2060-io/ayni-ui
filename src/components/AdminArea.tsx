@@ -4,22 +4,11 @@
  * card's spaces, exactly while this browser's grant is open, with Audit for an `auditor` and Operations for an
  * `operator`, each opening its page in the main pane with no further question, and the time the grant ends.
  */
-import {
-  ADMIN_AREA_ICON,
-  type AdminPage,
-  type AgentRecord,
-  adminAreaOf,
-  adminRequestWordsOf,
-} from '@ayni.org/ayni-ui-core'
-import { CircleAlert, FileSearch, type LucideIcon, Smartphone, Wrench, X } from 'lucide-react'
+import { type AgentRecord, adminAreaOf, adminRequestWordsOf } from '@ayni.org/ayni-ui-core'
+import { CircleAlert, Smartphone, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
-
-/** Every icon the core names for a row of the area: a name added there without its icon here fails the types. */
-const AREA_ICONS: Record<(typeof ADMIN_AREA_ICON)[AdminPage], LucideIcon> = {
-  'file-search': FileSearch,
-  wrench: Wrench,
-}
+import { menuIconOf } from './MenuEntry.js'
 
 /** The time a grant ends, as the card and the pages say it ("Until 14:32"). */
 export function untilWords(expiresAt: string, language: string): string {
@@ -73,7 +62,8 @@ export function AdminAreaRows({ agent }: { agent: AgentRecord }) {
         </span>
       </div>
       {area.pages.map((page) => {
-        const Icon = AREA_ICONS[ADMIN_AREA_ICON[page]]
+        // the icon of the row by its page, from the core's table, the same as in the app (MENU_ICON)
+        const Icon = menuIconOf(page)
         const selected = snap.view === page && snap.adminPageFor === agent.did
         return (
           <button

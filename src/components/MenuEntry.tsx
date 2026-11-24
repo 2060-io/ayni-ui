@@ -10,8 +10,7 @@ import {
   ArchiveRestore,
   Bell,
   BookUser,
-  Eye,
-  EyeOff,
+  FileSearch,
   Info,
   KeyRound,
   Link2Off,
@@ -23,12 +22,14 @@ import {
   Plus,
   Search,
   Share2,
+  ShieldOff,
   ShieldPlus,
   ShieldUser,
   Trash,
   Unplug,
   UserCheck,
   UserCog,
+  Wrench,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -54,8 +55,14 @@ const ICONS: Record<MenuIconName, LucideIcon> = {
   'archive-restore': ArchiveRestore,
   'shield-plus': ShieldPlus,
   search: Search,
-  eye: Eye,
-  'eye-off': EyeOff,
+  'shield-off': ShieldOff,
+  'file-search': FileSearch,
+  wrench: Wrench,
+}
+
+/** The icon the core names for an entry, or for a row of the ADMIN area by its page (`MENU_ICON`). */
+export function menuIconOf(entry: MenuEntryKey): LucideIcon {
+  return ICONS[MENU_ICON[entry]]
 }
 
 /** The size of the icon, as the other menus of this client draw theirs (a message's, a tile's). */
@@ -77,7 +84,7 @@ export function MenuEntry({
   /** the words */
   children: ReactNode
 }) {
-  const Icon = ICONS[MENU_ICON[entry]]
+  const Icon = menuIconOf(entry)
   return (
     <button type="button" role="menuitem" className={danger ? 'menu-entry danger' : 'menu-entry'} onClick={onClick}>
       <Icon size={ICON_SIZE} aria-hidden="true" />

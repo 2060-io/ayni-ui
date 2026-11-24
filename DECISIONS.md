@@ -982,12 +982,12 @@
       fails without the change.
 53. **Admin access from the agent's card: Show Admin, the ADMIN area, Audit and Operations** (2026-11-24, ayni-spec
     UI-ADMIN-001 to 006, agent D132 to D134, AG-UI profile §3.14; built against ayni-agent #120, not merged yet, whose
-    profile package 3.5.5 shapes are taken from its code). Core 0.13.0.
+    profile package 3.5.5 shapes are taken from its code). Core 0.14.0 (0.13.0, then the icons and the person picker).
     - **The profile package.** 3.5.5 is not on npm (the latest published is 3.5.4), so its shapes of §3.14 are written
       in the core (`adminAccess.ts`), as for 3.3 to 3.5.4; `features.admin` is read loosely.
     - **The menu** (UI-ADMIN-001). For an agent that declares `features.admin`, `GET {sessions}/admin` is read with each
-      list of conversations; Show Admin (icon `eye`) to a person whose `roles` is not empty while this browser holds no
-      open grant, Hide Admin (`eye-off`) while it holds one, only while the browser is linked.
+      list of conversations; Show Admin (icon `shield-user`) to a person whose `roles` is not empty while this browser
+      holds no open grant, Hide Admin (`shield-off`) while it holds one, only while the browser is linked.
     - **Show Admin** (UI-ADMIN-002). `POST {sessions}/admin/grant`; the card reads "Confirm on your phone" under its
       header, a stream of the agent held open, until `ayni.admin.changed` comes: `declined` and `failed` read "Not
       confirmed on your phone", `expired` "The request expired", each with a close button; `opened` clears it and opens
@@ -1003,9 +1003,22 @@
       from, to; a row opens the messages, decrypted, read-only, each with its entry id so that an operator can name it,
       "Earlier messages" by pages), Evidence (a person's records: their fields and the values stored), Call records (the
       six filters, a table of the record's main fields) and Admin audit (read when the segment opens, newest first,
-      More by pages). The person filter takes a Principal id: the wire names no person otherwise, and the space field
-      offers the auditor's own spaces by title while taking any id. A period is two days, from the start of the first to
-      the end of the last in the browser's time zone.
+      More by pages). The space field offers the auditor's own spaces by title while taking any id. A period is two
+      days, from the start of the first to the end of the last in the browser's time zone.
+    - **The icons** (product owner, 2026-11-24). The four icons are entries of the core's one table, `MENU_ICON`, which
+      the app reads too: `showAdmin: 'shield-user'`, `hideAdmin: 'shield-off'`, and the rows of the area by their page,
+      `audit: 'file-search'`, `operations: 'wrench'` (the keys are `adminAreaOf`'s pages). `ADMIN_AREA_ICON` is gone;
+      the browser draws the menu's entries and the area's rows from the same lookup (`menuIconOf`).
+    - **A person found by name** (product owner, 2026-11-24). The person of Conversations, Evidence and Call records
+      is picked, not typed as an id: `GET {sessions}/admin/audit/people?q=&reason=` (auditor only, at most 20, from
+      ayni-agent `fix/admin-people-and-device`, not merged; profile 3.5.7 is not on npm, so the shapes are written in
+      the core: `AuditPerson`, `auditPeopleOf`, `ProfileClient.auditPeople`). The name typed is searched once the
+      typing pauses (300 ms; each search is a read the agent audits, with the reason in force), never for an empty or
+      blank text (the agent answers `400 bad-request`, `field: 'q'`; the client refuses it before it goes). The people
+      found are listed under the field by name and department; the one picked takes the field's place with a button to
+      choose another, and its id is what the filter sends. Enter in the field neither picks nor submits. Evidence's Read
+      waits for a pick. The rows found and the call records name the picked person by name, anyone else by id. The
+      refusals read as the other reads of Audit.
     - **Operations** (UI-ADMIN-005). Erase entries (ids typed, separated by spaces, commas or lines), Legal hold (on
       entries or a conversation, set or release) and Keys. Each action opens a confirmation that names what it acts on
       ("Entries: …", "Every entry of the conversation …", "Index key, to a new version") and asks its own reason; the
@@ -1021,6 +1034,8 @@
       refusals, the reason, the period, the signal, every call with its reason) and `tests/adminAccess.test.tsx` (the
       menu for Jonas, Ben and an agent without the feature; the three outcomes of Show Admin; the area above the spaces,
       its pages, its end by the clock, by the event and by Hide Admin; Audit's reason and reads; Operations' erase, legal
-      hold and keys; the refusals; the words in four languages); `forget.test.ts` extended.
+      hold and keys; the refusals; the words in four languages; the icons of the table; the person picked by name in
+      the three segments, no search for a blank name, one search per pause, a refusal of the search, the picker's words
+      in four languages); `forget.test.ts` extended.
 54. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

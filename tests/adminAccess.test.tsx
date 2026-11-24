@@ -82,6 +82,9 @@ async function jonas(
 const openMenu = (el: HTMLElement) => click(el.querySelector('.agent-row [aria-label="Agent options"]'))
 const menuEntry = (el: HTMLElement, text: string) => byText(el, '[role="menuitem"]', text)
 const area = (el: HTMLElement) => el.querySelector<HTMLElement>('section.admin-area')
+/** The lucide name of the icon drawn in an entry or a row: the core's table names it (MENU_ICON). */
+const iconOf = (el: Element | null | undefined) =>
+  [...(el?.querySelector('svg')?.classList ?? [])].find((c) => c.startsWith('lucide-'))?.slice('lucide-'.length)
 const changed = (hub: Hub, value: unknown) =>
   // @ts-expect-error private: the event as a stream of the device delivers it
   hub.onEvent('s1', { type: 'CUSTOM', name: 'ayni.admin.changed', value }, undefined, false)
@@ -99,7 +102,8 @@ describe("Show Admin and Hide Admin in the agent's menu (UI-ADMIN-001)", () => {
     await openMenu(el)
     const entry = menuEntry(el, 'Show Admin')
     expect(entry).toBeDefined()
-    expect(entry?.querySelector('svg')).not.toBeNull()
+    // the icon of the core's table, the same in the app (MENU_ICON.showAdmin)
+    expect(iconOf(entry)).toBe('shield-user')
     expect(menuEntry(el, 'Hide Admin')).toBeUndefined()
   })
 
@@ -121,6 +125,7 @@ describe("Show Admin and Hide Admin in the agent's menu (UI-ADMIN-001)", () => {
     const { el } = await jonas([openGrant(['auditor'])])
     await openMenu(el)
     expect(menuEntry(el, 'Hide Admin')).toBeDefined()
+    expect(iconOf(menuEntry(el, 'Hide Admin'))).toBe('shield-off')
     expect(menuEntry(el, 'Show Admin')).toBeUndefined()
   })
 })
@@ -187,6 +192,8 @@ describe('the ADMIN area, exactly while the grant is open (UI-ADMIN-003)', () =>
     const { hub, el } = await jonas([openGrant(['auditor', 'operator'])])
     const admin = area(el) as HTMLElement
     expect([...admin.querySelectorAll('.space-name')].map((n) => n.textContent)).toEqual(['Audit', 'Operations'])
+    // each row with the icon of the core's table, the same in the app (MENU_ICON.audit, MENU_ICON.operations)
+    expect([...admin.querySelectorAll('.space-row')].map(iconOf)).toEqual(['file-search', 'wrench'])
     await click(byText(admin, '.space-row', 'Audit'))
     expect(hub.getSnapshot().view).toBe('audit')
     expect(el.querySelector('.audit-page h1')?.textContent).toBe('Audit')
@@ -252,10 +259,30 @@ describe('Audit (UI-ADMIN-004, UI-ADMIN-006)', () => {
       metadata: { createdAt: '2026-11-18T09:01:00.000Z' },
     },
   ]
+  const PEOPLE = [
+    { principalId: 'prn_ana', name: 'Ana Ruiz', department: 'Sales' },
+    { principalId: 'prn_anabel', name: 'Anabel Costa', department: null },
+  ]
   const audit = (extra: Route[] = []) =>
     jonas([
       openGrant(['auditor']),
       ...extra,
+      [
+        /^GET \/admin\/audit\/people\?/,
+        (call) => {
+          const q = (new URL(call.url).searchParams.get('q') ?? '').toLowerCase()
+          return json({ people: PEOPLE.filter((p) => p.name.toLowerCase().includes(q)) })
+        },
+      ],
+      [
+        /^GET \/admin\/audit\/evidence\?/,
+        () =>
+          json({ evidence: [{ record: { id: 'evd_1', kind: 'email' }, values: { email: 'ana@x' } }], auditId: 'e' }),
+      ],
+      [
+        /^GET \/admin\/audit\/tool-calls\?/,
+        () => json({ calls: [{ id: 'call_1', principalId: 'prn_ana', toolName: 'crm.lookup' }], auditId: 'c' }),
+      ],
       [/^GET \/admin\/audit\/conversations\?/, () => json({ conversations: [CONVERSATION], auditId: 'adm_1' })],
       [
         /^GET \/admin\/audit\/conversations\/conv_88\/messages\?/,
@@ -294,41 +321,136 @@ describe('Audit (UI-ADMIN-004, UI-ADMIN-006)', () => {
     await click(go)
     expect(el.querySelector('.audit-reason')?.textContent).toContain('Reason: Complaint 4411')
     expect(reads()).toHaveLength(0)
-    // Ana's conversations of Sales EU for a week
+    // Ana's conversations of Sales EU for a week: Ana found by her name, with the reason
     const fields = el.querySelectorAll<HTMLInputElement>('.audit-filters input')
-    await type(fields[0], 'prn_ana')
+    expect(fields[0].classList.contains('person-search')).toBe(true)
+    await type(fields[0], 'ana r')
+    await until(() => el.querySelector('.person-option') !== null)
+    const search = new URL(reads()[0].url)
+    expect(search.pathname.endsWith('/admin/audit/people')).toBe(true)
+    expect(search.searchParams.get('q')).toBe('ana r')
+    expect(search.searchParams.get('reason')).toBe('Complaint 4411')
+    await click(byText(el, '.person-option', /Ana Ruiz/))
+    expect(el.querySelector('.person-chosen')?.textContent).toBe('Ana RuizSales')
     await type(fields[1], 'spc_sales')
     await type(fields[2], '2026-11-16')
     await type(fields[3], '2026-11-22')
     await click(byText(el, 'button', 'Find'))
     await until(() => el.textContent?.includes('Order 88'))
-    const query = new URL(reads()[0].url).searchParams
+    const query = new URL(reads()[1].url).searchParams
     expect(query.get('principal')).toBe('prn_ana')
     expect(query.get('space')).toBe('spc_sales')
     expect(new Date(query.get('from') as string).getDate()).toBe(16)
     expect(new Date(query.get('to') as string).getDate()).toBe(22)
     expect(query.get('reason')).toBe('Complaint 4411')
-    // the row names its space by the title the auditor knows
-    expect(el.textContent).toContain('prn_ana · Sales EU')
+    // the row names the person picked by her name, and its space by the title the auditor knows
+    expect(el.textContent).toContain('Ana Ruiz · Sales EU')
     // its messages, decrypted, as a transcript nothing can be written to
     await click(byText(el, '.audit-row', /Order 88/))
     await until(() => el.textContent?.includes('The order ships Monday.'))
-    expect(new URL(reads()[1].url).searchParams.get('reason')).toBe('Complaint 4411')
+    expect(new URL(reads()[2].url).searchParams.get('reason')).toBe('Complaint 4411')
     expect(el.textContent).toContain('[erased]')
     expect(el.textContent).toContain('Entry ent_2')
     expect(el.querySelector('.audit-page textarea, .audit-page .composer')).toBeNull()
     // the admin audit, newest first, with the same reason
     await click(byText(el, '[role="tab"]', 'Admin audit'))
     await until(() => el.querySelector('.audit-log') !== null)
-    expect(new URL(reads()[2].url).searchParams.get('reason')).toBe('Complaint 4411')
+    expect(new URL(reads()[3].url).searchParams.get('reason')).toBe('Complaint 4411')
     expect(el.querySelector('.audit-log')?.textContent).toContain('Reason: Complaint 4411')
     // the reason is kept for the grant's next reads, and changed with Change
     expect(hub.auditReasonOf(AGENT)).toBe('Complaint 4411')
     await click(byText(el, 'button', 'Change'))
     await type(el.querySelector('.admin-reason'), 'Complaint 4412')
     await click(byText(el, 'button', 'Continue'))
-    await until(() => reads().length === 4)
-    expect(new URL(reads()[3].url).searchParams.get('reason')).toBe('Complaint 4412')
+    await until(() => reads().length === 5)
+    expect(new URL(reads()[4].url).searchParams.get('reason')).toBe('Complaint 4412')
+  })
+
+  const withReason = async (el: HTMLElement) => {
+    await click(byText(area(el) as HTMLElement, '.space-row', 'Audit'))
+    await type(el.querySelector('.admin-reason'), 'Complaint 4411')
+    await click(byText(el, 'button', 'Continue'))
+  }
+
+  it('reads the evidence of a person picked by name, never of an id typed: Read waits for the pick', async () => {
+    const { el, calls } = await audit()
+    await withReason(el)
+    await click(byText(el, '[role="tab"]', 'Evidence'))
+    const read = byText(el, 'button', 'Read') as HTMLButtonElement
+    expect(read.disabled).toBe(true)
+    // the field takes a name: typing an id picks no one
+    await type(el.querySelector('.person-search'), 'prn_ana')
+    await until(() => el.querySelector('.person-none') !== null)
+    expect(el.querySelector('.person-none')?.textContent).toBe('No one by that name.')
+    expect(read.disabled).toBe(true)
+    await type(el.querySelector('.person-search'), 'Ana')
+    await until(() => el.querySelectorAll('.person-option').length === 2)
+    // each one found by name and department
+    expect([...el.querySelectorAll('.person-option')].map((o) => o.textContent)).toEqual([
+      'Ana RuizSales',
+      'Anabel Costa',
+    ])
+    await click(byText(el, '.person-option', /Anabel Costa/))
+    expect(el.querySelector('.person-search')).toBeNull()
+    expect((byText(el, 'button', 'Read') as HTMLButtonElement).disabled).toBe(false)
+    await click(byText(el, 'button', 'Read'))
+    await until(() => el.textContent?.includes('ana@x'))
+    const evidence = calls.find((c) => c.url.includes('/admin/audit/evidence?')) as Call
+    expect(new URL(evidence.url).searchParams.get('principal')).toBe('prn_anabel')
+    expect(new URL(evidence.url).searchParams.get('reason')).toBe('Complaint 4411')
+    // another person: the field is a name to type again
+    await click(el.querySelector('.person-chosen [aria-label="Choose another person"]'))
+    expect((el.querySelector('.person-search') as HTMLInputElement).value).toBe('')
+    expect((byText(el, 'button', 'Read') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('filters the call records by the person picked, named in the table by her name', async () => {
+    const { el, calls } = await audit()
+    await withReason(el)
+    await click(byText(el, '[role="tab"]', 'Call records'))
+    await type(el.querySelector('.person-search'), 'Ruiz')
+    await until(() => el.querySelector('.person-option') !== null)
+    await click(byText(el, '.person-option', /Ana Ruiz/))
+    await click(byText(el, 'button', 'Find'))
+    await until(() => el.querySelector('.audit-table') !== null)
+    const read = calls.find((c) => c.url.includes('/admin/audit/tool-calls?')) as Call
+    expect(new URL(read.url).searchParams.get('principal')).toBe('prn_ana')
+    expect(el.querySelector('.audit-table tbody')?.textContent).toContain('Ana Ruiz')
+  })
+
+  it('searches nothing for an empty name, and once per pause in the typing', async () => {
+    const { el, calls } = await audit()
+    await withReason(el)
+    const searches = () => calls.filter((c) => c.url.includes('/admin/audit/people?'))
+    await type(el.querySelector('.person-search'), '   ')
+    await settle()
+    await new Promise((r) => setTimeout(r, 400))
+    expect(searches()).toHaveLength(0)
+    await type(el.querySelector('.person-search'), 'A')
+    await type(el.querySelector('.person-search'), 'An')
+    await type(el.querySelector('.person-search'), 'Ana')
+    await until(() => el.querySelector('.person-option') !== null)
+    expect(searches().map((c) => new URL(c.url).searchParams.get('q'))).toEqual(['Ana'])
+  })
+
+  it('says "You don\'t have this role any more" when the search for a person answers not-auditor', async () => {
+    const { el } = await audit([[/^GET \/admin\/audit\/people\?/, () => json({ error: 'not-auditor' }, 403)]])
+    await withReason(el)
+    await type(el.querySelector('.person-search'), 'Ana')
+    await until(() => el.querySelector('.person-picker .admin-error') !== null)
+    expect(el.querySelector('.person-picker .admin-error')?.textContent?.trim()).toBe(
+      "You don't have this role any more"
+    )
+  })
+
+  it('says the words of the person picker in every language', () => {
+    for (const words of [en, es, fr, pt]) {
+      const page = words.adminAccess.auditPage as Record<string, unknown>
+      for (const key of ['person', 'personHint', 'people', 'noPeople', 'otherPerson'])
+        expect(typeof page[key], key).toBe('string')
+      // the field names a person, not an id to type
+      expect(String(page.person)).not.toMatch(/Principal/)
+    }
   })
 
   it('says "You don\'t have this role any more" when the agent answers not-auditor', async () => {

@@ -3,7 +3,8 @@
  * browser's grant is open, opened from the ADMIN area of the agent's card. A reason is asked before the first read and
  * kept for the next reads of the grant, with Change; every read carries the reason in force. It offers the conversations
  * found by person, space and period, each opening its messages, decrypted, as a transcript nothing can be written to;
- * the evidence of a person; the call records, filtered; and the admin audit, newest first. Nothing here writes.
+ * the evidence of a person; the call records, filtered; and the admin audit, newest first. Nothing here writes. A
+ * person is found by name and picked from what the agent answers (name and department); the filter sends its id.
  */
 import { ACTIVITY } from '@ayni.org/ayni-agui-profile'
 import {
@@ -12,8 +13,10 @@ import {
   type AgentRecord,
   type AuditConversation,
   type AuditEvidenceResponse,
+  type AuditPerson,
   adminReasonFits,
   adminRefusalOf,
+  auditPeopleQueryOf,
   auditPeriodOf,
   auditValueOf,
   deletionIdOf,
@@ -21,8 +24,8 @@ import {
   type TranscriptMessage,
   toTranscriptMessage,
 } from '@ayni.org/ayni-ui-core'
-import { ArrowLeft, CircleAlert, Eye, Paperclip } from 'lucide-react'
-import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
+import { ArrowLeft, CircleAlert, Eye, Paperclip, X } from 'lucide-react'
+import { type FormEvent, type ReactNode, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
@@ -200,6 +203,119 @@ function DateInput({ value, onChange }: { value: string; onChange: (v: string) =
   return <input className="input" type="date" value={value} onChange={(e) => onChange(e.target.value)} />
 }
 
+/** How long the typing pauses before the name typed is searched: each search is a read the agent audits. */
+export const PERSON_SEARCH_PAUSE_MS = 300
+
+/**
+ * The person a filter of Audit takes, found by name: the name typed is searched once the typing pauses, with the
+ * reason in force, and the people the agent answers are offered by name and department; the one picked is the filter,
+ * by its Principal id, until another is chosen.
+ */
+function PersonPicker({
+  agent,
+  reason,
+  person,
+  onChange,
+}: {
+  agent: AgentRecord
+  reason: string
+  person: AuditPerson | null
+  onChange: (person: AuditPerson | null) => void
+}) {
+  const hub = useHub()
+  const { t } = useTranslation()
+  const id = useId()
+  const [text, setText] = useState('')
+  const [people, setPeople] = useState<AuditPerson[] | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    const q = person ? null : auditPeopleQueryOf(text)
+    setError('')
+    if (!q) {
+      setPeople(null)
+      return
+    }
+    let current = true
+    const timer = setTimeout(() => {
+      hub
+        .adminCall(agent.did, (client, token) => client.auditPeople(token, reason, q))
+        .then((answer) => {
+          if (current) setPeople(answer.people)
+        })
+        .catch((e) => {
+          if (current) setError(adminErrorWords(e, t))
+        })
+    }, PERSON_SEARCH_PAUSE_MS)
+    return () => {
+      current = false
+      clearTimeout(timer)
+    }
+  }, [text, person, reason, agent.did])
+  return (
+    <div className="field audit-field person-picker">
+      <label htmlFor={id}>{t('adminAccess.auditPage.person')}</label>
+      {person ? (
+        <div className="person-chosen">
+          <span className="space-text">
+            <span className="space-name">{person.name}</span>
+            {person.department ? <span className="space-sub">{person.department}</span> : null}
+          </span>
+          <button
+            id={id}
+            type="button"
+            className="icon-btn small"
+            aria-label={t('adminAccess.auditPage.otherPerson')}
+            onClick={() => {
+              setText('')
+              onChange(null)
+            }}
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        </div>
+      ) : (
+        <>
+          <input
+            id={id}
+            className="input person-search"
+            value={text}
+            placeholder={t('adminAccess.auditPage.personHint')}
+            autoComplete="off"
+            onChange={(e) => setText(e.target.value)}
+            // Enter picks nothing and runs no search of the form: a person is picked from the list
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.preventDefault()
+            }}
+          />
+          {people === null ? null : (
+            <ul className="person-results" aria-label={t('adminAccess.auditPage.people')}>
+              {people.length ? (
+                people.map((p) => (
+                  <li key={p.principalId}>
+                    <button type="button" className="space-row person-option" onClick={() => onChange(p)}>
+                      <span className="space-text">
+                        <span className="space-name">{p.name}</span>
+                        {p.department ? <span className="space-sub">{p.department}</span> : null}
+                      </span>
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="muted person-none">{t('adminAccess.auditPage.noPeople')}</li>
+              )}
+            </ul>
+          )}
+        </>
+      )}
+      <AdminError text={error} />
+    </div>
+  )
+}
+
+/** The name of the person picked, for the id the agent answers with; the id itself for anyone else. */
+const personWords = (person: AuditPerson | null, principalId: string) =>
+  person && person.principalId === principalId ? person.name : principalId
+
 /** The spaces the auditor knows, offered by title for the field Space, which takes any space's id. */
 function SpaceOptions({ agent, id }: { agent: AgentRecord; id: string }) {
   const snap = useSnapshot()
@@ -219,7 +335,7 @@ function ConversationsPanel({ agent, reason }: { agent: AgentRecord; reason: str
   const snap = useSnapshot()
   const hub = useHub()
   const { t, i18n } = useTranslation()
-  const [principal, setPrincipal] = useState('')
+  const [person, setPerson] = useState<AuditPerson | null>(null)
   const [space, setSpace] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -234,7 +350,7 @@ function ConversationsPanel({ agent, reason }: { agent: AgentRecord; reason: str
     try {
       const answer = await hub.adminCall(agent.did, (client, token) =>
         client.auditConversations(token, reason, {
-          principal: principal.trim() || undefined,
+          principal: person?.principalId,
           space: space.trim() || undefined,
           ...auditPeriodOf(from, to),
         })
@@ -246,14 +362,21 @@ function ConversationsPanel({ agent, reason }: { agent: AgentRecord; reason: str
       setBusy(false)
     }
   }
-  if (open) return <AuditTranscript agent={agent} reason={reason} conversation={open} onBack={() => setOpen(null)} />
+  if (open)
+    return (
+      <AuditTranscript
+        agent={agent}
+        reason={reason}
+        conversation={open}
+        personName={personWords(person, open.principalId)}
+        onBack={() => setOpen(null)}
+      />
+    )
   const spaceTitle = (id: string) => snap.spaces[agent.did]?.spaces.find((s) => s.id === id)?.title ?? id
   return (
     <>
       <form className="audit-filters" onSubmit={(e) => void find(e)}>
-        <Field label={t('adminAccess.auditPage.person')}>
-          <TextInput value={principal} onChange={setPrincipal} />
-        </Field>
+        <PersonPicker agent={agent} reason={reason} person={person} onChange={setPerson} />
         <Field label={t('adminAccess.auditPage.space')}>
           <TextInput value={space} onChange={setSpace} list="audit-spaces" />
         </Field>
@@ -280,7 +403,7 @@ function ConversationsPanel({ agent, reason }: { agent: AgentRecord; reason: str
                   <span className="space-name">{c.title || t('adminAccess.auditPage.untitled')}</span>
                   <span className="space-sub">
                     {[
-                      c.principalId,
+                      personWords(person, c.principalId),
                       spaceTitle(c.spaceId),
                       t(`adminAccess.auditPage.state.${c.state}`),
                       c.lastActivityAt ? formatTime(c.lastActivityAt, i18n.language) : '',
@@ -305,11 +428,14 @@ function AuditTranscript({
   agent,
   reason,
   conversation,
+  personName,
   onBack,
 }: {
   agent: AgentRecord
   reason: string
   conversation: AuditConversation
+  /** the person's name when it was picked, its id otherwise */
+  personName: string
   onBack: () => void
 }) {
   const hub = useHub()
@@ -344,7 +470,7 @@ function AuditTranscript({
           <ArrowLeft size={14} aria-hidden="true" /> {t('adminAccess.auditPage.backToList')}
         </button>
         <span className="space-name">{conversation.title || t('adminAccess.auditPage.untitled')}</span>
-        <span className="space-sub">{conversation.principalId}</span>
+        <span className="space-sub">{personName}</span>
       </div>
       <div className="banner info" role="note">
         <Eye size={15} aria-hidden="true" /> {t('adminAccess.auditPage.readOnly')}
@@ -422,18 +548,18 @@ function AuditMessage({ m, agentName }: { m: TranscriptMessage; agentName: strin
 function EvidencePanel({ agent, reason }: { agent: AgentRecord; reason: string }) {
   const hub = useHub()
   const { t } = useTranslation()
-  const [principal, setPrincipal] = useState('')
+  const [person, setPerson] = useState<AuditPerson | null>(null)
   const [found, setFound] = useState<AuditEvidenceResponse['evidence'] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const read = async (e: FormEvent) => {
     e.preventDefault()
-    if (!principal.trim()) return
+    if (!person) return
     setBusy(true)
     setError('')
     try {
       const answer = await hub.adminCall(agent.did, (client, token) =>
-        client.auditEvidence(token, reason, principal.trim())
+        client.auditEvidence(token, reason, person.principalId)
       )
       setFound(answer.evidence)
     } catch (err) {
@@ -445,11 +571,9 @@ function EvidencePanel({ agent, reason }: { agent: AgentRecord; reason: string }
   return (
     <>
       <form className="audit-filters" onSubmit={(e) => void read(e)}>
-        <Field label={t('adminAccess.auditPage.person')}>
-          <TextInput value={principal} onChange={setPrincipal} />
-        </Field>
+        <PersonPicker agent={agent} reason={reason} person={person} onChange={setPerson} />
         <div className="audit-actions">
-          <button type="submit" className="btn primary" disabled={busy || !principal.trim()}>
+          <button type="submit" className="btn primary" disabled={busy || !person}>
             {t('adminAccess.auditPage.read')}
           </button>
         </div>
@@ -492,7 +616,8 @@ function EvidencePanel({ agent, reason }: { agent: AgentRecord; reason: string }
 function CallsPanel({ agent, reason }: { agent: AgentRecord; reason: string }) {
   const hub = useHub()
   const { t, i18n } = useTranslation()
-  const [f, setF] = useState({ principal: '', space: '', conversation: '', source: '', from: '', to: '' })
+  const [person, setPerson] = useState<AuditPerson | null>(null)
+  const [f, setF] = useState({ space: '', conversation: '', source: '', from: '', to: '' })
   const [calls, setCalls] = useState<Record<string, unknown>[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -504,7 +629,7 @@ function CallsPanel({ agent, reason }: { agent: AgentRecord; reason: string }) {
     try {
       const answer = await hub.adminCall(agent.did, (client, token) =>
         client.auditToolCalls(token, reason, {
-          principal: f.principal.trim() || undefined,
+          principal: person?.principalId,
           space: f.space.trim() || undefined,
           conversation: f.conversation.trim() || undefined,
           source: f.source.trim() || undefined,
@@ -519,13 +644,15 @@ function CallsPanel({ agent, reason }: { agent: AgentRecord; reason: string }) {
     }
   }
   const cell = (row: Record<string, unknown>, field: string) =>
-    field === 'at' && typeof row.at === 'string' ? formatTime(row.at, i18n.language) : auditValueOf(row[field])
+    field === 'at' && typeof row.at === 'string'
+      ? formatTime(row.at, i18n.language)
+      : field === 'principalId' && typeof row.principalId === 'string'
+        ? personWords(person, row.principalId)
+        : auditValueOf(row[field])
   return (
     <>
       <form className="audit-filters" onSubmit={(e) => void read(e)}>
-        <Field label={t('adminAccess.auditPage.person')}>
-          <TextInput value={f.principal} onChange={set('principal')} />
-        </Field>
+        <PersonPicker agent={agent} reason={reason} person={person} onChange={setPerson} />
         <Field label={t('adminAccess.auditPage.space')}>
           <TextInput value={f.space} onChange={set('space')} list="audit-call-spaces" />
         </Field>

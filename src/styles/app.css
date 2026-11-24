@@ -4002,6 +4002,43 @@ mark.hit.current {
   display: flex;
   gap: 8px;
 }
+/* a person found by name: the list of the people found under the field, the one picked in its place */
+.person-picker {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.person-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.person-none {
+  padding: 7px 8px;
+}
+.person-chosen {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px 4px 3px 12px;
+  background: var(--surface);
+  min-width: 0;
+}
 .audit-list {
   list-style: none;
   margin: 0;
