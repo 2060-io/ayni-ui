@@ -22,6 +22,14 @@
   --dark-text: #f3f4f6;
   --dark-muted: #9ca3af;
   --dark-border: #1f2937;
+  /*
+   * the danger red, for what cannot be undone (Remove agent, Close for good, Delete, Disconnect), with the colour of
+   * what is written on it; the dark one is the Ayni app's (`DARK.red`), at least 4.5:1 on the page, a menu and a card
+   */
+  --light-danger: #b91c1c;
+  --light-dangerContrast: #ffffff;
+  --dark-danger: #f87171;
+  --dark-dangerContrast: #0b1220;
   --accent: var(--light-accent);
   --accent-contrast: var(--light-accentContrast);
   --bg: var(--light-bg);
@@ -29,7 +37,8 @@
   --text: var(--light-text);
   --muted: var(--light-muted);
   --border: var(--light-border);
-  --danger: #b91c1c;
+  --danger: var(--light-danger);
+  --danger-contrast: var(--light-dangerContrast);
   --warning: #b45309;
   --ok: #047857;
   --radius: 10px;
@@ -49,6 +58,8 @@
     --text: var(--dark-text);
     --muted: var(--dark-muted);
     --border: var(--dark-border);
+    --danger: var(--dark-danger);
+    --danger-contrast: var(--dark-dangerContrast);
     color-scheme: dark;
   }
 }
@@ -60,6 +71,8 @@
   --text: var(--dark-text);
   --muted: var(--dark-muted);
   --border: var(--dark-border);
+  --danger: var(--dark-danger);
+  --danger-contrast: var(--dark-dangerContrast);
   color-scheme: dark;
 }
 
@@ -455,7 +468,7 @@ fieldset.quick {
   padding: 0 5px;
   border-radius: 9px;
   background: var(--danger);
-  color: #fff;
+  color: var(--danger-contrast);
   font-size: 11px;
   font-weight: 600;
   display: grid;
@@ -1223,7 +1236,7 @@ fieldset.quick {
 }
 .send.danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--danger-contrast);
 }
 .reply-strip {
   display: flex;
@@ -1287,7 +1300,7 @@ fieldset.quick {
 }
 .icon-btn.danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--danger-contrast);
 }
 .btn {
   display: inline-flex;
@@ -3197,7 +3210,10 @@ mark.hit.current {
   color: var(--accent);
 }
 
-/* Delete, last in the menu of the person's message, in red (UI-CONV-036); Remove agent, in red */
+/*
+ * Delete, last in the menu of the person's message, in red (UI-CONV-036); in the agent's menu, Disconnect from this
+ * agent and Remove agent, as the app draws them, and Close for good in a conversation's
+ */
 .menu-popover button.danger,
 .msg-menu button[role="menuitem"].danger,
 .sheet button[role="menuitem"].danger,

@@ -297,17 +297,15 @@ describe('the stylesheet follows the shared conversation design', () => {
       const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       return new RegExp(`${escaped} \\{([^}]*)\\}`).exec(css)?.[1] ?? ''
     }
-    // the roles a card and the Tools segment paint with: each dark block takes all of them from the dark palette;
-    // warning and danger are one colour in both themes
-    const roles = ['bg', 'surface', 'text', 'muted', 'border', 'accent'] as const
+    // the roles a card and the Tools segment paint with: each dark block takes all of them from the dark palette, the
+    // danger red included (its dark value is the app's); warning is one colour in both themes
+    const roles = ['bg', 'surface', 'text', 'muted', 'border', 'accent', 'danger'] as const
     const system = block('@media (prefers-color-scheme: dark) {\n  :root:not([data-theme="light"])')
     const chosen = block(':root[data-theme="dark"]')
     for (const dark of [system, chosen])
       for (const r of roles) expect(dark, `--${r} in a dark block`).toContain(`--${r}: var(--dark-${r});`)
-    for (const r of ['warning', 'danger']) {
-      expect(system).not.toContain(`--${r}:`)
-      expect(chosen).not.toContain(`--${r}:`)
-    }
+    expect(system).not.toContain('--warning:')
+    expect(chosen).not.toContain('--warning:')
     const rgb = (c: string) =>
       c.startsWith('#')
         ? [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16))
@@ -318,7 +316,7 @@ describe('the stylesheet follows the shared conversation design', () => {
     }
     const C = CONVERSATION_COLORS
     for (const scheme of ['light', 'dark']) {
-      const of = (r: string) => (r === 'warning' || r === 'danger' ? token(r) : token(`${scheme}-${r}`))
+      const of = (r: string) => (r === 'warning' ? token(r) : token(`${scheme}-${r}`))
       const card = of('surface')
       // the card: the source, the labels, the account and the lock muted; the title and the values in the text colour
       for (const r of ['source', 'account', 'label', 'lock'] as const)

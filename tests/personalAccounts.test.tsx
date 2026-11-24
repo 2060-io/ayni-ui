@@ -1166,7 +1166,7 @@ describe('the new surfaces in both themes: light, dark by choice and dark by sys
     expect(rule('.about-tool-yours').color).toBe('var(--text)')
     const figures: Record<string, Record<string, number>> = {}
     for (const scheme of ['light', 'dark']) {
-      const of = (r: string) => (r === 'warning' || r === 'danger' ? token(r) : token(`${scheme}-${r}`))
+      const of = (r: string) => (r === 'warning' ? token(r) : token(`${scheme}-${r}`))
       const page = of('bg')
       const card = of('surface')
       const waiting = blend(of('accent'), 0.1, page)
@@ -1217,13 +1217,13 @@ describe('the new surfaces in both themes: light, dark by choice and dark by sys
         rowReconnectIcon: 3.73,
         waitingWords: 14.39,
         waitingIcon: 8.51,
-        disconnect: 5.48,
+        disconnect: 8.82,
         connectButton: 7.77,
         cardTitle: 16.12,
         cardMuted: 6.99,
         cardIcon: 6.99,
         cardReconnectIcon: 3.53,
-        error: 15.42,
+        error: 13.68,
         link: 10.06,
       },
     })

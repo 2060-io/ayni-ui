@@ -798,7 +798,7 @@ describe('the colours of the Notifications in both themes: light, dark by choice
   it('read on both palettes, the figures as the PR states them', () => {
     const figures: Record<string, Record<string, number>> = {}
     for (const theme of ['light', 'dark']) {
-      const of = (n: string) => rgb(n === 'danger' ? token('danger') : token(`${theme}-${n}`))
+      const of = (n: string) => rgb(token(`${theme}-${n}`))
       const [accent, label, bg, surface, text, muted] = [
         'accent',
         'accentContrast',
@@ -850,7 +850,7 @@ describe('the colours of the Notifications in both themes: light, dark by choice
         muted: 6.99,
         selectedEdge: 10.06,
         notice: 13.39,
-        refusal: 15.37,
+        refusal: 13.73,
         primary: 7.77,
       },
     })
