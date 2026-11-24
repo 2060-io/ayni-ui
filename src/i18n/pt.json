@@ -576,7 +576,7 @@
     "yours": "Suas",
     "onlyYouRead": "Só você pode lê-las",
     "sharedWithSpace": "Compartilhadas com o espaço",
-    "sharedHint": "Somente leitura, compartilhadas pelo autor",
+    "sharedHint": "Compartilhadas com todos no espaço",
     "noConversations": "Você ainda não tem conversas neste espaço.",
     "noShared": "Ainda não há nada compartilhado com este espaço.",
     "sharedBy": "{{name}} · {{time}}",

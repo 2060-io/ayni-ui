@@ -149,9 +149,10 @@ describe('the page of a space (UI-CONV-031)', () => {
     // Ana's own share is listed too, with "You" as its author
     expect(shared[1].textContent).toContain('Caliper check')
     expect(shared[1].querySelector('.space-sub')?.textContent).toMatch(/^You · /)
-    expect(byText(el, '.section-label', 'Shared with the space')?.parentElement?.textContent).toContain(
-      'Read-only, shared by their author'
-    )
+    // the hint fits the person's own shares as well as the others'
+    const sharedHint = byText(el, '.section-label', 'Shared with the space')?.parentElement?.textContent
+    expect(sharedHint).toContain('Shared with everyone in the space')
+    expect(sharedHint).not.toContain('Read-only')
     await click(shared[0])
     expect(hub.getSnapshot()).toMatchObject({ view: 'shared', sharedFor: { spaceId: TRUCK.id } })
     expect(hub.getSnapshot().sharedFor?.conversation.id).toBe('conv_9')
