@@ -841,5 +841,20 @@
       `packages/core/tests/reducer.test.ts` (an attachment held back), `tests/confirmationCard.test.tsx`,
       `tests/toolSources.test.tsx`, `tests/spaceTools.test.tsx`, `tests/notifications.test.tsx`,
       `tests/personalAccounts.test.tsx`, `tests/conversationDesign.test.ts`. Each fails without the change.
-49. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+49. **The danger red in the dark theme, and Disconnect in red** (2026-11-23, Fabrice reviewing the clean spec, ayni-spec
+    #123). The red of what cannot be undone was one colour in both themes, `#b91c1c`: on the dark page and menus it read
+    at 2.89:1, under the 4.5:1 that WCAG 2.2 AA asks of words.
+    - **Two reds.** `--danger` is `--light-danger` (`#b91c1c`) or `--dark-danger` (`#f87171`, the Ayni app's `DARK.red`),
+      set in both dark blocks, by choice and by system, as the other roles are. Remove agent, Close for good, a message's
+      Delete and Disconnect read 6.47:1 on the light page and 6.77:1 on the dark one, 6.19:1 and 6.41:1 on an entry under
+      the pointer or a card.
+    - **What is written on the red** (the unread count of a tile, Stop, the stop of a recording) takes
+      `--danger-contrast`: white in the light theme, the dark page's colour in the dark one, 6.47:1 and 6.77:1.
+    - **Disconnect from this agent** is in red in the agent's menu, as the app draws it.
+    - **Figures.** The dark figures of the tests of the Notifications and of Your accounts were computed with the light
+      red; they now use the dark one: a refusal 13.73:1, Your accounts' Disconnect 8.82:1, an outcome refused 13.68:1.
+    - **Tests.** `tests/dangerColour.test.tsx` (the entries in red, the tokens, the contrasts); the colour tests of
+      `tests/conversationDesign.test.ts`, `tests/notifications.test.tsx` and `tests/personalAccounts.test.tsx` take the
+      dark red. Each fails without the change.
+50. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

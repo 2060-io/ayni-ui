@@ -218,7 +218,8 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
               </MenuEntry>
             )}
             {agent.deviceSecret ? (
-              <MenuEntry entry="disconnect" onClick={() => run(() => hub.disconnectAgent(agent.did))}>
+              // in red, as the app draws it: it ends the link of this browser
+              <MenuEntry entry="disconnect" danger onClick={() => run(() => hub.disconnectAgent(agent.did))}>
                 {t('column.disconnect')}
               </MenuEntry>
             ) : null}
