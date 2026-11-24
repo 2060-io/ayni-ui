@@ -4,6 +4,7 @@
  * UI-APPR-007).
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
+import { ADMIN_CHANGED } from './adminAccess.js'
 import { CONNECTIONS_CHANGED } from './connections.js'
 import { MEMORY_UPDATE, MEMORY_UPDATED, memoryLineOf } from './memories.js'
 import { NOTIFICATIONS_CHANGED } from './notifications.js'
@@ -27,6 +28,7 @@ export interface Reduction {
     | 'tools'
     | 'connections'
     | 'notifications'
+    | 'admin'
   )[]
 }
 
@@ -482,6 +484,12 @@ export function reduce(
           // again and tells the screens that show them (UI-CONV-053, PROF-TOOL-019); nothing of it enters the
           // transcript
           signals.push('connections')
+          break
+        case ADMIN_CHANGED:
+          // the admin state of the device changed: a grant opened or ended, a Show Admin that opened none; the shell
+          // shows or hides the ADMIN area and says the request's outcome (UI-ADMIN-002, UI-ADMIN-003, PROF-ADMIN-004);
+          // nothing of it enters the transcript
+          signals.push('admin')
           break
         case CUSTOM_EVENT.reaction: {
           // one reaction per person per message: an add replaces, a remove clears (PROF-RUN-010)

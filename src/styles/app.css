@@ -3953,3 +3953,175 @@ mark.hit.current {
 .steward-candidate {
   align-items: flex-start;
 }
+
+/* admin access on the agent's card (UI-ADMIN-002, UI-ADMIN-003) */
+.admin-request {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+}
+.admin-request.done {
+  background: color-mix(in srgb, var(--warning) 12%, var(--bg));
+}
+.admin-request-text {
+  flex: 1;
+  min-width: 0;
+}
+.admin-request-icon {
+  color: var(--warning);
+}
+.agent-body .admin-area-head {
+  justify-content: space-between;
+}
+.admin-until {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Audit and Operations (UI-ADMIN-004, UI-ADMIN-005) */
+.audit-reason {
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+.audit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+.audit-field {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.audit-actions {
+  display: flex;
+  gap: 8px;
+}
+/* a person found by name: the field and Search people, the people found under them, the one picked in their place */
+.person-picker {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.person-search-row {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+.person-search {
+  flex: 1;
+  min-width: 0;
+}
+.person-search-button {
+  flex: none;
+}
+.person-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 2px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  max-height: 300px;
+  overflow-y: auto;
+}
+.person-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.person-none,
+.person-more {
+  padding: 7px 8px;
+}
+.person-chosen {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px 4px 3px 12px;
+  background: var(--surface);
+  min-width: 0;
+}
+.audit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.audit-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.audit-transcript-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.audit-entry {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  user-select: all;
+}
+.audit-fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13.5px;
+}
+.audit-field-row {
+  display: flex;
+  gap: 12px;
+}
+.audit-field-name {
+  min-width: 140px;
+  color: var(--muted);
+}
+.audit-field-value {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.audit-log-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.audit-log-detail {
+  overflow-wrap: anywhere;
+}
+.operation {
+  gap: 8px;
+}
+.operation-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.operation-target {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.operation-outcome {
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}

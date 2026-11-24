@@ -12,6 +12,33 @@ import type {
   SuccessorRequest,
   UploadResponse,
 } from '@ayni.org/ayni-agui-profile'
+import {
+  type AdminAccess,
+  type AdminGrantRequestResponse,
+  type AdminKeyName,
+  type AuditConversationsResponse,
+  type AuditEvidenceResponse,
+  type AuditLogResponse,
+  type AuditMessagesResponse,
+  type AuditPeopleResponse,
+  type AuditToolCallsResponse,
+  adminAccessOf,
+  auditConversationsOf,
+  auditEvidenceOf,
+  auditLogOf,
+  auditMessagesOf,
+  auditPeopleOf,
+  auditPeopleQueryOf,
+  auditToolCallsOf,
+  type EraseRequest,
+  type EraseResponse,
+  eraseOf,
+  type KeysResponse,
+  keysOf,
+  type LegalHoldRequest,
+  type LegalHoldResponse,
+  legalHoldOf,
+} from './adminAccess.js'
 import type { ApprovalPolicyInput } from './approvalPolicy.js'
 import {
   type Connection,
@@ -766,5 +793,123 @@ export class ProfileClient {
   public async adminChanges(token: string, before?: string, limit = 50): Promise<AdminChangesPage> {
     const query = new URLSearchParams({ limit: String(limit), ...(before ? { before } : {}) })
     return adminChangesOf(await this.getJson(token, `/admin/changes?${query}`))
+  }
+
+  // ---- admin access (profile 3.5.5 §3.14, PROF-ADMIN-001 to 007) ------------------------------------------------------
+
+  /** The person's admin roles and the device's open grant (PROF-ADMIN-001). */
+  public async adminAccess(token: string): Promise<AdminAccess> {
+    return adminAccessOf(await this.getJson(token, '/admin'))
+  }
+
+  /** Show Admin (PROF-ADMIN-002): `202` at once; the outcome comes as `ayni.admin.changed`. */
+  public async requestAdminGrant(token: string): Promise<AdminGrantRequestResponse> {
+    const body = (await this.send(token, 'POST', '/admin/grant')) as Partial<AdminGrantRequestResponse> | undefined
+    if (typeof body?.requestId !== 'string' || typeof body.expiresAt !== 'string')
+      throw new ProfileError(502, 'bad-response')
+    return { requestId: body.requestId, expiresAt: body.expiresAt }
+  }
+
+  /** Hide Admin (PROF-ADMIN-003): the device's grant ends at once; `204` with or without one. */
+  public async hideAdmin(token: string): Promise<void> {
+    await this.send(token, 'DELETE', '/admin/grant')
+  }
+
+  /** A read of Audit: its reason in the query, with the filters given (PROF-ADMIN-005). */
+  private audit(token: string, path: string, reason: string, params: Record<string, string | undefined> = {}) {
+    const query = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) if (v) query.set(k, v)
+    query.set('reason', reason)
+    return this.getJson(token, `/admin/audit/${path}?${query}`)
+  }
+
+  /** The conversations found by Principal, space and period, newest activity first (PROF-ADMIN-005). */
+  public async auditConversations(
+    token: string,
+    reason: string,
+    filters: { principal?: string; space?: string; from?: string; to?: string } = {}
+  ): Promise<AuditConversationsResponse> {
+    return auditConversationsOf(await this.audit(token, 'conversations', reason, filters))
+  }
+
+  /** A page of a conversation's messages, decrypted, in the shapes of §8, oldest first (PROF-ADMIN-005). */
+  public async auditMessages(
+    token: string,
+    reason: string,
+    conversationId: string,
+    before?: string,
+    limit = 50
+  ): Promise<AuditMessagesResponse> {
+    return auditMessagesOf(
+      await this.audit(token, `conversations/${encodeURIComponent(conversationId)}/messages`, reason, {
+        before,
+        limit: String(limit),
+      })
+    )
+  }
+
+  /**
+   * The people whose name matches `q`, at most 20, each with its Principal id, its name and its department (agent, for
+   * an `auditor`): the person a filter of Audit takes, picked by name. Its reason in the query, as every read of Audit.
+   */
+  public async auditPeople(token: string, reason: string, q: string): Promise<AuditPeopleResponse> {
+    // an empty search is refused by the agent (400 bad-request, field q): refused here before it goes
+    const text = auditPeopleQueryOf(q)
+    if (!text) throw new ProfileError(400, 'bad-request', undefined, undefined, undefined, 'q')
+    return auditPeopleOf(await this.audit(token, 'people', reason, { q: text }))
+  }
+
+  /** The evidence records of a Principal (PROF-ADMIN-005). */
+  public async auditEvidence(token: string, reason: string, principal: string): Promise<AuditEvidenceResponse> {
+    return auditEvidenceOf(await this.audit(token, 'evidence', reason, { principal }))
+  }
+
+  /** The call records, filtered (PROF-ADMIN-005, agent TOOL-PROV-005). */
+  public async auditToolCalls(
+    token: string,
+    reason: string,
+    filters: {
+      principal?: string
+      space?: string
+      conversation?: string
+      source?: string
+      from?: string
+      to?: string
+    } = {}
+  ): Promise<AuditToolCallsResponse> {
+    return auditToolCallsOf(await this.audit(token, 'tool-calls', reason, filters))
+  }
+
+  /** A page of the admin audit, newest first (PROF-ADMIN-005). */
+  public async auditLog(token: string, reason: string, before?: string, limit = 50): Promise<AuditLogResponse> {
+    return auditLogOf(await this.audit(token, 'log', reason, { before, limit: String(limit) }))
+  }
+
+  /** Erases entries, with their cascade (PROF-ADMIN-006): the reason in the body. */
+  public async eraseEntries(token: string, reason: string, entryIds: string[]): Promise<EraseResponse> {
+    return eraseOf(
+      await this.send(token, 'POST', '/admin/operations/erase', { entryIds, reason } satisfies EraseRequest)
+    )
+  }
+
+  /** Sets or releases a legal hold on entries, or on every entry of a conversation (PROF-ADMIN-006). */
+  public async legalHold(
+    token: string,
+    reason: string,
+    target: { entryIds: string[] } | { conversationId: string },
+    hold: boolean
+  ): Promise<LegalHoldResponse> {
+    const body: LegalHoldRequest = { ...target, hold, reason }
+    return legalHoldOf(await this.send(token, 'POST', '/admin/operations/legal-hold', body))
+  }
+
+  /** The keys' versions and the progress of a rotation (PROF-ADMIN-006): a read, its reason in the query. */
+  public async adminKeys(token: string, reason: string): Promise<KeysResponse> {
+    return keysOf(await this.getJson(token, `/admin/operations/keys?${new URLSearchParams({ reason })}`))
+  }
+
+  /** Rotates the master key or the index key (PROF-ADMIN-006); the reference agent answers `501` while it cannot. */
+  public async rotateKey(token: string, reason: string, key: AdminKeyName): Promise<void> {
+    await this.send(token, 'POST', `/admin/operations/keys/${key}/rotate`, { reason })
   }
 }

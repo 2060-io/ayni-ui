@@ -13,6 +13,9 @@ function held(over: Partial<HeldOfPerson> = {}): HeldOfPerson {
     spaces: { [A]: { spaces: [{ id: 'spc_a' }], templates: [] }, [B]: { spaces: [{ id: 'spc_b' }], templates: [] } },
     admins: { [A]: true, [B]: false },
     stewards: { [A]: true, [B]: true },
+    adminAccess: { [A]: { roles: ['auditor'], grant: null }, [B]: { roles: [], grant: null } },
+    adminRequests: { [A]: { status: 'declined' } },
+    auditReasons: { [A]: { reason: 'Complaint 4411', expiresAt: 'x' } },
     connections: { [A]: [{ source: 'github' }], [B]: [] },
     agentNotifications: { [A]: 3, [B]: 1 },
     toolChanges: [{ agentDid: A }, { agentDid: B }],
@@ -25,6 +28,7 @@ function held(over: Partial<HeldOfPerson> = {}): HeldOfPerson {
     memoryFor: null,
     accountsFor: null,
     notificationsFor: null,
+    adminPageFor: null,
     transcripts: { ses_a1: {}, ses_a2: {}, ses_b1: {} },
     pending: { ses_a1: 'x', ses_b1: 'y' },
     replyTo: { ses_a2: {} },
@@ -44,6 +48,10 @@ describe('withAgentForgotten (UI-AGENTS-005, UI-AGENTS-006)', () => {
     expect(next.spaces).toEqual({ [B]: { spaces: [{ id: 'spc_b' }], templates: [] } })
     expect(next.admins).toEqual({ [B]: false })
     expect(next.stewards).toEqual({ [B]: true })
+    // the admin roles, the grant, a Show Admin that waits and the reason in force (UI-ADMIN-001 to 004)
+    expect(next.adminAccess).toEqual({ [B]: { roles: [], grant: null } })
+    expect(next.adminRequests).toEqual({})
+    expect(next.auditReasons).toEqual({})
     expect(next.connections).toEqual({ [B]: [] })
     expect(next.agentNotifications).toEqual({ [B]: 1 })
     expect(next.toolChanges).toEqual([{ agentDid: B }])
@@ -74,6 +82,8 @@ describe('withAgentForgotten (UI-AGENTS-005, UI-AGENTS-006)', () => {
     ['shared', { sharedFor: { agentDid: A } }],
     ['accounts', { accountsFor: { agentDid: A } }],
     ['notifications', { notificationsFor: { agentDid: A } }],
+    ['audit', { adminPageFor: A }],
+    ['operations', { adminPageFor: A }],
   ] as const)('a page of the agent that is open (%s) closes, back to the list', (view, page) => {
     const next = withAgentForgotten(held({ view, ...page }), A, [])
     expect(next.view).toBe('list')

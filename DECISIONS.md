@@ -980,5 +980,67 @@
       entry, the words in four languages); `packages/core/tests/notifications.test.ts` and `tests/spaceTools.test.tsx`
       amended to the spec's change ("Needs approval"; `own` with `canDecide` is now an own confirmation). Each new test
       fails without the change.
-53. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+53. **Admin access from the agent's card: Show Admin, the ADMIN area, Audit and Operations** (2026-11-24, ayni-spec
+    UI-ADMIN-001 to 006, agent D132 to D134, AG-UI profile §3.14; built against ayni-agent #120, not merged yet, whose
+    profile package 3.5.5 shapes are taken from its code). Core 0.14.0 (0.13.0, then the icons and the person picker).
+    - **The profile package.** 3.5.5 is not on npm (the latest published is 3.5.4), so its shapes of §3.14 are written
+      in the core (`adminAccess.ts`), as for 3.3 to 3.5.4; `features.admin` is read loosely.
+    - **The menu** (UI-ADMIN-001). For an agent that declares `features.admin`, `GET {sessions}/admin` is read with each
+      list of conversations; Show Admin (icon `shield-user`) to a person whose `roles` is not empty while this browser
+      holds no open grant, Hide Admin (`shield-off`) while it holds one, only while the browser is linked.
+    - **Show Admin** (UI-ADMIN-002). `POST {sessions}/admin/grant`; the card reads "Confirm on your phone" under its
+      header, a stream of the agent held open, until `ayni.admin.changed` comes: `declined` and `failed` read "Not
+      confirmed on your phone", `expired` "The request expired", each with a close button; `opened` clears it and opens
+      the card. A request whose `expiresAt` passed with no word (plus five seconds) reads expired and the state is read
+      again. The event reaches the other tabs over the sync bus.
+    - **The ADMIN area** (UI-ADMIN-003). Above the spaces, headed "Admin" with "Until 14:32" (the grant's end, the
+      browser's hours and minutes), Audit (icon `file-search`) for `auditor` and Operations (`wrench`) for `operator`.
+      Shown exactly while the grant is open: a timer ends it at `expiresAt` by the browser's clock; `ayni.admin.changed`
+      with no grant, Hide Admin (`DELETE {sessions}/admin/grant`) and a `403 admin-closed` end it too. An Audit or
+      Operations page then open closes to the list with the notice "Admin access ended". Disconnect forgets it all.
+    - **Audit** (UI-ADMIN-004). A reason before the first read, kept for the grant (it goes when the grant ends), shown
+      as "Reason: …" with Change; every read carries it in the query. Four segments: Conversations (person, space,
+      from, to; a row opens the messages, decrypted, read-only, each with its entry id so that an operator can name it,
+      "Earlier messages" by pages), Evidence (a person's records: their fields and the values stored), Call records (the
+      six filters, a table of the record's main fields) and Admin audit (read when the segment opens, newest first,
+      More by pages). The space field offers the auditor's own spaces by title while taking any id. A period is two
+      days, from the start of the first to the end of the last in the browser's time zone.
+    - **The icons** (product owner, 2026-11-24). The four icons are entries of the core's one table, `MENU_ICON`, which
+      the app reads too: `showAdmin: 'shield-user'`, `hideAdmin: 'shield-off'`, and the rows of the area by their page,
+      `audit: 'file-search'`, `operations: 'wrench'` (the keys are `adminAreaOf`'s pages). `ADMIN_AREA_ICON` is gone;
+      the browser draws the menu's entries and the area's rows from the same lookup (`menuIconOf`).
+    - **A person found by name** (product owner, 2026-11-24). The person of Conversations, Evidence and Call records
+      is picked, not typed as an id: `GET {sessions}/admin/audit/people?q=&reason=` (auditor only, at most 20, from
+      ayni-agent `fix/admin-people-and-device`, not merged; profile 3.5.7 is not on npm, so the shapes are written in
+      the core: `AuditPerson`, `auditPeopleOf`, `ProfileClient.auditPeople`). It behaves and reads as the app's picker
+      (ayni-app #121), with its rules in the core (`AuditPersonChoice`, `auditPrincipalOf`, `auditPeopleCapped`) and
+      its English in `ADMIN_COPY`: a search runs only when asked, with Search people or Enter in the field, never on
+      each letter, since each one is an Audit read the agent records with the reason in force; an empty field sends
+      nothing and reads "Type a name to search" (the agent would answer `400 bad-request`, `field: 'q'`; the client
+      refuses it before it goes). The people found are listed under the field by name and department ("No
+      department" for none); none reads "No one found."; twenty (the most one search gives) add "The first 20 found:
+      type more of the name to narrow it." The one picked takes the field's place, name and department, with a clear
+      (X) control that gives back the name typed; its id is what the filter sends. An empty field means anyone
+      (placeholder "Type a name, or leave for anyone"), except in Evidence, whose Read waits for a pick; a name typed
+      and not picked blocks Find with "Pick the person from the list, or clear the name". The rows found and the call
+      records name the picked person by name, anyone else by id. The refusals read as the other reads of Audit.
+    - **Operations** (UI-ADMIN-005). Erase entries (ids typed, separated by spaces, commas or lines), Legal hold (on
+      entries or a conversation, set or release) and Keys. Each action opens a confirmation that names what it acts on
+      ("Entries: …", "Every entry of the conversation …", "Index key, to a new version") and asks its own reason; the
+      answer is said line by line (erased, kept by a legal hold, not found; changed, skipped). The keys are a read with
+      its own reason: each key's versions, the rotation's progress ("From version 1 to 2: 40 of 100"), and Rotate,
+      disabled with "This agent cannot rotate it yet." for a key that is not `rotatable` (the reference agent answers
+      `rotatable: false` and `501` while its key store is not built; a `501` reads the same).
+    - **Refusals** (UI-ADMIN-006): `admin-closed` "Admin access ended" (and the page closes), `not-auditor` and
+      `not-operator` "You don't have this role any more", `reason-required` "Say why you need this".
+    - **Words.** `ADMIN_COPY` in the core, in the four languages; the spec gives the menu's, the request's, the area's
+      and the refusals' words, the others are this client's.
+    - **Tests.** `packages/core/tests/adminAccess.test.ts` (the state, the menu, the area by the clock, the request, the
+      refusals, the reason, the period, the signal, every call with its reason) and `tests/adminAccess.test.tsx` (the
+      menu for Jonas, Ben and an agent without the feature; the three outcomes of Show Admin; the area above the spaces,
+      its pages, its end by the clock, by the event and by Hide Admin; Audit's reason and reads; Operations' erase, legal
+      hold and keys; the refusals; the words in four languages; the icons of the table; the person picked by name in
+      the three segments, a search only when asked, an empty field for anyone, a name not picked blocking the read, the
+      cap of twenty, a refusal of the search, the picker's words in four languages); `forget.test.ts` extended.
+54. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

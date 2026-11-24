@@ -5,11 +5,18 @@
  */
 import { type AyniAction, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import {
+  type AdminAccess,
+  type AdminPage,
+  type AdminRequestState,
   type AgentRecord,
   type AgUiEvent,
   type AppLinkDestination,
   type ApprovalPolicyInput,
   type ApprovalStatus,
+  adminChangedOf,
+  adminPageOpen,
+  adminRefusalOf,
+  adminRequestAfter,
   type BrandConfig,
   BroadcastSyncBus,
   type Connection,
@@ -31,6 +38,7 @@ import {
   emptyTranscript,
   excerpt,
   fileUnderController,
+  grantOpen,
   hasIssuedCredential,
   IndexedDbStore,
   isAppLink,
@@ -67,6 +75,7 @@ import {
   type Transcript,
   type TranscriptMessage,
   taken,
+  takesAdmin,
   takesConnections,
   takesNotifications,
   takesQueue,
@@ -111,6 +120,10 @@ export type View =
   | 'notifications'
   /** Spaces you steward (UI-CONV-068, profile 3.5.4 PROF-SPACE-009) */
   | 'steward'
+  /** Audit, from the ADMIN area of the agent's card (UI-ADMIN-003, UI-ADMIN-004) */
+  | 'audit'
+  /** Operations, from the ADMIN area of the agent's card (UI-ADMIN-003, UI-ADMIN-005) */
+  | 'operations'
 
 export interface Snapshot {
   ready: boolean
@@ -218,6 +231,17 @@ export interface Snapshot {
    * comes back in front: the Notifications on screen read their list again (UI-APPR-007)
    */
   notificationsVersion: number
+  /**
+   * per agent: the person's admin roles and this browser's admin grant (PROF-ADMIN-001), as last read or announced
+   * (`ayni.admin.changed`): the menu's Show Admin or Hide Admin and the ADMIN area of the card (UI-ADMIN-001, 003)
+   */
+  adminAccess: Record<string, AdminAccess | undefined>
+  /** per agent: a Show Admin that waits for the phone, or the outcome of one that opened no grant (UI-ADMIN-002) */
+  adminRequests: Record<string, AdminRequestState | undefined>
+  /** the agent whose Audit or Operations is open (views `audit` and `operations`, UI-ADMIN-003) */
+  adminPageFor: string | null
+  /** per agent: the reason of Audit's reads, kept for the grant it was given under (UI-ADMIN-004) */
+  auditReasons: Record<string, { reason: string; expiresAt: string } | undefined>
 }
 
 type Listener = () => void
@@ -284,6 +308,10 @@ export class Hub {
       notificationsFor: null,
       agentNotifications: {},
       notificationsVersion: 0,
+      adminAccess: {},
+      adminRequests: {},
+      adminPageFor: null,
+      auditReasons: {},
     }
   }
 
@@ -405,6 +433,8 @@ export class Hub {
       this.noteConnectionsChange(m.agentDid, m.change, false)
     } else if (m.kind === 'notifications-changed') {
       this.noteNotificationsChange(m.agentDid, m.change, false)
+    } else if (m.kind === 'admin-changed') {
+      this.noteAdminChanged(m.agentDid, m.change, false)
     } else if (m.kind === 'agent-forgotten') {
       this.forgetAgent(m.agentDid, m.sessionIds, false)
     } else if (m.kind === 'leader' && m.tabId !== this.bus?.tabId) {
@@ -1269,6 +1299,7 @@ export class Hub {
     await this.loadSpacesWith(agentDid, client, token).catch((e) => warn('the spaces could not be read', e))
     void this.probeAdmin(agentDid, client, token)
     void this.probeSteward(agentDid, client, token)
+    void this.probeAdminAccess(agentDid, client, token)
   }
 
   /** The bound session of the record's conversation on this device, if any (UI-SESS-014). */
@@ -1433,6 +1464,7 @@ export class Hub {
   private forgetAgent(did: string, sessionIds: string[], tell = true): void {
     for (const id of sessionIds) this.unsavedDrafts.delete(id)
     this.connectionReads.delete(did)
+    this.dropAdminTimers(did)
     this.set(withAgentForgotten(this.snapshot, did, sessionIds))
     if (tell) this.bus?.post({ kind: 'agent-forgotten', agentDid: did, sessionIds })
   }
@@ -1944,6 +1976,9 @@ export class Hub {
       // Notifications on screen read their list again (UI-APPR-007, PROF-TOOL-025)
       if (signals.includes('notifications') && event.type === 'CUSTOM')
         this.noteNotificationsChange(next.agentDid, event.value, true)
+      // the admin state of this browser changed: the area shows or hides, a Show Admin says its outcome (UI-ADMIN-002,
+      // UI-ADMIN-003)
+      if (signals.includes('admin') && event.type === 'CUSTOM') this.noteAdminChanged(next.agentDid, event.value, true)
       this.set({})
       this.updateTitle()
       this.bus?.post({ kind: 'transcript', sessionId })
@@ -3195,6 +3230,216 @@ export class Hub {
 
   public adminChanges(agentDid: string, before?: string) {
     return this.withAgent(agentDid, (client, token) => client.adminChanges(token, before))
+  }
+
+  // ---- admin access (UI-ADMIN-001 to 006; profile 3.5.5 §3.14; agent D132, D133) -----------------------------------
+
+  /** the end of each agent's open grant, by this browser's clock (PROF-ADMIN-004) */
+  private readonly adminExpiry = new Map<string, ReturnType<typeof setTimeout>>()
+  /** a Show Admin that waits: the stream held open so that its outcome reaches this browser, and its own end */
+  private readonly adminWaits = new Map<string, { release: () => void; timer: ReturnType<typeof setTimeout> }>()
+
+  /** Whether the agent serves admin access (PROF-DESC-013): no Show Admin without it. */
+  public takesAdmin(agentDid: string): boolean {
+    return takesAdmin(this.snapshot.agents.find((a) => a.did === agentDid)?.descriptor.features)
+  }
+
+  /**
+   * The person's admin roles and this browser's grant (PROF-ADMIN-001), read with each list of conversations: a grant
+   * opened or ended while no stream was open shows here.
+   */
+  private async probeAdminAccess(agentDid: string, client: ProfileClient, token: string): Promise<void> {
+    if (!this.takesAdmin(agentDid)) return
+    try {
+      this.setAdminAccess(agentDid, await client.adminAccess(token), true)
+    } catch (e) {
+      // an agent that refuses it shows no Show Admin; anything else is asked again with the next list
+      if (e instanceof ProfileError && (e.status === 403 || e.status === 404))
+        this.setAdminAccess(agentDid, { roles: [], grant: null }, true)
+      else warn('the admin state could not be read', e)
+    }
+  }
+
+  /** Reads the admin state again (PROF-ADMIN-001). */
+  public async loadAdminAccess(agentDid: string): Promise<void> {
+    if (!this.takesAdmin(agentDid)) return
+    const access = await this.withAgent(agentDid, (client, token) => client.adminAccess(token))
+    this.setAdminAccess(agentDid, access, true)
+  }
+
+  /**
+   * Takes the admin state: the area shows exactly while the grant is open (UI-ADMIN-003), and hides itself at its end
+   * by this browser's clock; a page of it then open closes with "Admin access ended", and the reason of Audit goes.
+   */
+  private setAdminAccess(agentDid: string, access: AdminAccess, broadcast: boolean): void {
+    const held = this.snapshot.adminAccess[agentDid]
+    if (JSON.stringify(held) !== JSON.stringify(access))
+      this.set({ adminAccess: { ...this.snapshot.adminAccess, [agentDid]: access } })
+    this.armAdminExpiry(agentDid)
+    this.afterAdminChange(agentDid)
+    if (broadcast)
+      this.bus?.post({
+        kind: 'admin-changed',
+        agentDid,
+        change: { roles: access.roles, grant: access.grant ? { open: true, expiresAt: access.grant.expiresAt } : null },
+      })
+  }
+
+  private armAdminExpiry(agentDid: string): void {
+    clearTimeout(this.adminExpiry.get(agentDid))
+    this.adminExpiry.delete(agentDid)
+    const grant = this.snapshot.adminAccess[agentDid]?.grant
+    if (!grant) return
+    // a timer longer than a setTimeout can hold is armed again when it fires
+    const ms = Math.min(Math.max(Date.parse(grant.expiresAt) - Date.now(), 0), 2 ** 31 - 1)
+    this.adminExpiry.set(
+      agentDid,
+      setTimeout(() => {
+        this.adminExpiry.delete(agentDid)
+        const access = this.snapshot.adminAccess[agentDid]
+        if (!access?.grant || access.grant.expiresAt !== grant.expiresAt) return
+        if (grantOpen(access, Date.now())) return this.armAdminExpiry(agentDid)
+        this.set({ adminAccess: { ...this.snapshot.adminAccess, [agentDid]: { roles: access.roles, grant: null } } })
+        this.afterAdminChange(agentDid)
+      }, ms)
+    )
+  }
+
+  /** What follows a change of the admin state: a page it no longer opens closes, the reason of a past grant goes. */
+  private afterAdminChange(agentDid: string): void {
+    const access = this.snapshot.adminAccess[agentDid]
+    const now = Date.now()
+    const reason = this.snapshot.auditReasons[agentDid]
+    if (reason && (!grantOpen(access, now) || access?.grant?.expiresAt !== reason.expiresAt)) {
+      const { [agentDid]: _gone, ...auditReasons } = this.snapshot.auditReasons
+      this.set({ auditReasons })
+    }
+    const view = this.snapshot.view
+    if ((view === 'audit' || view === 'operations') && this.snapshot.adminPageFor === agentDid) {
+      if (!adminPageOpen(access, view, now)) {
+        this.set({ view: 'list', adminPageFor: null })
+        this.notify('info', i18next.t('adminAccess.ended'))
+      }
+    }
+  }
+
+  /**
+   * `ayni.admin.changed` (PROF-ADMIN-004), heard here or in another tab: the state it gives, and the outcome of a Show
+   * Admin that waits (UI-ADMIN-002); a grant that opened opens the agent's card, where the area shows.
+   */
+  private noteAdminChanged(agentDid: string, value: unknown, broadcast: boolean): void {
+    const change = adminChangedOf(value)
+    if (!change) return
+    const before = this.snapshot.adminRequests[agentDid]
+    const request = adminRequestAfter(before, change.outcome)
+    if (request !== before) {
+      if (request?.status !== 'waiting') this.endAdminWait(agentDid)
+      const { [agentDid]: _was, ...others } = this.snapshot.adminRequests
+      this.set({ adminRequests: request ? { ...others, [agentDid]: request } : others })
+    }
+    if (change.outcome === 'opened') this.set({ expandedAgents: { ...this.snapshot.expandedAgents, [agentDid]: true } })
+    this.setAdminAccess(agentDid, change.access, false)
+    if (broadcast) this.bus?.post({ kind: 'admin-changed', agentDid, change: value })
+  }
+
+  private endAdminWait(agentDid: string): void {
+    const wait = this.adminWaits.get(agentDid)
+    if (!wait) return
+    clearTimeout(wait.timer)
+    wait.release()
+    this.adminWaits.delete(agentDid)
+  }
+
+  private dropAdminTimers(agentDid: string): void {
+    clearTimeout(this.adminExpiry.get(agentDid))
+    this.adminExpiry.delete(agentDid)
+    this.endAdminWait(agentDid)
+  }
+
+  /**
+   * Show Admin (UI-ADMIN-002, PROF-ADMIN-002): the agent asks the phone to re-authenticate and answers at once; the card
+   * reads "Confirm on your phone" until `ayni.admin.changed` says what came of it, a stream of the agent held open so
+   * that it reaches this browser. A request the agent's time passed with no word is read again and said expired.
+   */
+  public async showAdmin(agentDid: string): Promise<void> {
+    const answer = await this.withAgent(agentDid, (client, token) => client.requestAdminGrant(token))
+    this.endAdminWait(agentDid)
+    this.set({
+      adminRequests: { ...this.snapshot.adminRequests, [agentDid]: { status: 'waiting', ...answer } },
+      expandedAgents: { ...this.snapshot.expandedAgents, [agentDid]: true },
+    })
+    const release = this.holdStream(agentDid)
+    const ms = Math.min(Math.max(Date.parse(answer.expiresAt) - Date.now(), 0) + 5000, 2 ** 31 - 1)
+    const timer = setTimeout(() => {
+      const held = this.snapshot.adminRequests[agentDid]
+      if (held?.status !== 'waiting' || held.requestId !== answer.requestId) return
+      this.endAdminWait(agentDid)
+      this.set({ adminRequests: { ...this.snapshot.adminRequests, [agentDid]: { status: 'expired' } } })
+      void this.loadAdminAccess(agentDid).catch((e) => warn('the admin state could not be read', e))
+    }, ms)
+    this.adminWaits.set(agentDid, { release, timer })
+  }
+
+  /** The words of a Show Admin that opened no grant leave the card (UI-ADMIN-002). */
+  public dismissAdminRequest(agentDid: string): void {
+    if (this.snapshot.adminRequests[agentDid]?.status === 'waiting') return
+    const { [agentDid]: _gone, ...adminRequests } = this.snapshot.adminRequests
+    this.set({ adminRequests })
+  }
+
+  /** Hide Admin (UI-ADMIN-003, PROF-ADMIN-003): the grant ends at once, the area hides and a page of it closes. */
+  public async hideAdmin(agentDid: string): Promise<void> {
+    await this.withAgent(agentDid, (client, token) => client.hideAdmin(token))
+    const access = this.snapshot.adminAccess[agentDid]
+    this.setAdminAccess(agentDid, { roles: access?.roles ?? [], grant: null }, true)
+  }
+
+  /** Audit or Operations in the main pane, with no further question (UI-ADMIN-003). */
+  public openAdminPage(agentDid: string, page: AdminPage): void {
+    if (!adminPageOpen(this.snapshot.adminAccess[agentDid], page, Date.now())) return
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    this.set({
+      view: page,
+      adminPageFor: agentDid,
+      selectedAgentDid: agentDid,
+      selectedControllerDid: agent?.controllerDid ?? this.snapshot.selectedControllerDid,
+      trustFor: null,
+      inspect: null,
+    })
+  }
+
+  /** The reason in force for Audit's reads, given under the open grant (UI-ADMIN-004); none once it ended. */
+  public auditReasonOf(agentDid: string): string | null {
+    const kept = this.snapshot.auditReasons[agentDid]
+    const grant = this.snapshot.adminAccess[agentDid]?.grant
+    return kept && grant && kept.expiresAt === grant.expiresAt ? kept.reason : null
+  }
+
+  public setAuditReason(agentDid: string, reason: string): void {
+    const grant = this.snapshot.adminAccess[agentDid]?.grant
+    if (!grant) return
+    this.set({
+      auditReasons: {
+        ...this.snapshot.auditReasons,
+        [agentDid]: { reason: reason.trim(), expiresAt: grant.expiresAt },
+      },
+    })
+  }
+
+  /**
+   * A call of Audit or Operations (PROF-ADMIN-005, PROF-ADMIN-006). `403 admin-closed` says the grant is gone: the area
+   * hides and the page closes with "Admin access ended" (UI-ADMIN-006); every refusal reaches the caller, which says it.
+   */
+  public async adminCall<T>(agentDid: string, fn: (client: ProfileClient, token: string) => Promise<T>): Promise<T> {
+    try {
+      return await this.withAgent(agentDid, fn)
+    } catch (e) {
+      if (adminRefusalOf(e) === 'ended') {
+        const access = this.snapshot.adminAccess[agentDid]
+        this.setAdminAccess(agentDid, { roles: access?.roles ?? [], grant: null }, true)
+      }
+      throw e
+    }
   }
 
   // ---- attachments (UI-MEDIA-001/003/004) -------------------------------------------------------------------

@@ -14,6 +14,8 @@ export type SyncMessage =
   | { kind: 'connections-changed'; agentDid: string; change: unknown }
   /** a notification of the person entered, changed or ended in a list (`ayni.space.notifications.changed`) */
   | { kind: 'notifications-changed'; agentDid: string; change: unknown }
+  /** the admin state of the device changed (`ayni.admin.changed`), or this tab read it: every tab shows the same area */
+  | { kind: 'admin-changed'; agentDid: string; change: unknown }
   /** the person disconnected from an agent, or removed it: every tab forgets what it read of them there (UI-AGENTS-006) */
   | { kind: 'agent-forgotten'; agentDid: string; sessionIds: string[] }
 

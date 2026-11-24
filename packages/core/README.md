@@ -205,5 +205,24 @@ shapes are package 3.5.4's, re-exported under the names below, with tolerant rea
 
 The English wording is `GOVERNANCE_COPY`, keyed by its path in the translation files.
 
+## Profile 3.5.5: admin access from the agent's card (agent D132 to D134)
+
+The roles `auditor` and `operator` reach the agent's raw store from the card: Show Admin asks the phone to
+re-authenticate, the grant it opens belongs to the device that asked and lasts from the confirmation, and the ADMIN area
+shows exactly while it is open, with Audit and Operations. Every read and every action carries a reason. The shapes of
+package 3.5.5 (ayni-agent #120) are written in `adminAccess.ts` while that version is not on npm, and so is the search for
+a person by name, `GET {sessions}/admin/audit/people?q=&reason=`, which the agent adds with 3.5.7.
+
+| Surface | Functions |
+| --- | --- |
+| The state and the menu (UI-ADMIN-001) | `takesAdmin`, `adminAccessOf`, `adminMenuEntryOf` (`showAdmin`, `hideAdmin` in `MENU_ICON`); `ProfileClient.adminAccess` |
+| Show Admin and Hide Admin (UI-ADMIN-002) | `AdminRequestState`, `adminRequestAfter`, `adminRequestWordsOf`, `ADMIN_CHANGED`, `adminChangedOf` (the reducer's signal `admin`); `ProfileClient.requestAdminGrant`, `hideAdmin` |
+| The ADMIN area (UI-ADMIN-003) | `grantOpen`, `adminAreaOf`, `adminPageOpen` (the icon of each row in `MENU_ICON` by its page: `audit`, `operations`) |
+| Audit (UI-ADMIN-004) | `adminReasonFits`, `auditPeriodOf`, `auditValueOf`, `TOOL_CALL_FIELDS`, a person found by name: `AuditPerson`, `AuditPersonChoice`, `auditPeopleQueryOf`, `auditPeopleOf`, `auditPrincipalOf`, `auditPeopleCapped`, `AUDIT_PEOPLE_MAX`; `ProfileClient.auditPeople`, `auditConversations`, `auditMessages`, `auditEvidence`, `auditToolCalls`, `auditLog` |
+| Operations (UI-ADMIN-005) | `entryIdsOf`; `ProfileClient.eraseEntries`, `legalHold`, `adminKeys`, `rotateKey` |
+| The refusals (UI-ADMIN-006) | `adminRefusalOf`, `ADMIN_REFUSAL_WORDS` |
+
+The English wording is `ADMIN_COPY`, keyed by its path in the translation files.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.
