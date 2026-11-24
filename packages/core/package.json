@@ -1,6 +1,6 @@
 {
   "name": "@ayni.org/ayni-ui-core",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "description": "Framework-independent core of the Ayni UI (UI-SHELL-004): agents and controllers, trust resolution, sessions and binding, the conversation reducer, spaces, memories and deletion within a window (profile 3.3), the tools of a space, the confirmation of a tool call and the sources of replies (profile 3.4), each person's own accounts and the Connect card (profile 3.5), the Notifications of a space and of the agent, where an approver finds an approval once (agent D114), a space's governance: one owner or none, the successor, the stewards, the approval timeouts and the approval policy of a tool with its progress and notices (profile 3.5.4, agent D135 to D142), the local store and sync; shared by the browser UI and the Ayni app",
   "type": "module",
   "main": "./dist/index.js",

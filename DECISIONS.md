@@ -896,7 +896,7 @@
     shapes are taken from its code). Core 0.12.0.
     - **The profile package.** `@ayni.org/ayni-agui-profile` 3.5.0 to 3.5.4 were not on npm when this was built (the
       latest published was 3.4.1), so the shapes of 3.5.4 were written in the core, as for 3.3 to 3.5. 3.5.4 is published
-      now (with provenance) and both `package.json` take `^3.5.4` (core 0.12.1, 2026-11-24): the shapes the readers take
+      now (with provenance) and both `package.json` take `^3.5.4` (core 0.12.2, 2026-11-24): the shapes the readers take
       as the agent gives them are the package's, re-exported under the core's names, each the same type as before
       (`ApproverKind`, `APPROVER_KINDS`, `ApproverView`, `ApprovalProgress`; `ApprovalPolicyView`, `ApprovalPolicyBounds`,
       `ApprovalPolicyWarning`, `WhenApproverAsks`, `ProgressEntry`, `ApproverInput` from `SpaceApprovalPolicyView`,
