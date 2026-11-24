@@ -1,30 +1,37 @@
 /**
- * The Notifications of a space and of the agent (UI-APPR-001, 002, 005..009; profile §3.12; agent D114). An approver
+ * The Notifications of a space and of the agent (UI-APPR-001, 002, 005..011; profile §3.12; agent D114, D142). An approver
  * finds an approval nowhere in their conversations: here, under "<requester> asks for your approval", with the exact
  * action, the space and the time left, and Approve and Reject while it waits, or Decide on your phone when its decision
  * must be attested; the person's own requests read-only, under "Sent by you"; once ended, the outcome, who decided and
  * when. A space's list is its Notifications segment; the agent's, for the approvals no space holds, a page reached from
  * the agent's menu. Each is read when it opens, again on `ayni.space.notifications.changed` (heard here or in another
  * tab) and each time the tab comes back in front; a link names an item, which is shown selected and decided by
- * nothing but the person.
+ * nothing but the person. For a tool of a space (profile 3.5.4) an item shows where the approval stands, the person's
+ * own confirmation of their own request is listed under "Your own request" with Decide on your phone, and the notices
+ * of the space's governance are listed read-only, with Open the tool or Name the owner while they wait.
  */
 import {
   type AgentRecord,
   approvalRefusalOf,
+  deciderProgressOf,
+  type GovernanceNoticeKind,
+  isApprovalItem,
   NOTIFICATIONS_PAGE,
   type NotificationApproval,
   type NotificationItem,
+  noticeControlOf,
+  noticeWordsOf,
   notificationControlsOf,
   notificationHeadingOf,
   notificationStatusOf,
 } from '@ayni.org/ayni-ui-core'
-import { ArrowLeft, Smartphone } from 'lucide-react'
+import { ArrowLeft, Info, ShieldAlert, Smartphone } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { useNow } from './Accounts.js'
-import { ApprovalStatusIcon, approvalStatusWords } from './ApprovalWords.js'
+import { ApprovalStatusIcon, approvalStatusWords, attentionText, progressText } from './ApprovalWords.js'
 import { ToolActionView } from './Tools.js'
 
 type T = (key: string, options?: Record<string, unknown>) => string
@@ -123,7 +130,7 @@ export function NotificationList({
   // the item a link names is read up to, a page at a time, when it is not among the first ones
   const sought = useRef(0)
   useEffect(() => {
-    if (!focus || !items || !next || items.some((n) => n.approval.approvalId === focus || n.id === focus)) return
+    if (!focus || !items || !next || items.some((n) => focused(n, focus))) return
     if (sought.current >= 10) return
     sought.current += 1
     void more()
@@ -150,15 +157,13 @@ export function NotificationList({
         )
       ) : items.length ? (
         <ul className="notification-list">
-          {items.map((n) => (
-            <NotificationRow
-              key={n.id}
-              agent={agent}
-              item={n}
-              me={me}
-              selected={!!focus && (n.approval.approvalId === focus || n.id === focus)}
-            />
-          ))}
+          {items.map((n) =>
+            isApprovalItem(n) ? (
+              <NotificationRow key={n.id} agent={agent} item={n} me={me} selected={!!focus && focused(n, focus)} />
+            ) : (
+              <NoticeRow key={n.id} agent={agent} item={n} selected={!!focus && focused(n, focus)} />
+            )
+          )}
         </ul>
       ) : (
         <div className="muted empty">{t('notifications.empty')}</div>
@@ -172,6 +177,11 @@ export function NotificationList({
       ) : null}
     </section>
   )
+}
+
+/** Whether an item is the one a link names: by the approval's id, or the item's. */
+function focused(item: NotificationItem, focus: string): boolean {
+  return item.id === focus || (isApprovalItem(item) && item.approval.approvalId === focus)
 }
 
 /** The words of a refusal of a decision or of Decide on your phone (§3.12, PROF-TOOL-026). */
@@ -223,7 +233,7 @@ function NotificationRow({
   selected,
 }: {
   agent: AgentRecord
-  item: NotificationItem
+  item: Extract<NotificationItem, { kind: 'approval' }>
   me: string | undefined
   selected: boolean
 }) {
@@ -237,14 +247,22 @@ function NotificationRow({
   // the agent said this one is decided on the phone: offered at once, before the list is read again
   const [onPhone, setOnPhone] = useState(false)
   const owner = a.space
-    ? snap.spaces[agent.did]?.spaces.find((x) => x.id === a.space?.id)?.owner.name || undefined
+    ? snap.spaces[agent.did]?.spaces.find((x) => x.id === a.space?.id)?.owner?.name || undefined
     : undefined
   const line = notificationStatusOf(a, me, owner)
   const now = useNow(line.key === 'timeLeft')
-  const status = approvalStatusWords(line, t, i18n.language, now, true)
+  // where it stands, beside the time left of an approver who may decide it (UI-APPR-007, UI-APPR-010)
+  const progress = deciderProgressOf(a)
+  const status = [progress ? progressText(progress, t) : '', approvalStatusWords(line, t, i18n.language, now, true)]
+    .filter(Boolean)
+    .join(' · ')
   const head = notificationHeadingOf(a)
   const heading =
-    head.key === 'sentByYou' ? t('notifications.sentByYou') : t('approval.asksYou', { requester: head.requester })
+    head.key === 'sentByYou'
+      ? t('notifications.sentByYou')
+      : head.key === 'ownRequest'
+        ? t('notifications.ownRequest')
+        : t('approval.asksYou', { requester: head.requester })
   const title = a.action?.title ?? t(`approval.${a.kind}`)
   const controls = onPhone && notificationControlsOf(a) === 'decide' ? 'phone' : notificationControlsOf(a)
   const ref = useRef<HTMLElement>(null)
@@ -345,6 +363,96 @@ function NotificationRow({
         {notice ? (
           <div className={notice.alert ? 'tool-error' : 'notification-notice'} role={notice.alert ? 'alert' : 'status'}>
             {notice.text}
+          </div>
+        ) : null}
+      </article>
+    </li>
+  )
+}
+
+/** The words of a notice of a space's governance (UI-APPR-011, UI-CONV-052). */
+function noticeText(item: Extract<NotificationItem, { kind: GovernanceNoticeKind }>, t: T): string {
+  const words = noticeWordsOf(item)
+  switch (words.key) {
+    case 'ownerChanged':
+      return t(`notices.ownerChanged.${words.how}`, {
+        to: words.to,
+        space: words.space,
+        from: words.from,
+        reason: words.reason,
+      })
+    case 'policyAttention':
+      return t('notices.policyAttention', { tool: words.tool, entries: attentionText(words.entries, t) })
+    case 'noApprover':
+      return t('notices.noApprover', { requester: words.requester, tool: words.tool })
+    default:
+      return t('notices.spaceWithoutOwner', { space: words.space })
+  }
+}
+
+/**
+ * A notice of a space's governance (UI-APPR-011), read-only: its words, the space, and while it waits Open the tool
+ * (the owner's panel of the tool's source) or Name the owner (Spaces you steward, at that space). Once resolved it reads
+ * as past, with no control. A screen reader reads it as its words, then its control.
+ */
+function NoticeRow({
+  agent,
+  item,
+  selected,
+}: {
+  agent: AgentRecord
+  item: Extract<NotificationItem, { kind: GovernanceNoticeKind }>
+  selected: boolean
+}) {
+  const hub = useHub()
+  const { t, i18n } = useTranslation()
+  const text = noticeText(item, t)
+  const control = noticeControlOf(item)
+  const past = !item.waiting || !!item.notice.resolvedAt
+  const words = noticeWordsOf(item)
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!selected) return
+    ref.current?.scrollIntoView?.({ block: 'center' })
+    ref.current?.focus({ preventScroll: true })
+  }, [selected])
+  const Icon = item.kind === 'owner-changed' ? Info : ShieldAlert
+  return (
+    <li>
+      <article
+        ref={ref}
+        tabIndex={-1}
+        className={['card', 'notice', past ? 'past' : 'waiting', selected ? 'selected' : ''].filter(Boolean).join(' ')}
+        data-kind={item.kind}
+        aria-current={selected ? 'true' : undefined}
+        aria-label={text}
+      >
+        <div className="notification-head">
+          <div className="notice-text">
+            <Icon size={16} aria-hidden="true" className="notice-icon" />
+            <span>{text}</span>
+          </div>
+          {item.at ? (
+            <time className="notification-time" dateTime={item.at}>
+              {formatTime(item.at, i18n.language)}
+            </time>
+          ) : null}
+        </div>
+        {control === 'openTool' && words.key === 'policyAttention' ? (
+          <div className="actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => hub.openSpace(agent.did, words.spaceId, 'tools', undefined, words.source)}
+            >
+              {t('notices.openTool')}
+            </button>
+          </div>
+        ) : control === 'nameOwner' && words.key === 'spaceWithoutOwner' ? (
+          <div className="actions">
+            <button type="button" className="btn primary" onClick={() => hub.openSteward(agent.did, words.spaceId)}>
+              {t('notices.nameOwner')}
+            </button>
           </div>
         ) : null}
       </article>

@@ -20,6 +20,7 @@ import { Settings } from './components/Settings.js'
 import { SharedConversationView } from './components/SharedConversation.js'
 import { SpacePage } from './components/SpacePage.js'
 import { Splitter } from './components/Splitter.js'
+import { StewardshipPage } from './components/Stewardship.js'
 import { UpdateBanner } from './components/UpdateBanner.js'
 import type { Hub } from './state/hub.js'
 import { type AppUpdate, appUpdate, useNewVersion } from './state/update.js'
@@ -93,6 +94,8 @@ function Shell({ update }: { update: AppUpdate }) {
       <AccountsPage />
     ) : snap.view === 'notifications' ? (
       <NotificationsPage />
+    ) : snap.view === 'steward' ? (
+      <StewardshipPage />
     ) : (
       <Conversation />
     )

@@ -2826,6 +2826,7 @@ mark.hit.current {
 .keeps-page,
 .accounts-page,
 .notifications-page,
+.steward-page,
 .admin-page,
 .shared-view {
   display: flex;
@@ -3795,4 +3796,160 @@ mark.hit.current {
 }
 .space-counts .notifications-count {
   margin-left: 0;
+}
+
+/* ---- a space's governance (profile 3.5.4; UI-CONV-041, UI-CONV-067, UI-CONV-068, UI-APPR-010, UI-APPR-011) ---------- */
+
+/* the approval policy of a tool, under its rule in What each tool asks (UI-CONV-067) */
+.policy {
+  grid-column: 1 / -1;
+  margin: 4px 0 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.policy-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.policy-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.policy-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.policy-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 14px;
+}
+.policy-entry-name {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.policy-required {
+  padding: 0;
+}
+.policy-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.policy-threshold {
+  width: 6em;
+}
+.policy-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* a warning, and what needs attention: the words in the text colour, the mark in the warning colour */
+.policy-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.policy-attention {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text);
+  flex-basis: 100%;
+}
+.policy-attention-icon {
+  flex: none;
+  color: var(--warning);
+}
+
+/* Settings: the approval timeouts and the successor (UI-CONV-041) */
+.timeout-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.timeout-minutes {
+  width: 8em;
+}
+.successor-name {
+  flex: 1;
+  align-self: center;
+  font-size: 14px;
+}
+
+/* a notice of a space's governance, read-only; once resolved it reads as past (UI-APPR-011) */
+.card.notice {
+  max-width: none;
+  align-self: stretch;
+}
+.card.notice.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.card.notice.past {
+  background: var(--bg);
+}
+.notice-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+}
+.card.notice.past .notice-text {
+  color: var(--muted);
+}
+.notice-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--muted);
+}
+.card.notice[data-kind="policy-attention"].waiting .notice-icon,
+.card.notice[data-kind="space-without-owner"].waiting .notice-icon {
+  color: var(--warning);
+}
+
+/* Spaces you steward (UI-CONV-068) */
+.steward-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.steward-row {
+  display: flex;
+}
+.steward-row.open .tool-row-main {
+  background: var(--surface);
+}
+.steward-owner {
+  flex: none;
+  text-align: right;
+}
+.steward-name {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.steward-candidate {
+  align-items: flex-start;
 }

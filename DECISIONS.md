@@ -890,5 +890,84 @@
       `false` or `"yes"`), `packages/core/tests/proofOfTrustDesign.test.ts` (`letsVisitorsIn`, the English words),
       `tests/proofOfTrustDesign.test.ts` (the stylesheet against the design, the English file against the core's
       words). The render test fails without the change.
-52. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+52. **Space governance: one owner, a successor, stewards, and an approval policy per tool** (2026-11-24, Fabrice's
+    decisions of 2026-11-23, ayni-spec #125: agent D135 to D142; UI-CONV-041, 049, 050, 052, UI-CONV-067, 068,
+    UI-APPR-006, 007, UI-APPR-010, 011; built against the merged agent, ayni-agent #122, profile package 3.5.4, whose
+    shapes are taken from its code). Core 0.12.0.
+    - **The profile package.** `@ayni.org/ayni-agui-profile` 3.5.0 to 3.5.4 are not on npm (the latest published is
+      3.4.1), so the dependency stays where it is and the shapes of 3.5.4 are written in the core, as for 3.3 to 3.5:
+      `approvalPolicy.ts` (the policy, its progress, its form), `spaces.ts` (owner or none, successor, timeouts, the
+      stewards' answers), `notifications.ts` (notices, own confirmations, progress). The bump is one line once the package
+      is published.
+    - **One owner, or none.** `SpaceInfo.owner` is `{ name } | null` (a change of type for the app). A space with no owner
+      reads "<kind> · No owner" in its header; About shows no name under the purpose; a list space's members read
+      "<n> members" instead of "a list kept by". `successor` is read from the owner's answers.
+    - **Settings.** Under the rules, one field per kind of approval timeout, in minutes (`tool-call`: "How long an approval
+      of a tool waits"), with the template's bounds when the list of spaces gives the template (it gives only the
+      templates the person may create from; with none, any whole number is sent and a `422 out-of-bounds` is said at that
+      field). The successor: its name or "No successor", Clear, and Name successor among the people the space could be
+      handed to: in a list space its active members who are neither the owner nor a guest (the transfer now offers the
+      same, the agent refusing a guest), in a rule space a search of the employee list.
+    - **Activity.** `successor-set` "<by> named <member> successor", `successor-cleared` "<member> is no longer the
+      successor" (it may be cleared by the directory, with no `by`), `owner-changed` by `how`: handover as before,
+      succession "<member> became the owner as successor", steward "<by>, a steward, named <member> owner: <reason>".
+      The spec names these kinds and gives no words: these are mine.
+    - **The policy in the owner's panel** (UI-CONV-067). Under the rule of each tool whose rule is `approval`, once the
+      source is added (an Add request takes no `approvals`): Who approves, each entry in the table's words, "<name> (you)"
+      for the owner, its Required switch and Remove (never the last entry: a policy has one at least); Add approver, with
+      the kinds the bounds allow (a role only when the bounds name one; an entry already named is not offered again, nor a
+      person an entry names by name), a member chosen from the space's members (a list space) or found in the employee
+      list (a rule space), a role from the bounds' roles, a department typed (no endpoint lists departments); Approvals
+      needed, a number from the larger of the pack's least and the required entries; When someone refuses; Confirm with
+      fingerprint or face, on and disabled when the bounds require it; When an approver makes the request, which follows
+      the approvers (one entry naming one person: own confirmation; else another approver) until the owner picks one.
+      The Save of the settings sends `approvals` with each policy that differs from the one in force, whole, each entry by
+      what names it (never by its words); a tool taken off `approval` in the same Save sends none. `200` and `202` read as
+      any setting; while a change waits the form keeps what was sent. A refusal is shown where its `field` points: an
+      entry, Approvals needed, the attestation switch, or the policy (`not-approval`, a `400`). `repeated-entry`,
+      `not-approval` and a `400` of a policy have no words in the table: "This approver is already in the list.", "This
+      tool no longer needs approval in this space.", "<agent> does not take this policy."
+    - **Warnings and attention.** The warnings are the agent's (`approval.warnings`, of the policy sent in the answer of a
+      change, of the policy in force on a read); the client computes none. Each shows under the policy with Add approver,
+      Lower the number needed (one less, never below the least) and Use their own confirmation, which change the form and
+      send nothing. A policy that needs attention says "Needs attention: <entries> can no longer approve" on the tool's
+      line, on the source's row of the Tools segment (this client lists sources, not features yet) and at each entry the
+      agent's `attention` names, with that entry alone.
+    - **About** (UI-CONV-049). The tools of the rule `approval` are grouped by policy, each group reading its own words:
+      "Needs <name>'s approval", "Needs your approval" when that one person is the reader (the owner's entry for the
+      owner, a person's entry by the name the person's session shows), or "Needs <n> approvals: <entries>", each required
+      one marked. An agent that gives no policy reads as before (the owner's name). The owner's rule reads "Needs
+      approval" in the segment's choices.
+    - **The progress** (UI-APPR-010). The requester's card reads it from `progress`, moved by each `ayni.approval.update`
+      that carries one: one line, "Waiting for <name>'s approval", for one entry naming one person and one approval, read
+      from the card's `policy` (or, with none, from a progress of one such entry), else "<approvals> of <threshold>
+      approvals, waiting for <entries>", required first; with no entry left to name, "<approvals> of <threshold>
+      approvals" (mine). `reason: "no-approver"` on a rejected card or item reads "No other approver can decide this". An
+      approver who may decide reads the progress before the time left, except under one person and one approval, where it
+      would only name themselves; after their own decision, "Approved by you · Waiting for other approvers" as before; the
+      requester's own item reads the progress.
+    - **Own confirmation.** An item with `own` and `canDecide` (taken only on an approval of a space's tool: an action and
+      a space) is headed "Your own request" and offers Decide on your phone, never Approve: the agent always asks it on the
+      phone (attested). The card in the conversation stays the requester's, `canDecide` false there.
+    - **Notices** (UI-APPR-011). Listed among the approvals, read-only, as the agent orders them, each named by its words:
+      the four rows of the table. Open the tool opens the space's Tools segment at that source's panel (`spaceFor.source`);
+      Name the owner opens Spaces you steward at that space. A notice that waits counts in the badge (the agent's number);
+      once resolved it reads as past, muted, with no control. `ayni.space.notifications.changed` keeps the notice's kind.
+    - **Spaces you steward** (UI-CONV-068). The agent's menu shows the entry (icon `shield-user`) once `GET
+      {sessions}/stewardship` gives at least one space, asked once per page load with the admin view's probe; `403
+      not-steward` and `404` show none. The page lists the spaces with no owner first, each with its title, its template's
+      title when the person's list of templates has it (else its id: the answer gives no template title), its owner or
+      "No owner" and its successor; opening one reads its candidates (name and department), a required Reason of 1 to 500
+      characters and Name the owner, disabled until both; the answer replaces the row. No space page opens from it.
+    - **Words.** `GOVERNANCE_COPY` in the core (the English the app starts from), in the four languages; the spec's table
+      gives most, the others are listed in its comment. "Needs <owner>'s approval" now takes `name`, and the owner's rule
+      reads "Needs approval".
+    - **Tests.** `packages/core/tests/governance.test.ts` (the shapes of the merged agent, the words, the form, the
+      refusals, the progress, the notices, the client's calls), `tests/spaceGovernance.test.tsx` (Settings, Activity, no
+      owner, the policy panel with its Save, `202`, warning, controls, bounds, refusals and attention, About, the card's
+      progress, the Notifications' progress, own request, notices and their controls, Spaces you steward and its menu
+      entry, the words in four languages); `packages/core/tests/notifications.test.ts` and `tests/spaceTools.test.tsx`
+      amended to the spec's change ("Needs approval"; `own` with `canDecide` is now an own confirmation). Each new test
+      fails without the change.
+53. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

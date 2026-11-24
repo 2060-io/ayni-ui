@@ -8,10 +8,13 @@
  * per value its agent declares, in the agent's order: never prefilled, sent all together once each holds a value that
  * fits, emptied as their request leaves and with the panel, and kept nowhere. A source of each person's own account
  * (profile 3.5) has no account of the space; the binding its accounts are for is chosen from the owner's own accounts,
- * never typed, and an owner who holds none connects one to choose (UI-CONV-050, PROF-TOOL-021).
+ * never typed, and an owner who holds none connects one to choose (UI-CONV-050, PROF-TOOL-021). Each tool whose rule is
+ * `approval` shows its approval policy under its rule (UI-CONV-067, profile 3.5.4), sent with the settings; a policy
+ * that needs attention says so on the tool's line and on its source's row.
  */
 import {
   type AgentRecord,
+  type ApprovalPolicyInput,
   accountSourceOf,
   accountValuesOf,
   bindingValueFits,
@@ -21,7 +24,12 @@ import {
   loosens,
   missingOf,
   type PendingToolChange,
+  type PolicyForm,
+  type PolicyRefusal,
   ProfileError,
+  policyChanged,
+  policyFormOf,
+  policyInputOf,
   ruleChoicesFor,
   type SpaceInfo,
   type SpaceTool,
@@ -33,12 +41,14 @@ import {
   timeLeftOf,
   toolRefusalOf,
   toolRowStateOf,
+  toolsNeedingAttention,
 } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, ChevronRight, CircleAlert, Smartphone } from 'lucide-react'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { AccountNoticeLine, bindingWords, SignInWaiting, useNow, useSignIn } from './Accounts.js'
+import { AttentionLine, PolicyEditor, policyRefusalText } from './ApprovalPolicy.js'
 import { organizationNameOf, spaceTitle } from './SpaceParts.js'
 import { useSpaceTools } from './Tools.js'
 
@@ -61,11 +71,20 @@ function stateWords(tool: SpaceTool, t: T): string {
   return parts.length ? `${words}: ${parts.join(', ')}` : words
 }
 
-export function ToolsSegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
+export function ToolsSegment({
+  agent,
+  space,
+  source,
+}: {
+  agent: AgentRecord
+  space: SpaceInfo
+  /** the source whose panel opens first: Open the tool of a notice (UI-APPR-011) */
+  source?: string
+}) {
   const hub = useHub()
   const { t } = useTranslation()
   const { tools, error, reload, setTool } = useSpaceTools(agent, space, true)
-  const [open, setOpen] = useState<string | null>(null)
+  const [open, setOpen] = useState<string | null>(source ?? null)
   // while a change shown here waits for the phone, a stream stays open for its outcome (UI-CONV-050, PROF-TOOL-006)
   const waiting = !!tools?.some((x) => x.pending)
   useEffect(() => (waiting ? hub.holdStream(agent.did) : undefined), [waiting, agent.did, hub])
@@ -97,6 +116,10 @@ export function ToolsSegment({ agent, space }: { agent: AgentRecord; space: Spac
                   <span className="space-text">
                     <span className="space-name">{sourceNameOf(x)}</span>
                     {x.description ? <span className="space-sub">{x.description}</span> : null}
+                    {/* a policy of its tools that needs attention, on the row (UI-CONV-067) */}
+                    {toolsNeedingAttention(x).map((item) => (
+                      <AttentionLine key={item.name ?? item.title} policy={item.approval} className="space-sub" />
+                    ))}
                   </span>
                   <span className={state === 'ready' ? 'tag' : 'state-tag'}>{stateWords(x, t)}</span>
                   <ChevronRight size={16} aria-hidden="true" className="tool-row-chevron" />
@@ -195,6 +218,7 @@ interface PanelState {
     since: number
     rules?: Record<string, ToolRule>
     values?: Record<string, string>
+    policies?: Record<string, PolicyForm>
   } | null
   outcome: { from: From; key: 'saved' | 'declined' | 'expired' | 'withdrawn' } | null
   error: { from: From; text: string } | null
@@ -234,8 +258,15 @@ function ToolPanel({
       ToolRule
     >
   const heardLast = () => snap.toolChanges[snap.toolChanges.length - 1]?.n ?? 0
+  // the approval policies of the tools whose rule is `approval`, as forms (UI-CONV-067)
+  const toolPolicies = () =>
+    Object.fromEntries(
+      tool.tools.flatMap((x) => (x.name && x.approval ? [[x.name, policyFormOf(x.approval)] as const] : []))
+    ) as Record<string, PolicyForm>
   const [values, setValues] = useState<Record<string, string>>(ownerValues)
   const [rules, setRules] = useState<Record<string, ToolRule>>(toolRules)
+  const [policies, setPolicies] = useState<Record<string, PolicyForm>>(toolPolicies)
+  const [policyError, setPolicyError] = useState<PolicyRefusal | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [state, setState] = useState<PanelState>({
     waiting: tool.pending ? { change: tool.pending, from: 'loaded', since: heardLast() } : null,
@@ -258,6 +289,7 @@ function ToolPanel({
     const kept = state.waiting?.from === 'settings' ? state.waiting : undefined
     setValues({ ...ownerValues(), ...(kept?.values ?? {}) })
     setRules({ ...toolRules(), ...(kept?.rules ?? {}) })
+    setPolicies({ ...toolPolicies(), ...(kept?.policies ?? {}) })
   }, [tool])
 
   // the change that waits for the phone ends when the agent says so (`ayni.space.tools.changed`, PROF-TOOL-006)
@@ -282,7 +314,11 @@ function ToolPanel({
   const answered = (
     answer: SpaceToolAnswer,
     from: From,
-    sent: { rules?: Record<string, ToolRule>; values?: Record<string, string> } = {}
+    sent: {
+      rules?: Record<string, ToolRule>
+      values?: Record<string, string>
+      policies?: Record<string, PolicyForm>
+    } = {}
   ) => {
     if (answer.status === 202 && answer.tool.pending)
       setState({
@@ -305,6 +341,11 @@ function ToolPanel({
       return
     }
     const r = toolRefusalOf(e)
+    if (r.at === 'policy') {
+      // at the entry, the number needed or the switch the agent names (UI-CONV-067, UI-CONV-052)
+      setPolicyError(r.refusal)
+      return
+    }
     if (r.at === 'binding')
       setFieldErrors({
         [r.name]:
@@ -338,10 +379,11 @@ function ToolPanel({
   const send = async (
     from: From,
     request: () => Promise<SpaceToolAnswer>,
-    sent?: { rules?: Record<string, ToolRule>; values?: Record<string, string> }
+    sent?: { rules?: Record<string, ToolRule>; values?: Record<string, string>; policies?: Record<string, PolicyForm> }
   ) => {
     setBusy(true)
     setFieldErrors({})
+    setPolicyError(null)
     setState((s) => ({ ...s, outcome: null, error: null }))
     try {
       answered(await request(), from, sent)
@@ -375,12 +417,33 @@ function ToolPanel({
         .map((x) => [x.name as string, rules[x.name as string] as ToolRule])
     )
 
-  /** The Save of the settings (UI-CONV-050): the bindings and the rules in one request; Add for a source not added. */
+  /**
+   * The policies changed of the tools whose rule stays `approval` (UI-CONV-067): each whole. A tool whose rule the owner
+   * takes away from `approval` sends none: its policy goes with the rule.
+   */
+  const changedPolicies = () => {
+    const out: Record<string, ApprovalPolicyInput> = {}
+    const forms: Record<string, PolicyForm> = {}
+    for (const x of tool.tools) {
+      const form = x.name ? policies[x.name] : undefined
+      if (!x.name || !x.approval || !form || (rules[x.name] ?? x.rule) !== 'approval') continue
+      if (!policyChanged(form, x.approval)) continue
+      out[x.name] = policyInputOf(form)
+      forms[x.name] = form
+    }
+    return { approvals: out, forms }
+  }
+
+  /**
+   * The Save of the settings (UI-CONV-050): the bindings, the rules and the approval policies in one request; Add for a
+   * source not added.
+   */
   const saveSettings = () => {
     const bindings = checkedBindings(!adding)
     if (!bindings) return
     const calls = changedRules()
-    const sent = { rules: calls, values: bindings }
+    const { approvals, forms } = adding ? { approvals: {}, forms: {} } : changedPolicies()
+    const sent = { rules: calls, values: bindings, policies: forms }
     if (adding) {
       void send(
         'settings',
@@ -394,13 +457,14 @@ function ToolPanel({
       )
       return
     }
-    if (!Object.keys(bindings).length && !Object.keys(calls).length) return
+    if (!Object.keys(bindings).length && !Object.keys(calls).length && !Object.keys(approvals).length) return
     void send(
       'settings',
       () =>
         hub.patchSpaceTool(agent.did, space.id, tool.source, {
           ...(Object.keys(bindings).length ? { bindings } : {}),
           ...(Object.keys(calls).length ? { calls } : {}),
+          ...(Object.keys(approvals).length ? { approvals } : {}),
         }),
       sent
     )
@@ -712,6 +776,7 @@ function ToolPanel({
             {tool.tools.map((x) => {
               const name = x.name ?? x.title
               const current = rules[name] ?? x.rule
+              const form = x.name ? policies[x.name] : undefined
               return (
                 <li key={name} className="tool-rule-row">
                   <span className="tool-rule-name">
@@ -721,6 +786,8 @@ function ToolPanel({
                       {x.stepUp ? <span className="tool-step-up">{t(`tools.stepUp.${x.stepUp}`)}</span> : null}
                     </span>
                     <span className="muted small">{t(`tools.effect.${x.effect}`)}</span>
+                    {/* a policy that needs attention, on the tool's line (UI-CONV-067) */}
+                    <AttentionLine policy={x.approval} />
                   </span>
                   <span className="tool-rule-choice">
                     <select
@@ -740,6 +807,25 @@ function ToolPanel({
                     </select>
                   </span>
                   {fieldError(`calls.${name}`)}
+                  {/* its approval policy, under its rule, while the rule is `approval` (UI-CONV-067) */}
+                  {x.name && x.approval && form && current === 'approval' && added ? (
+                    <PolicyEditor
+                      agent={agent}
+                      space={space}
+                      toolName={x.name}
+                      title={x.title}
+                      policy={x.approval}
+                      form={form}
+                      disabled={busy || state.waiting?.from === 'settings'}
+                      error={policyError?.tool === x.name ? policyError : null}
+                      onChange={(next) => setPolicies((all) => ({ ...all, [x.name as string]: next }))}
+                    />
+                  ) : null}
+                  {policyError && policyError.tool === name && !x.approval ? (
+                    <span className="field-error" role="alert">
+                      {policyRefusalText(policyError, agent.name, 1, t)}
+                    </span>
+                  ) : null}
                 </li>
               )
             })}
