@@ -20,12 +20,15 @@ import {
   type AuditEvidenceResponse,
   type AuditLogResponse,
   type AuditMessagesResponse,
+  type AuditPeopleResponse,
   type AuditToolCallsResponse,
   adminAccessOf,
   auditConversationsOf,
   auditEvidenceOf,
   auditLogOf,
   auditMessagesOf,
+  auditPeopleOf,
+  auditPeopleQueryOf,
   auditToolCallsOf,
   type EraseRequest,
   type EraseResponse,
@@ -843,6 +846,17 @@ export class ProfileClient {
         limit: String(limit),
       })
     )
+  }
+
+  /**
+   * The people whose name matches `q`, at most 20, each with its Principal id, its name and its department (agent, for
+   * an `auditor`): the person a filter of Audit takes, picked by name. Its reason in the query, as every read of Audit.
+   */
+  public async auditPeople(token: string, reason: string, q: string): Promise<AuditPeopleResponse> {
+    // an empty search is refused by the agent (400 bad-request, field q): refused here before it goes
+    const text = auditPeopleQueryOf(q)
+    if (!text) throw new ProfileError(400, 'bad-request', undefined, undefined, undefined, 'q')
+    return auditPeopleOf(await this.audit(token, 'people', reason, { q: text }))
   }
 
   /** The evidence records of a Principal (PROF-ADMIN-005). */

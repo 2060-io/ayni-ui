@@ -91,6 +91,24 @@ export interface AuditToolCallsResponse extends AdminAudited {
   calls: Record<string, unknown>[]
 }
 
+/** One person of `GET {sessions}/admin/audit/people?q=&reason=`: the Principal an auditor picks by name. */
+export interface AuditPerson {
+  principalId: string
+  name: string
+  department: string | null
+}
+
+/**
+ * The people whose name matches the text typed, at most `AUDIT_PEOPLE_MAX` (agent, auditor only): a filter of Audit
+ * takes the Principal picked from them. An empty `q` is refused (`400 bad-request`, `field: 'q'`).
+ */
+export interface AuditPeopleResponse {
+  people: AuditPerson[]
+}
+
+/** The most people one search answers with. */
+export const AUDIT_PEOPLE_MAX = 20
+
 /** One record of the admin audit: who (the verified Principal and the grant, or the break-glass token), why, what. */
 export interface AdminAuditItem {
   id: string
@@ -369,6 +387,28 @@ export function auditToolCallsOf(body: unknown): AuditToolCallsResponse {
   return { calls: records(b.calls), auditId: auditIdOf(b) }
 }
 
+/** The text a search for a person sends: trimmed; null for one that holds nothing, which the agent refuses. */
+export function auditPeopleQueryOf(text: string): string | null {
+  const q = text.trim()
+  return q ? q : null
+}
+
+export function auditPeopleOf(body: unknown): AuditPeopleResponse {
+  const b = isRecord(body) ? body : {}
+  const people = records(b.people)
+    .filter((p) => str(p.principalId))
+    .slice(0, AUDIT_PEOPLE_MAX)
+    .map(
+      (p): AuditPerson => ({
+        principalId: String(p.principalId),
+        // a person without a name is shown by the id the filter takes
+        name: str(p.name) ?? String(p.principalId),
+        department: str(p.department) ?? null,
+      })
+    )
+  return { people }
+}
+
 export function auditLogOf(body: unknown): AuditLogResponse {
   const b = isRecord(body) ? body : {}
   const items = records(b.records)
@@ -446,12 +486,6 @@ export const TOOL_CALL_FIELDS = [
   'rule',
   'outcome',
 ] as const
-
-/** The icons of the rows of the ADMIN area, as lucide names (the menu's entries are in `MENU_ICON`). */
-export const ADMIN_AREA_ICON: Record<AdminPage, 'file-search' | 'wrench'> = {
-  audit: 'file-search',
-  operations: 'wrench',
-}
 
 /**
  * The English wording of admin access (UI-ADMIN-001 to 006), written once for the browser and the Ayni app: the

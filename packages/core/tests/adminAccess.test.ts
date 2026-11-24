@@ -18,6 +18,8 @@ import {
   adminRefusalOf,
   adminRequestAfter,
   adminRequestWordsOf,
+  auditPeopleOf,
+  auditPeopleQueryOf,
   auditPeriodOf,
   auditValueOf,
   entryIdsOf,
@@ -106,9 +108,12 @@ describe("the agent's menu and the ADMIN area (UI-ADMIN-001, UI-ADMIN-003)", () 
     expect(adminMenuEntryOf(ADMIN, JONAS_OPEN, Date.parse(UNTIL))).toBe('showAdmin')
   })
 
-  it('takes the icons of the entries from one table, the same in the app', () => {
-    expect(MENU_ICON.showAdmin).toBe('eye')
-    expect(MENU_ICON.hideAdmin).toBe('eye-off')
+  it('takes the icons of the entries and of the rows of the area from one table, the same in the app', () => {
+    expect(MENU_ICON.showAdmin).toBe('shield-user')
+    expect(MENU_ICON.hideAdmin).toBe('shield-off')
+    // the rows of the area by their page, as adminAreaOf names them
+    const pages: (keyof typeof MENU_ICON)[] = adminAreaOf(BOTH_OPEN, NOW)?.pages ?? []
+    expect(pages.map((page) => MENU_ICON[page])).toEqual(['file-search', 'wrench'])
   })
 
   it('shows the area exactly while the grant is open, with Audit for an auditor and Operations for an operator', () => {
@@ -359,6 +364,58 @@ describe('the endpoints of §3.14 as the client calls them', () => {
       { method: 'GET', path: '/admin/operations/keys?reason=Quarterly+check', body: undefined },
       { method: 'POST', path: '/admin/operations/keys/master/rotate', body: { reason: 'Quarterly check' } },
     ])
+  })
+
+  it('finds a person by name for Audit, the reason in the query, at most 20 people', async () => {
+    const { client, calls } = agent((_m, path) =>
+      path.startsWith('/admin/audit/people?')
+        ? json({
+            people: [
+              { principalId: 'prn_ana', name: 'Ana Ruiz', department: 'Sales' },
+              { principalId: 'prn_anabel', name: 'Anabel Costa', department: null },
+              { name: 'no id' },
+            ],
+          })
+        : json({}, 404)
+    )
+    expect(await client.auditPeople('t', 'Complaint 4411', '  Ana ')).toEqual({
+      people: [
+        { principalId: 'prn_ana', name: 'Ana Ruiz', department: 'Sales' },
+        { principalId: 'prn_anabel', name: 'Anabel Costa', department: null },
+      ],
+    })
+    expect(calls.map((c) => `${c.method} ${c.path} ${c.auth}`)).toEqual([
+      'GET /admin/audit/people?q=Ana&reason=Complaint+4411 Bearer t',
+    ])
+    // an empty search goes nowhere: the agent refuses it (400 bad-request, field q)
+    await expect(client.auditPeople('t', 'Complaint 4411', '   ')).rejects.toMatchObject({
+      status: 400,
+      code: 'bad-request',
+      field: 'q',
+    })
+    expect(calls).toHaveLength(1)
+    expect(auditPeopleQueryOf(' Ana ')).toBe('Ana')
+    expect(auditPeopleQueryOf('  ')).toBeNull()
+  })
+
+  it('reads the people tolerantly, at most 20, a person without a name by its id', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ principalId: `prn_${i}`, name: `P ${i}`, department: 'X' }))
+    expect(auditPeopleOf({ people: many }).people).toHaveLength(20)
+    expect(auditPeopleOf({ people: [{ principalId: 'prn_x', department: 7 }] })).toEqual({
+      people: [{ principalId: 'prn_x', name: 'prn_x', department: null }],
+    })
+    expect(auditPeopleOf(undefined)).toEqual({ people: [] })
+  })
+
+  it('names the refusals of a search for a person as those of the other reads of Audit', async () => {
+    for (const [status, error, refusal] of [
+      [403, 'admin-closed', 'ended'],
+      [403, 'not-auditor', 'noRole'],
+      [400, 'reason-required', 'reason'],
+    ] as const) {
+      const { client } = agent(() => json({ error }, status))
+      expect(adminRefusalOf(await client.auditPeople('t', 'Complaint 4411', 'Ana').catch((e) => e))).toBe(refusal)
+    }
   })
 
   it('keeps the refusal code of the agent', async () => {
