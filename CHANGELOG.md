@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.24.0](https://github.com/2060-io/ayni-ui/compare/v0.23.0...v0.24.0) (2026-11-24)
+
+
+### Features
+
+* **core:** a space's governance: one owner or none, the successor, the stewards, the approval timeouts, the approval policy of a tool with its progress and notices (agent D135 to D142, core 0.12.0) ([16ff477](https://github.com/2060-io/ayni-ui/commit/16ff477f140078a09e928b56785afe1721e4dd92))
+* **spaces:** space governance on the web: approval policy per tool, timeouts and successor, progress and notices, Spaces you steward (core 0.12.0) ([ffd9c37](https://github.com/2060-io/ayni-ui/commit/ffd9c378e71d2b6f4780c1880cc91568714f2b54))
+* **spaces:** space governance on the web: the approval policy of a tool, the timeouts and the successor in Settings, the progress and the notices in the Notifications, Spaces you steward (UI-CONV-041, UI-CONV-067, UI-CONV-068, UI-APPR-010, UI-APPR-011) ([61a7565](https://github.com/2060-io/ayni-ui/commit/61a75651df482d3b388cc30fd29c0d89feb44c66))
+
+
+### Bug Fixes
+
+* **core:** the rows of Shared with the space, the person's own share with their session of it (UI-CONV-031, core 0.12.1) ([4820a93](https://github.com/2060-io/ayni-ui/commit/4820a939b599ce754db70def95dd803cf0cf4e34))
+* **spaces:** Shared with the space lists the person's own shares, and a space never shows another space's list (UI-CONV-031) ([7e2dcbb](https://github.com/2060-io/ayni-ui/commit/7e2dcbb5bdb0b2da588cebedbf23f5678201bdad))
+* **spaces:** Shared with the space lists the person's own shares, and a space never shows another space's list (UI-CONV-031) ([ee8344d](https://github.com/2060-io/ayni-ui/commit/ee8344d6fe85909bd945a30fe7aab9c19c970c32))
+* **spaces:** the hint of Shared with the space reads "Shared with everyone in the space", which fits the person's own shares too (UI-CONV-031) ([7b737b0](https://github.com/2060-io/ayni-ui/commit/7b737b084043681340a4deb34c2a50c50e848972))
+
 ## [0.23.0](https://github.com/2060-io/ayni-ui/compare/v0.22.0...v0.23.0) (2026-11-24)
 
 
