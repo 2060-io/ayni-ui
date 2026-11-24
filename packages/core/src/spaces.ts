@@ -381,6 +381,28 @@ export function sharedConversationsOf(body: unknown): SharedConversation[] {
     }))
 }
 
+/** A row of "Shared with the space" (UI-CONV-031): the shared conversation, and the person's own record of it. */
+export interface SharedRow<S> {
+  conversation: SharedConversation
+  /** the person's own session of the conversation, when they shared it: the row opens it as theirs, not read-only */
+  own: S | null
+}
+
+/**
+ * The rows of "Shared with the space" (UI-CONV-031): every conversation shared with the space, in the agent's order,
+ * the person's own included; one of theirs carries their session of it, an unarchived one first.
+ */
+export function sharedRowsOf<S extends { agentDid: string; conversationId?: string; archived?: boolean }>(
+  shared: readonly SharedConversation[],
+  sessions: readonly S[],
+  agentDid: string
+): SharedRow<S>[] {
+  return shared.map((conversation) => {
+    const records = sessions.filter((s) => s.agentDid === agentDid && s.conversationId === conversation.id)
+    return { conversation, own: records.find((s) => !s.archived) ?? records[0] ?? null }
+  })
+}
+
 /** The conversation's space in its state (PROF-STREAM-009); null before the agent gave one. */
 export function spaceRefOf(ayni: unknown): SpaceRef | null {
   const space = obj(obj(ayni).space)
