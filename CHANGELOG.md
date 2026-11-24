@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.23.0](https://github.com/2060-io/ayni-ui/compare/v0.22.0...v0.23.0) (2026-11-24)
+
+
+### Features
+
+* **trust:** "This service lets visitors in." on the trust card of an agent that declares features.visitors (UI-TRUST-008, core 0.11.0) ([6512890](https://github.com/2060-io/ayni-ui/commit/6512890870bc24a18ff8cc57c7cc179da183514a))
+* **trust:** "This service lets visitors in." on the trust card of an agent that declares features.visitors (UI-TRUST-008, core 0.11.0) ([cf59807](https://github.com/2060-io/ayni-ui/commit/cf5980768930c6a1b55337d22c089ee87c8fb7a6))
+* **words:** every source named "feature · provider", the time left in hours, the words of three refusals (core 0.9.0) ([01017cf](https://github.com/2060-io/ayni-ui/commit/01017cfc753d2f84ba589de97d80877517092191))
+* **words:** every source named "feature · provider", the time left in hours, the words of three refusals (core 0.9.0) ([c29e89e](https://github.com/2060-io/ayni-ui/commit/c29e89e6521660bad0c44bda5159e3f32cd8aabf))
+
+
+### Bug Fixes
+
+* **home:** every entry of an agent's menu shows its icon, the same as in the app (core 0.8.1) ([de06b8d](https://github.com/2060-io/ayni-ui/commit/de06b8d913fae4eeeb08e34e636615da7e8900d3))
+* **home:** every entry of an agent's menu shows its icon, the same as in the app (core 0.8.1) ([c2a583e](https://github.com/2060-io/ayni-ui/commit/c2a583ef912cc52b145c164048355de6656d9036))
+* **theme:** the danger red of the dark theme reads at AA, and Disconnect from this agent is in red ([f9cd221](https://github.com/2060-io/ayni-ui/commit/f9cd22188670fea0def0525231dfe6126ff1aa1f))
+* **theme:** the danger red of the dark theme reads at AA, and Disconnect from this agent is in red ([8996c05](https://github.com/2060-io/ayni-ui/commit/8996c05f9caa895fbf009340c621550401bb19e8))
+
 ## [0.22.0](https://github.com/2060-io/ayni-ui/compare/v0.21.2...v0.22.0) (2026-11-22)
 
 
