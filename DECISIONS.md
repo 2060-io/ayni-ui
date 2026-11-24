@@ -894,11 +894,22 @@
     decisions of 2026-11-23, ayni-spec #125: agent D135 to D142; UI-CONV-041, 049, 050, 052, UI-CONV-067, 068,
     UI-APPR-006, 007, UI-APPR-010, 011; built against the merged agent, ayni-agent #122, profile package 3.5.4, whose
     shapes are taken from its code). Core 0.12.0.
-    - **The profile package.** `@ayni.org/ayni-agui-profile` 3.5.0 to 3.5.4 are not on npm (the latest published is
-      3.4.1), so the dependency stays where it is and the shapes of 3.5.4 are written in the core, as for 3.3 to 3.5:
-      `approvalPolicy.ts` (the policy, its progress, its form), `spaces.ts` (owner or none, successor, timeouts, the
-      stewards' answers), `notifications.ts` (notices, own confirmations, progress). The bump is one line once the package
-      is published.
+    - **The profile package.** `@ayni.org/ayni-agui-profile` 3.5.0 to 3.5.4 were not on npm when this was built (the
+      latest published was 3.4.1), so the shapes of 3.5.4 were written in the core, as for 3.3 to 3.5. 3.5.4 is published
+      now (with provenance) and both `package.json` take `^3.5.4` (core 0.12.2, 2026-11-24): the shapes the readers take
+      as the agent gives them are the package's, re-exported under the core's names, each the same type as before
+      (`ApproverKind`, `APPROVER_KINDS`, `ApproverView`, `ApprovalProgress`; `ApprovalPolicyView`, `ApprovalPolicyBounds`,
+      `ApprovalPolicyWarning`, `WhenApproverAsks`, `ProgressEntry`, `ApproverInput` from `SpaceApprovalPolicyView`,
+      `SpaceApprovalPolicyWarning`, `ApprovalProgress` and `SpaceApprovalPolicyInput`; `ApprovalPolicyInput` is
+      `Required<SpaceApprovalPolicyInput>`, the form always sending `whenApproverAsks`; `GovernanceNoticeKind`,
+      `NotificationKind`, `GovernanceNotice` from `GovernanceNoticeBody`; `SpaceActivityKind`, `OwnerChange`,
+      `StewardedSpace`, `OwnerCandidate` from `OwnerCandidatesResponse`; `setSuccessor` takes a `SuccessorRequest`). Those
+      the readers fill differ from the package's and stay in the core: `SpaceInfo` and `SpaceRules` (`retentionDays` null
+      with no limit, any `lawfulBasis`), `TemplateBounds` (the bounds flattened), `SpaceActivityItem` (no `id`, `fields`
+      or `conversationId`), `ApprovalDecision` (`by` is the name), `NotificationApproval` and `NotificationItem` (an item
+      carries its `approval` or its `notice` by its kind, where the package has both optional). The package lists no
+      notice kinds nor activity kinds, so `GOVERNANCE_NOTICE_KINDS` and `SPACE_ACTIVITY_KINDS` stay too. Settings now
+      shows the package's `PROFILE_VERSION`, "3.5" (it showed "3.1").
     - **One owner, or none.** `SpaceInfo.owner` is `{ name } | null` (a change of type for the app). A space with no owner
       reads "<kind> · No owner" in its header; About shows no name under the purpose; a list space's members read
       "<n> members" instead of "a list kept by". `successor` is read from the owner's answers.

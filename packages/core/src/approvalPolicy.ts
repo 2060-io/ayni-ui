@@ -5,90 +5,57 @@
  * optional), how many approvals are needed, which refusal rejects, whether a decision is confirmed with fingerprint or
  * face, and what counts when an approver makes the request. The owner reads it whole and changes it in the panel of the
  * tool's source; a member reads its approvers and its number; the requester's card and the Notifications show where an
- * approval stands. The wire types are written here until the profile package of 3.5.4 is the one every client has; the
- * rules a screen follows (the words of a policy, of its progress, its form and the refusals of a change) are here too,
- * so that the browser and the Ayni app apply the same ones.
+ * approval stands. The wire types are the profile package's (3.5.4); the rules a screen follows (the words of a policy,
+ * of its progress, its form and the refusals of a change) are here, so that the browser and the Ayni app apply the
+ * same ones.
  */
 
-export type ApproverKind = 'owner' | 'person' | 'member' | 'role' | 'department'
-export const APPROVER_KINDS: readonly ApproverKind[] = ['owner', 'person', 'member', 'role', 'department']
+import {
+  APPROVER_KINDS,
+  type ApprovalProgress,
+  type ApproverKind,
+  type ApproverView,
+  type SpaceApprovalPolicyInput,
+  type SpaceApprovalPolicyView,
+  type SpaceApprovalPolicyWarning,
+} from '@ayni.org/ayni-agui-profile'
 
+export type { ApprovalProgress, ApproverKind, ApproverView }
 /**
- * An approver as people read it (§3.12): `name` for the person an `owner` or a `person` entry names (none for an
- * `owner` of a space that has no owner), `role` or `department` for those entries; to the owner, a `person` also carries
- * `memberId` (a list space) or `directoryId` (a rule space).
+ * The kinds of entry (`ApproverKind`, `APPROVER_KINDS`), an approver as people read it (`ApproverView`, §3.12: `name`
+ * for the person an `owner` or a `person` entry names, none for an `owner` of a space that has no owner; `role` or
+ * `department` for those entries; to the owner, a `person` also carries `memberId` or `directoryId`) and where an
+ * approval of a tool of a space stands (`ApprovalProgress`, PROF-TOOL-037: its threshold, the approvals counted, the
+ * entries not yet satisfied, the required ones first) are the profile package's.
  */
-export interface ApproverView {
-  kind: ApproverKind
-  memberId?: string
-  directoryId?: string
-  name?: string
-  role?: string
-  department?: string
-  required: boolean
-}
-
-/** What the agent-pack lets an owner set for one tool (agent TOOL-CAT-023). */
-export interface ApprovalPolicyBounds {
-  minApprovals: number
-  kinds: ApproverKind[]
-  roles: string[]
-  attested: 'optional' | 'required'
-}
-
-/** A warning of a policy (agent TOOL-SPACE-020): it refuses nothing. */
-export type ApprovalPolicyWarning =
-  | { code: 'own-requests-blocked'; approvers: { name: string }[] }
-  | { code: 'unreachable' }
-
-export type WhenApproverAsks = 'another-approver' | 'own-confirmation'
+export { APPROVER_KINDS }
 
 /**
  * The policy of a tool of a space (PROF-TOOL-036). To the owner every field, with its `state` (`needs-attention` while a
  * required entry names nobody, `attention` listing their indexes), its `warnings` and the agent-pack's `bounds`; to a
  * member, `approvers` and `threshold` only.
  */
-export interface ApprovalPolicyView {
-  approvers: ApproverView[]
-  threshold: number
-  refusal?: 'any' | 'required'
-  attested?: boolean
-  whenApproverAsks?: WhenApproverAsks
-  state?: 'ok' | 'needs-attention'
-  attention?: number[]
-  warnings?: ApprovalPolicyWarning[]
-  bounds?: ApprovalPolicyBounds
-}
+export type ApprovalPolicyView = SpaceApprovalPolicyView
+
+/** What the agent-pack lets an owner set for one tool (agent TOOL-CAT-023). */
+export type ApprovalPolicyBounds = NonNullable<SpaceApprovalPolicyView['bounds']>
+
+/** A warning of a policy (agent TOOL-SPACE-020): it refuses nothing. */
+export type ApprovalPolicyWarning = SpaceApprovalPolicyWarning
+
+export type WhenApproverAsks = NonNullable<SpaceApprovalPolicyView['whenApproverAsks']>
 
 /** An entry an approval still waits for, in the progress (PROF-TOOL-037). */
-export type ProgressEntry = Pick<ApproverView, 'kind' | 'name' | 'role' | 'department' | 'required'>
-
-/**
- * Where an approval of a tool of a space stands (PROF-TOOL-037): its threshold, the approvals counted, and the entries
- * not yet satisfied, the required ones first.
- */
-export interface ApprovalProgress {
-  threshold: number
-  approvals: number
-  waitingFor: ProgressEntry[]
-}
+export type ProgressEntry = ApprovalProgress['waitingFor'][number]
 
 /** An entry of a policy as the owner sends it (`PATCH …/tools/{source}` with `approvals`, PROF-TOOL-036). */
-export type ApproverInput =
-  | { kind: 'owner' | 'member'; required: boolean }
-  | { kind: 'person'; memberId: string; required: boolean }
-  | { kind: 'person'; directoryId: string; required: boolean }
-  | { kind: 'role'; role: string; required: boolean }
-  | { kind: 'department'; department: string; required: boolean }
+export type ApproverInput = SpaceApprovalPolicyInput['approvers'][number]
 
-/** A policy as the owner sends it, whole (PROF-TOOL-036). */
-export interface ApprovalPolicyInput {
-  approvers: ApproverInput[]
-  threshold: number
-  refusal: 'any' | 'required'
-  attested: boolean
-  whenApproverAsks: WhenApproverAsks
-}
+/**
+ * A policy as the owner sends it, whole (PROF-TOOL-036): the package's, with `whenApproverAsks` always given (the form
+ * holds one from the start, its default following the approvers, UI-CONV-067).
+ */
+export type ApprovalPolicyInput = Required<SpaceApprovalPolicyInput>
 
 // ---------------------------------------------------------------------------------------------------- reading
 

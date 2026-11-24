@@ -179,7 +179,10 @@ and colour (UI-TRUST-008), and nothing of it for any other agent.
 One owner who controls a space, or none once the owner left with no successor; a successor the owner names; the
 stewards of a template, who name an owner; the timeouts of the approvals of a space; and an approval policy per tool of a
 space, whose approvers may be the owner, a person, any member, a role or a department, each required or optional. The
-shapes of package 3.5.4 are written here (it is not on npm yet), with tolerant readers.
+shapes are package 3.5.4's, re-exported under the names below, with tolerant readers (`ApprovalPolicyView`,
+`ApprovalProgress`, `ApproverView`, `ProgressEntry`, `ApprovalPolicyInput`, `GovernanceNotice`, `StewardedSpace`,
+`OwnerCandidate`, `OwnerChange`, `SpaceActivityKind`, `NotificationKind`); those the readers fill stay written here
+(`SpaceInfo`, `SpaceRules`, `TemplateBounds`, `SpaceActivityItem`, `NotificationApproval`, `NotificationItem`).
 
 | Surface | Functions |
 | --- | --- |

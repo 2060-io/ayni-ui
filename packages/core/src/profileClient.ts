@@ -9,6 +9,7 @@ import type {
   DevicesResponse,
   HistoryPage,
   SessionStatus,
+  SuccessorRequest,
   UploadResponse,
 } from '@ayni.org/ayni-agui-profile'
 import type { ApprovalPolicyInput } from './approvalPolicy.js'
@@ -470,11 +471,7 @@ export class ProfileClient {
    * The owner names the space's successor (PROF-SPACE-008): a member of a list space, a person of the directory for a
    * rule space; answered with the space. `403 not-owner` and `422 not-eligible` reach the caller.
    */
-  public async setSuccessor(
-    token: string,
-    spaceId: string,
-    to: { memberId: string } | { directoryId: string }
-  ): Promise<SpaceDetail> {
+  public async setSuccessor(token: string, spaceId: string, to: SuccessorRequest): Promise<SpaceDetail> {
     const detail = spaceDetailOf(await this.send(token, 'PUT', `/spaces/${encodeURIComponent(spaceId)}/successor`, to))
     if (!detail) throw new ProfileError(502, 'bad-response')
     return detail
