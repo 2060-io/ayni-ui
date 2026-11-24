@@ -223,7 +223,7 @@ describe("each entry of the agent's menu shows its icon, the same as in the app 
     return el.querySelector('.agent-row [role="menu"]')
   }
 
-  it('a linked agent: every entry with its icon, the count of the Notifications after the words, Remove in red', async () => {
+  it('a linked agent: every entry with its icon, the count of the Notifications after the words, Disconnect in red', async () => {
     const hub = await tab({
       sessions: conversations,
       spaces: SPACES,
@@ -233,37 +233,36 @@ describe("each entry of the agent's menu shows its icon, the same as in the app 
     })
     const el = await render(hub, <Column />)
     const menu = await open(el)
-    // the app's icons for its entries (ayni-app serviceMenu.ts); New space and Roles are the browser's alone
+    // the app's order, words and icons for its entries (ayni-app serviceMenu.ts); New space and Roles are the
+    // browser's alone; Remove is offered only while the browser is not linked
     expect(entriesOf(menu)).toEqual([
+      ['Notifications', 'bell'],
       ['Linked devices', 'monitor-smartphone'],
-      ['Disconnect from this agent', 'unplug'],
       ['Show archived conversations', 'archive'],
       ['New space', 'plus'],
       ['What Fleet support keeps about you', 'book-user'],
-      ['Notifications', 'bell'],
       ['Your accounts', 'key-round'],
       ['Roles', 'user-cog'],
-      ['Remove agent', 'trash'],
+      ['Disconnect', 'unplug'],
     ])
     for (const [key, words] of [
+      ['notifications', 'Notifications'],
       ['devices', 'Linked devices'],
-      ['disconnect', 'Disconnect from this agent'],
       ['archived', 'Show archived conversations'],
       ['newSpace', 'New space'],
       ['keeps', 'What Fleet support keeps about you'],
-      ['notifications', 'Notifications'],
       ['accounts', 'Your accounts'],
       ['roles', 'Roles'],
-      ['remove', 'Remove agent'],
+      ['disconnect', 'Disconnect'],
     ] as const)
       expect(entriesOf(menu).find(([w]) => w === words)?.[1]).toBe(MENU_ICON[key])
     // the words name the entry: the icon adds nothing to it
     const notifications = byText(el, '[role="menuitem"]', /^Notifications/)
     expect(notifications?.lastElementChild?.className).toBe('notifications-count')
     expect(notifications?.textContent).toBe('Notifications2, 2 waiting')
-    const remove = byText(el, '[role="menuitem"]', 'Remove agent')
-    expect(remove?.classList.contains('danger')).toBe(true)
-    expect(remove?.textContent).toBe('Remove agent')
+    const disconnect = byText(el, '[role="menuitem"]', 'Disconnect')
+    expect(disconnect?.classList.contains('danger')).toBe(true)
+    expect(disconnect?.textContent).toBe('Disconnect')
     // each icon is drawn in its entry's colour: the text's, in the light and the dark theme, and the danger red
     for (const icon of menu?.querySelectorAll('svg') ?? []) expect(icon.getAttribute('stroke')).toBe('currentColor')
   })
@@ -297,17 +296,17 @@ describe("each entry of the agent's menu shows its icon, the same as in the app 
     expect(entriesOf(await open(el))).toContainEqual(['Show active conversations', 'messages-square'])
   })
 
-  it("an agent this browser is not linked to: Link again, with the icon of the app's Reconnect", async () => {
+  it("an agent this browser is not linked to: Reconnect and Remove, with the app's icons, and no Disconnect", async () => {
     const hub = await tab({
       spaces: SPACES,
       snapshot: { agents: [{ ...agentRecord(), deviceHandle: undefined, deviceSecret: undefined }] as never },
     })
     const el = await render(hub, <Column />)
     expect(entriesOf(await open(el))).toEqual([
-      ['Link again', 'plug'],
       ['Show archived conversations', 'archive'],
       ['New space', 'plus'],
-      ['Remove agent', 'trash'],
+      ['Reconnect', 'plug'],
+      ['Remove', 'trash'],
     ])
   })
 })

@@ -75,7 +75,7 @@ describe('Disconnect forgets what the browser read of the person from the agent 
     expect(spaceRows(el).length).toBeGreaterThan(0)
     expect(byText(el, '.section-label', 'Spaces')).toBeTruthy()
     await click(el.querySelector('.agent-row [aria-label="Agent options"]'))
-    await click(byText(el, '[role="menuitem"]', 'Disconnect from this agent'))
+    await click(byText(el, '[role="menuitem"]', 'Disconnect'))
     await until(() => !hub.getSnapshot().agents[0]?.deviceSecret)
     await settle()
     expect(spaceRows(el)).toEqual([])

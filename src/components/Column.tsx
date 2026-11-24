@@ -4,8 +4,11 @@
  * conversation, search, and its active or archived conversations.
  */
 import {
+  AGENT_MENU_DANGER,
+  type AgentMenuKey,
   type AgentRecord,
   adminMenuEntryOf,
+  agentMenuOf,
   CONTROLLER_KIND_ICON,
   type ConversationSource,
   flagOf,
@@ -152,6 +155,45 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
   const adminEntry = link.linked
     ? adminMenuEntryOf(agent.descriptor.features, snap.adminAccess[agent.did], Date.now())
     : null
+  // the entries of the agent's menu, as the app lists them: Disconnect while linked, Reconnect and Remove only while
+  // not (UI-AGENTS-009)
+  const menuEntries = agentMenuOf({
+    connected: link.linked,
+    notifications: hub.takesNotifications(agent.did),
+    devices: link.linked,
+    archivedShown: archivedView,
+    newSpace: !!spaces?.templates.length,
+    keeps: true,
+    accounts: hub.takesConnections(agent.did),
+    steward: !!snap.stewards[agent.did],
+    roles: !!snap.admins[agent.did],
+    admin: adminEntry,
+  })
+  const closing = (fn: () => void) => () => {
+    setMenuOpen(false)
+    fn()
+  }
+  const toggleArchived = closing(() => {
+    hub.toggleArchivedView(agent.did)
+    if (!expanded) hub.toggleAgentExpanded(agent.did)
+  })
+  // the browser offers no Sign-in methods, Authenticate or Service details: the app's alone
+  const menuActions: Partial<Record<AgentMenuKey, () => void>> = {
+    notifications: closing(() => hub.openNotifications(agent.did)),
+    devices: closing(() => setDevicesOpen(true)),
+    archived: toggleArchived,
+    active: toggleArchived,
+    newSpace: closing(() => setCreatingSpace(true)),
+    keeps: closing(() => hub.openKeeps(agent.did)),
+    accounts: closing(() => hub.openAccounts(agent.did)),
+    steward: closing(() => hub.openSteward(agent.did)),
+    roles: closing(() => hub.openAdmin(agent.did)),
+    showAdmin: () => run(() => hub.showAdmin(agent.did)),
+    hideAdmin: () => run(() => hub.hideAdmin(agent.did)),
+    disconnect: () => run(() => hub.disconnectAgent(agent.did)),
+    reconnect: () => run(() => hub.connect(agent.did)),
+    remove: () => run(() => hub.removeAgent(agent.did)),
+  }
   return (
     <section className={['agent-card', selected ? 'selected' : '', expanded ? 'open' : ''].join(' ')} ref={cardRef}>
       <div className="agent-row relative">
@@ -205,122 +247,23 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
           <MoreVertical size={D.smallButton.iconSize} />
         </button>
         {menuOpen ? (
-          // each entry with its icon, the same as the app's (MENU_ICON, APP-HOME-020)
+          // the entries the app's menu of the agent lists, in its order and with its words, each with its icon
+          // (AGENT_MENU_ORDER, AGENT_MENU_COPY, MENU_ICON; UI-AGENTS-009, APP-HOME-020)
           <div className="menu-popover" role="menu" style={{ top: 40 }}>
-            {link.linked ? (
+            {menuEntries.map((key) => (
               <MenuEntry
-                entry="devices"
-                onClick={() => {
-                  setMenuOpen(false)
-                  setDevicesOpen(true)
-                }}
-              >
-                {t('column.devices')}
-              </MenuEntry>
-            ) : (
-              <MenuEntry entry="reconnect" onClick={() => run(() => hub.connect(agent.did))}>
-                {t('column.linkAgain')}
-              </MenuEntry>
-            )}
-            {agent.deviceSecret ? (
-              // in red, as the app draws it: it ends the link of this browser
-              <MenuEntry entry="disconnect" danger onClick={() => run(() => hub.disconnectAgent(agent.did))}>
-                {t('column.disconnect')}
-              </MenuEntry>
-            ) : null}
-            <MenuEntry
-              entry={archivedView ? 'active' : 'archived'}
-              onClick={() => {
-                setMenuOpen(false)
-                hub.toggleArchivedView(agent.did)
-                if (!expanded) hub.toggleAgentExpanded(agent.did)
-              }}
-            >
-              {archivedView ? t('column.showActive') : t('column.showArchived')}
-            </MenuEntry>
-            {spaces?.templates.length ? (
-              <MenuEntry
-                entry="newSpace"
-                onClick={() => {
-                  setMenuOpen(false)
-                  setCreatingSpace(true)
-                }}
-              >
-                {t('column.newSpace')}
-              </MenuEntry>
-            ) : null}
-            {link.linked ? (
-              <MenuEntry
-                entry="keeps"
-                onClick={() => {
-                  setMenuOpen(false)
-                  hub.openKeeps(agent.did)
-                }}
-              >
-                {t('column.keeps', { agent: agent.name })}
-              </MenuEntry>
-            ) : null}
-            {hub.takesNotifications(agent.did) && link.linked ? (
-              // the approvals no space holds, with the badge of what waits there (UI-APPR-007, PROF-TOOL-025)
-              <MenuEntry
-                entry="notifications"
-                onClick={() => {
-                  setMenuOpen(false)
-                  hub.openNotifications(agent.did)
-                }}
-                after={<NotificationsBadge count={snap.agentNotifications[agent.did]} />}
-              >
-                {t('notifications.title')}
-              </MenuEntry>
-            ) : null}
-            {hub.takesConnections(agent.did) && link.linked ? (
-              // the person's own accounts at external services (UI-CONV-053)
-              <MenuEntry
-                entry="accounts"
-                onClick={() => {
-                  setMenuOpen(false)
-                  hub.openAccounts(agent.did)
-                }}
-              >
-                {t('accounts.menu')}
-              </MenuEntry>
-            ) : null}
-            {snap.stewards[agent.did] ? (
-              // for a steward of a template of spaces (UI-CONV-068)
-              <MenuEntry
-                entry="steward"
-                onClick={() => {
-                  setMenuOpen(false)
-                  hub.openSteward(agent.did)
-                }}
-              >
-                {t('steward.title')}
-              </MenuEntry>
-            ) : null}
-            {snap.admins[agent.did] ? (
-              <MenuEntry
-                entry="roles"
-                onClick={() => {
-                  setMenuOpen(false)
-                  hub.openAdmin(agent.did)
-                }}
-              >
-                {t('column.roles')}
-              </MenuEntry>
-            ) : null}
-            {adminEntry ? (
-              <MenuEntry
-                entry={adminEntry}
-                onClick={() =>
-                  run(() => (adminEntry === 'showAdmin' ? hub.showAdmin(agent.did) : hub.hideAdmin(agent.did)))
+                key={key}
+                entry={key}
+                danger={AGENT_MENU_DANGER.has(key)}
+                onClick={() => menuActions[key]?.()}
+                after={
+                  // the approvals no space holds, with the badge of what waits there (UI-APPR-007, PROF-TOOL-025)
+                  key === 'notifications' ? <NotificationsBadge count={snap.agentNotifications[agent.did]} /> : null
                 }
               >
-                {adminEntry === 'showAdmin' ? t('adminAccess.show') : t('adminAccess.hide')}
+                {t(`agentMenu.${key}`, { agent: agent.name })}
               </MenuEntry>
-            ) : null}
-            <MenuEntry entry="remove" danger onClick={() => run(() => hub.removeAgent(agent.did))}>
-              {t('column.remove')}
-            </MenuEntry>
+            ))}
           </div>
         ) : null}
       </div>

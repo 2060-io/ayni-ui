@@ -45,7 +45,6 @@
     "closed": "Closed",
     "noConversations": "No conversations yet.",
     "options": "Agent options",
-    "linkAgain": "Link again",
     "endAll": "End all conversations",
     "remove": "Remove agent",
     "trustCard": "Trust card",
@@ -55,8 +54,6 @@
     "noMatch": "No conversation matches",
     "matches": "{{count}} matches",
     "matches_one": "{{count}} match",
-    "devices": "Linked devices",
-    "disconnect": "Disconnect from this agent",
     "archive": "Archive",
     "unarchive": "Unarchive",
     "archived": "Archived",
@@ -68,14 +65,26 @@
       "persona": "Person",
       "unverified": "Not verified"
     },
-    "showArchived": "Show archived conversations",
-    "showActive": "Show active conversations",
     "terms": "Terms",
     "privacy": "Privacy",
+    "keeps": "What {{agent}} keeps about you",
+    "inSpace": "In {{space}}"
+  },
+  "agentMenu": {
+    "notifications": "Notifications",
+    "devices": "Linked devices",
+    "archived": "Show archived conversations",
+    "active": "Show active conversations",
     "newSpace": "New space",
     "keeps": "What {{agent}} keeps about you",
+    "accounts": "Your accounts",
+    "steward": "Spaces you steward",
     "roles": "Roles",
-    "inSpace": "In {{space}}"
+    "showAdmin": "Show Admin",
+    "hideAdmin": "Hide Admin",
+    "disconnect": "Disconnect",
+    "reconnect": "Reconnect",
+    "remove": "Remove"
   },
   "trust": {
     "title": "Trust card",

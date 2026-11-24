@@ -1,30 +1,54 @@
 /**
- * The danger red of what cannot be undone, as the Ayni app draws it: in the agent's menu, Disconnect from this agent
- * and Remove agent; Close for good in a conversation's menu; Delete in a message's. The dark theme has its own red,
+ * The danger red of what cannot be undone, as the Ayni app draws it: in the agent's menu, Disconnect, and Remove
+ * while the browser is not linked; Close for good in a conversation's menu; Delete in a message's. The dark theme has its own red,
  * the app's (`DARK.red`), so that the words read at WCAG 2.2 AA (4.5:1) on the page, a menu and a card in both themes,
  * dark by choice and dark by system; what is written on a red ground (the unread count, Stop) takes the colour that
  * reads on it.
  */
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { Column, ConversationRow } from '../src/components/Column.js'
-import { byText, click, PERSONAL, record, render, SPACES, setup, TRUCK, tab, teardown } from './spacesFixture.js'
+import {
+  agentRecord,
+  byText,
+  click,
+  PERSONAL,
+  record,
+  render,
+  SPACES,
+  setup,
+  TRUCK,
+  tab,
+  teardown,
+} from './spacesFixture.js'
 import { css, rule } from './stylesheet.js'
 
 beforeAll(setup)
 afterEach(teardown)
 
 describe("the entries of the agent's menu that cannot be undone are in red, as in the app", () => {
-  it('Disconnect from this agent and Remove agent, and no other entry', async () => {
-    const hub = await tab({
-      sessions: [record({ sessionId: 's1', title: 'Overtime for November', spaceId: PERSONAL.id })],
-      spaces: SPACES,
-    })
+  const redOf = async (hub: Awaited<ReturnType<typeof tab>>) => {
     const el = await render(hub, <Column />)
     await click(el.querySelector('.agent-row [aria-label="Agent options"]'))
     const entries = [...el.querySelectorAll('.agent-row [role="menuitem"]')]
     const red = entries.filter((e) => e.classList.contains('danger')).map((e) => e.textContent)
-    expect(red).toEqual(['Disconnect from this agent', 'Remove agent'])
     expect(entries.length).toBeGreaterThan(red.length)
+    return red
+  }
+
+  it('Disconnect while linked, and no other entry', async () => {
+    const hub = await tab({
+      sessions: [record({ sessionId: 's1', title: 'Overtime for November', spaceId: PERSONAL.id })],
+      spaces: SPACES,
+    })
+    expect(await redOf(hub)).toEqual(['Disconnect'])
+  })
+
+  it('Remove while not linked, and no other entry', async () => {
+    const hub = await tab({
+      spaces: SPACES,
+      snapshot: { agents: [{ ...agentRecord(), deviceHandle: undefined, deviceSecret: undefined }] as never },
+    })
+    expect(await redOf(hub)).toEqual(['Remove'])
   })
 
   it("Close for good, in a conversation's menu", async () => {
