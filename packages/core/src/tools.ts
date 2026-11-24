@@ -8,6 +8,15 @@
  * of account `personal` to these shapes, and the binding of a space set from an account of its owner; each person's
  * own accounts are in `connections.ts`.
  */
+import {
+  type ApprovalPolicyView,
+  type ApprovalProgress,
+  approvalPolicyOf,
+  approvalProgressOf,
+  type PolicyRefusal,
+  policyKeyOf,
+  policyRefusalOf,
+} from './approvalPolicy.js'
 import type { Transcript, TranscriptMessage } from './types.js'
 
 /** The live event of a change of a space's tools that applied or was dropped (PROF-TOOL-006). */
@@ -84,6 +93,11 @@ export interface SpaceToolItem {
   rule: ToolRule
   packRule?: ToolRule
   stepUp: ToolStepUp | null
+  /**
+   * a rule `approval`: its policy in this space (profile 3.5.4, PROF-TOOL-036), whole to the owner, its approvers and
+   * threshold to a member
+   */
+  approval?: ApprovalPolicyView
 }
 
 /** The change that waits for the owner's phone (§3.10). */
@@ -300,15 +314,20 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
     })),
     tools: list(t.tools)
       .filter((x) => typeof x.title === 'string' || typeof x.name === 'string')
-      .map((x) => ({
-        ...(typeof x.name === 'string' ? { name: x.name } : {}),
-        title: str(x.title, str(x.name)),
-        // a tool with no effect said is taken as the strictest default (agent §10.6)
-        effect: EFFECTS.includes(x.effect as ToolEffect) ? (x.effect as ToolEffect) : 'delete',
-        rule: ruleOf(x.rule, 'approval'),
-        ...(x.packRule !== undefined ? { packRule: ruleOf(x.packRule, 'approval') } : {}),
-        stepUp: STEP_UPS.includes(x.stepUp as ToolStepUp) ? (x.stepUp as ToolStepUp) : null,
-      })),
+      .map((x) => {
+        const rule = ruleOf(x.rule, 'approval')
+        const approval = rule === 'approval' ? approvalPolicyOf(x.approval) : undefined
+        return {
+          ...(typeof x.name === 'string' ? { name: x.name } : {}),
+          title: str(x.title, str(x.name)),
+          // a tool with no effect said is taken as the strictest default (agent §10.6)
+          effect: EFFECTS.includes(x.effect as ToolEffect) ? (x.effect as ToolEffect) : 'delete',
+          rule,
+          ...(x.packRule !== undefined ? { packRule: ruleOf(x.packRule, 'approval') } : {}),
+          stepUp: STEP_UPS.includes(x.stepUp as ToolStepUp) ? (x.stepUp as ToolStepUp) : null,
+          ...(approval ? { approval } : {}),
+        }
+      }),
     pending:
       typeof pending.changeId === 'string'
         ? {
@@ -430,6 +449,14 @@ export function missingOf(tool: Pick<SpaceTool, 'bindings' | 'account'>): { bind
   }
 }
 
+/**
+ * The tools of a source whose approval policy needs attention (UI-CONV-067): a required entry names nobody now. Their
+ * words go on the tool's line, on the source's row and at those entries.
+ */
+export function toolsNeedingAttention(tool: Pick<SpaceTool, 'tools'>): SpaceToolItem[] {
+  return tool.tools.filter((x) => x.rule === 'approval' && x.approval?.state === 'needs-attention')
+}
+
 /** The state of a source's row in the owner's Tools segment (UI-CONV-050). */
 export type ToolRowState = 'notAdded' | 'needsSetup' | 'ready' | 'off' | 'waiting'
 
@@ -494,30 +521,37 @@ export function accountValuesOf(
   return { values: refused.length ? {} : values, refused }
 }
 
-/** One group of a source's tools in About (UI-CONV-049): the tools of one rule and one step-up, by their titles. */
+/**
+ * One group of a source's tools in About (UI-CONV-049): the tools of one rule, and for `approval` of one policy (its
+ * words differ from one policy to another, profile 3.5.4), by their titles.
+ */
 export interface ToolRuleGroup {
   rule: Exclude<ToolRule, 'off'>
+  /** the rule `approval`: the policy its tools share, when the agent gives it (PROF-TOOL-036) */
+  approval?: ApprovalPolicyView
   /** in the agent's order, each with its step-up, which is named after its title, never after the rule's words */
   tools: { title: string; stepUp: ToolStepUp | null }[]
 }
 
 /**
  * A source's tools in About, grouped by rule (UI-CONV-049): the loosest rule first, each group's tools in the agent's
- * order, each with its own step-up; a tool whose rule is `off` is not shown.
+ * order, each with its own step-up; the tools of the rule `approval` grouped by their policy, in the order they come;
+ * a tool whose rule is `off` is not shown.
  */
 export function ruleGroupsOf(tool: Pick<SpaceTool, 'tools'>): ToolRuleGroup[] {
-  const groups: ToolRuleGroup[] = []
+  const groups: (ToolRuleGroup & { key: string })[] = []
   for (const item of tool.tools) {
     if (item.rule === 'off') continue
     const rule = item.rule
-    let group = groups.find((g) => g.rule === rule)
+    const key = rule === 'approval' ? policyKeyOf(item.approval) : ''
+    let group = groups.find((g) => g.rule === rule && g.key === key)
     if (!group) {
-      group = { rule, tools: [] }
+      group = { rule, key, ...(rule === 'approval' && item.approval ? { approval: item.approval } : {}), tools: [] }
       groups.push(group)
     }
     group.tools.push({ title: item.title, stepUp: item.stepUp })
   }
-  return groups.sort((a, b) => strictnessOf(a.rule) - strictnessOf(b.rule))
+  return groups.sort((a, b) => strictnessOf(a.rule) - strictnessOf(b.rule)).map(({ key: _key, ...group }) => group)
 }
 
 /** The tools a space's About shows (UI-CONV-031): its `ready` sources only. */
@@ -564,6 +598,8 @@ export function toolRefusalOf(
    * the agent named a field it does not declare, or one it misses (a `400`)
    */
   | { at: 'account'; field: string | null; reason: 'badToken' | 'fieldsChanged' }
+  /** a field of an approval policy (`approvals.<tool>…`, profile 3.5.4, PROF-TOOL-036) */
+  | { at: 'policy'; refusal: PolicyRefusal }
   | {
       at: 'panel'
       reason:
@@ -579,6 +615,8 @@ export function toolRefusalOf(
         | 'notFound'
         | 'other'
     } {
+  const policy = policyRefusalOf(error)
+  if (policy) return { at: 'policy', refusal: policy }
   const code = error?.code
   const field = error?.field ?? ''
   const named = field.replace(/^(bindings|calls)\./, '')
@@ -789,6 +827,8 @@ export function withApprovalUpdate(transcript: Transcript, value: unknown): Tran
         ...(typeof v.grantExpiresAt === 'string' ? { grantExpiresAt: v.grantExpiresAt } : {}),
         ...(v.scope === 'once' || v.scope === 'conversation' ? { scope: v.scope } : {}),
         ...(v.allowanceEnded === true ? { allowanceEnded: true } : {}),
+        // where an approval of a tool of a space stands after this change (PROF-TOOL-037)
+        ...(approvalProgressOf(v.progress) ? { progress: v.progress } : {}),
       }
       return { ...m, content }
     }),
@@ -828,14 +868,32 @@ export function awaitsConfirmation(
   return isConfirmation(c) && statusOf(c.status) === 'PENDING'
 }
 
-/** The approval of a tool call (PROF-TOOL-009): its action and, when the space's owner approves it, the space. */
-export function toolApprovalOf(content: unknown): { action: ToolAction; space?: { id: string; title: string } } | null {
+/**
+ * The approval of a tool call (PROF-TOOL-009): its action and the space of the tool; for a tool of a space, its policy
+ * as a member reads it, where it stands (`progress`, PROF-TOOL-037), and `reason: "no-approver"` when it was refused at
+ * once for want of another approver.
+ */
+export function toolApprovalOf(content: unknown): {
+  action: ToolAction
+  space?: { id: string; title: string }
+  policy?: ApprovalPolicyView
+  progress?: ApprovalProgress
+  reason?: 'no-approver'
+} | null {
   const c = obj(content)
   if (isConfirmation(c)) return null
   const action = toolActionOf(c.action)
   if (!action) return null
   const space = spaceRefOf(c.space)
-  return { action, ...(space ? { space } : {}) }
+  const policy = approvalPolicyOf(c.policy)
+  const progress = approvalProgressOf(c.progress)
+  return {
+    action,
+    ...(space ? { space } : {}),
+    ...(policy ? { policy } : {}),
+    ...(progress ? { progress } : {}),
+    ...(c.reason === 'no-approver' ? { reason: 'no-approver' as const } : {}),
+  }
 }
 
 /** The sources a reply used, when this device knows them: undefined for a reply received live, not read back yet. */

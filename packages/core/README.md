@@ -174,5 +174,23 @@ lets a person in without authenticating, as a visitor. The Proof of Trust card t
 `PROOF_OF_TRUST_COPY.visitors`, "This service lets visitors in.", under the verdict, with the design's `visitors` size
 and colour (UI-TRUST-008), and nothing of it for any other agent.
 
+## Profile 3.5.4: a space's governance (agent D135 to D142)
+
+One owner who controls a space, or none once the owner left with no successor; a successor the owner names; the
+stewards of a template, who name an owner; the timeouts of the approvals of a space; and an approval policy per tool of a
+space, whose approvers may be the owner, a person, any member, a role or a department, each required or optional. The
+shapes of package 3.5.4 are written here (it is not on npm yet), with tolerant readers.
+
+| Surface | Functions |
+| --- | --- |
+| A space with no owner, its successor (UI-CONV-041) | `SpaceInfo.owner` (`null` with none), `SpaceInfo.successor`, `ownerNameOf`, `handoverCandidatesOf` (who could own it, or succeed: an active member neither owner nor guest) |
+| The approval timeouts (UI-CONV-041) | `SpaceRules.approvalTimeouts`, `TemplateBounds.approvalTimeouts`, `timeoutChoicesOf`, `timeoutFits` |
+| Spaces you steward (UI-CONV-068) | `stewardshipOf` (no owner first), `ownerCandidatesOf`, `stewardReasonFits`, `stewardRefusalOf`; `ProfileClient.stewardship`, `ownerCandidates`, `nameOwner`, `setSuccessor`, `clearSuccessor` |
+| The policy of a tool (UI-CONV-067, UI-CONV-049) | `approvalPolicyOf` (`SpaceToolItem.approval`), `policyRuleWordsOf`, `entryWordsOf`, `ruleGroupsOf` (by policy too), `policyFormOf`, `withApprovers`, `defaultWhenApproverAsksOf`, `minApprovalsOf`, `lowerThreshold`, `addableKindsOf`, `policyInputOf`, `policyChanged`, `policyRefusalOf` (also through `toolRefusalOf`), `attentionEntriesOf`, `toolsNeedingAttention`, `blockedNamesOf`; `patchSpaceTool(…, { approvals })` |
+| Where an approval stands (UI-APPR-010) | `approvalProgressOf`, `progressLineOf`, `cardStatusOf` and `notificationStatusOf` (`progress`, `noApprover`), `deciderProgressOf`, `withApprovalUpdate` (keeps `progress`), `isOwnConfirmation`, `notificationHeadingOf` (`ownRequest`), `notificationControlsOf` (an own confirmation: on the phone) |
+| The notices (UI-APPR-011) | `NotificationItem` (an approval or a notice), `isApprovalItem`, `governanceNoticeOf`, `noticeWordsOf`, `noticeControlOf` |
+
+The English wording is `GOVERNANCE_COPY`, keyed by its path in the translation files.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

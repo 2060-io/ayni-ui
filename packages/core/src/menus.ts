@@ -28,6 +28,8 @@ export const MENU_ICON = {
   newSpace: 'plus',
   /** the browser's alone: the admin view of roles (UI-CONV-042) */
   roles: 'user-cog',
+  /** the browser's alone: Spaces you steward (UI-CONV-068), for a steward of a template of spaces */
+  steward: 'shield-user',
   // the menu of a conversation from a list (APP-CONV-008/040), and the app's entries of the menu in a conversation
   rename: 'pencil',
   share: 'share-2',

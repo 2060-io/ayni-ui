@@ -267,7 +267,7 @@ describe('an item (UI-APPR-002, UI-APPR-007, UI-APPR-008)', () => {
   it('offers Decide on your phone for one to attest, Approve and Reject for any other, nothing once read-only', () => {
     expect(notificationControlsOf(approval())).toBe('phone')
     expect(notificationControlsOf(approval({ attested: false }))).toBe('decide')
-    expect(notificationControlsOf(approval({ own: true }))).toBe('none')
+    expect(notificationControlsOf(approval({ own: true, canDecide: false }))).toBe('none')
     expect(notificationControlsOf(approval({ attested: false, myDecision: 'approve' }))).toBe('none')
     expect(notificationControlsOf(approval({ attested: false, status: 'APPROVED' }))).toBe('none')
     expect(notificationControlsOf(approval({ attested: false, canDecide: false }))).toBe('none')
@@ -275,7 +275,7 @@ describe('an item (UI-APPR-002, UI-APPR-007, UI-APPR-008)', () => {
 
   it('is headed by who asks, or by Sent by you', () => {
     expect(notificationHeadingOf(approval())).toEqual({ key: 'asksYou', requester: 'Ana Ríos' })
-    expect(notificationHeadingOf(approval({ own: true }))).toEqual({ key: 'sentByYou' })
+    expect(notificationHeadingOf(approval({ own: true, canDecide: false }))).toEqual({ key: 'sentByYou' })
   })
 
   it('says its status: the time left, the person\'s own decision, who decided and when, "you" for the person', () => {
