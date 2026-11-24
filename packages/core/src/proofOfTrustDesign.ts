@@ -41,6 +41,8 @@ export const PROOF_OF_TRUST_DESIGN = {
     subFontSize: 12,
   },
   reasons: { fontSize: 14, paddingLeft: 18 },
+  /** "This service lets visitors in.", under the verdict (UI-TRUST-008) */
+  visitors: { fontSize: 14 },
   loading: { gap: 8, fontSize: 13, iconSize: 16 },
   /** one identity step: its node on the line, then who it is */
   step: { gap: 16, paddingBottom: 22, bodyGap: 8 },
@@ -89,6 +91,7 @@ export const PROOF_OF_TRUST_COLORS = {
   did: { text: 'muted' },
   verdictSub: { text: 'muted' },
   reasons: { text: 'danger' },
+  visitors: { text: 'text' },
   loading: { text: 'muted' },
   line: { ok: 'ok', rest: 'border' },
   node: { ok: 'ok', bad: 'danger', background: 'bg' },
@@ -103,6 +106,15 @@ export const PROOF_OF_TRUST_COLORS = {
   tag: { text: 'accent' },
   claims: { key: 'muted' },
 } as const satisfies Record<string, Record<string, ColorRole>>
+
+/**
+ * Whether the agent lets a person in without authenticating, as a visitor (`features.visitors`, PROF-DESC-012): the
+ * card then says so with `visitors` (UI-TRUST-008), and says nothing of it for any other agent.
+ */
+export function letsVisitorsIn(features: object | null | undefined): boolean {
+  // read loosely: the descriptor's type gains the field with the profile package that declares it
+  return (features as { visitors?: unknown } | null | undefined)?.visitors === true
+}
 
 /** The verdict the card shows: the registry's answer once loaded, the agent's last known result before. */
 export function verdictOf(
@@ -148,6 +160,7 @@ export const PROOF_OF_TRUST_COPY = {
   openInGraph: 'Open in the Verana search',
   evaluated: 'Evaluated {{time}}',
   block: 'block {{block}}',
+  visitors: 'This service lets visitors in.',
   service: 'Service',
   operatedBy: 'Operated by',
   selfIssued: 'Self-issued',

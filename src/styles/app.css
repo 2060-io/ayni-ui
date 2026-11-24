@@ -2272,6 +2272,11 @@ mark.hit.current {
   color: var(--danger);
   font-size: 14px;
 }
+.pot-visitors {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
 .pot-loading {
   display: inline-flex;
   align-items: center;

@@ -406,6 +406,7 @@
     "openInGraph": "Ouvrir dans la recherche Verana",
     "evaluated": "Évalué {{time}}",
     "block": "bloc {{block}}",
+    "visitors": "Ce service accepte les visiteurs.",
     "service": "Service",
     "operatedBy": "Opéré par",
     "selfIssued": "Auto-émis",

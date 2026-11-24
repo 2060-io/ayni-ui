@@ -62,6 +62,8 @@ describe('the stylesheet follows the shared design of the Proof of Trust', () =>
     expect(rule('.pot-reasons')['font-size']).toBe(px(D.reasons.fontSize))
     expect(rule('.pot-reasons')['padding-left']).toBe(px(D.reasons.paddingLeft))
     expect(rule('.pot-reasons').color).toBe(role(C.reasons.text))
+    expect(rule('.pot-visitors')['font-size']).toBe(px(D.visitors.fontSize))
+    expect(rule('.pot-visitors').color).toBe(role(C.visitors.text))
     expect(rule('.pot-loading').gap).toBe(px(D.loading.gap))
     expect(rule('.pot-loading')['font-size']).toBe(px(D.loading.fontSize))
     expect(rule('.pot-loading').color).toBe(role(C.loading.text))
