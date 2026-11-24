@@ -5,6 +5,7 @@ import { About } from './components/About.js'
 import { AccountsPage } from './components/Accounts.js'
 import { AddPage } from './components/AddPage.js'
 import { AdminPage } from './components/AdminRoles.js'
+import { AuditPage } from './components/Audit.js'
 import { Column } from './components/Column.js'
 import { ConnectPage } from './components/ConnectPage.js'
 import { Conversation } from './components/Conversation.js'
@@ -13,6 +14,7 @@ import { Directory } from './components/Directory.js'
 import { KeepsPage } from './components/Keeps.js'
 import { MemorySheet } from './components/Memories.js'
 import { NotificationsPage } from './components/Notifications.js'
+import { OperationsPage } from './components/Operations.js'
 import { PhonePage } from './components/PhonePage.js'
 import { ProofOfTrust } from './components/ProofOfTrust.js'
 import { Rail } from './components/Rail.js'
@@ -96,6 +98,10 @@ function Shell({ update }: { update: AppUpdate }) {
       <NotificationsPage />
     ) : snap.view === 'steward' ? (
       <StewardshipPage />
+    ) : snap.view === 'audit' ? (
+      <AuditPage />
+    ) : snap.view === 'operations' ? (
+      <OperationsPage />
     ) : (
       <Conversation />
     )

@@ -5,6 +5,7 @@
  */
 import {
   type AgentRecord,
+  adminMenuEntryOf,
   CONTROLLER_KIND_ICON,
   type ConversationSource,
   flagOf,
@@ -31,6 +32,7 @@ import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { linkOf } from '../state/link.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
+import { AdminAreaRows, AdminRequestLine } from './AdminArea.js'
 import { NotificationsBadge } from './ApprovalWords.js'
 import { Avatar } from './Avatar.js'
 import { DevicesDialog } from './Devices.js'
@@ -146,6 +148,10 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
     else hub.toggleAgentExpanded(agent.did)
   }
   const TrustIcon = TRUST_ICON[TRUST_MARK[agent.trust.result].icon]
+  // Show Admin to a holder of an admin role, Hide Admin while this browser's grant is open (UI-ADMIN-001)
+  const adminEntry = link.linked
+    ? adminMenuEntryOf(agent.descriptor.features, snap.adminAccess[agent.did], Date.now())
+    : null
   return (
     <section className={['agent-card', selected ? 'selected' : '', expanded ? 'open' : ''].join(' ')} ref={cardRef}>
       <div className="agent-row relative">
@@ -302,12 +308,23 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
                 {t('column.roles')}
               </MenuEntry>
             ) : null}
+            {adminEntry ? (
+              <MenuEntry
+                entry={adminEntry}
+                onClick={() =>
+                  run(() => (adminEntry === 'showAdmin' ? hub.showAdmin(agent.did) : hub.hideAdmin(agent.did)))
+                }
+              >
+                {adminEntry === 'showAdmin' ? t('adminAccess.show') : t('adminAccess.hide')}
+              </MenuEntry>
+            ) : null}
             <MenuEntry entry="remove" danger onClick={() => run(() => hub.removeAgent(agent.did))}>
               {t('column.remove')}
             </MenuEntry>
           </div>
         ) : null}
       </div>
+      <AdminRequestLine agent={agent} />
       {expanded ? (
         <div className="agent-body">
           <div className="agent-meta">
@@ -358,6 +375,8 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
               onChange={(e) => setFilter(e.target.value)}
             />
           ) : null}
+          {/* the ADMIN area, above the spaces, while the grant is open (UI-ADMIN-003) */}
+          <AdminAreaRows agent={agent} />
           {!archivedView ? <SpaceRows agent={agent} query={searchOpen ? filter : ''} /> : null}
           {archivedView ? (
             <div className="section-label">

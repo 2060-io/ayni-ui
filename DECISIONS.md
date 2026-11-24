@@ -980,5 +980,47 @@
       entry, the words in four languages); `packages/core/tests/notifications.test.ts` and `tests/spaceTools.test.tsx`
       amended to the spec's change ("Needs approval"; `own` with `canDecide` is now an own confirmation). Each new test
       fails without the change.
-53. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+53. **Admin access from the agent's card: Show Admin, the ADMIN area, Audit and Operations** (2026-11-24, ayni-spec
+    UI-ADMIN-001 to 006, agent D132 to D134, AG-UI profile §3.14; built against ayni-agent #120, not merged yet, whose
+    profile package 3.5.5 shapes are taken from its code). Core 0.13.0.
+    - **The profile package.** 3.5.5 is not on npm (the latest published is 3.5.4), so its shapes of §3.14 are written
+      in the core (`adminAccess.ts`), as for 3.3 to 3.5.4; `features.admin` is read loosely.
+    - **The menu** (UI-ADMIN-001). For an agent that declares `features.admin`, `GET {sessions}/admin` is read with each
+      list of conversations; Show Admin (icon `eye`) to a person whose `roles` is not empty while this browser holds no
+      open grant, Hide Admin (`eye-off`) while it holds one, only while the browser is linked.
+    - **Show Admin** (UI-ADMIN-002). `POST {sessions}/admin/grant`; the card reads "Confirm on your phone" under its
+      header, a stream of the agent held open, until `ayni.admin.changed` comes: `declined` and `failed` read "Not
+      confirmed on your phone", `expired` "The request expired", each with a close button; `opened` clears it and opens
+      the card. A request whose `expiresAt` passed with no word (plus five seconds) reads expired and the state is read
+      again. The event reaches the other tabs over the sync bus.
+    - **The ADMIN area** (UI-ADMIN-003). Above the spaces, headed "Admin" with "Until 14:32" (the grant's end, the
+      browser's hours and minutes), Audit (icon `file-search`) for `auditor` and Operations (`wrench`) for `operator`.
+      Shown exactly while the grant is open: a timer ends it at `expiresAt` by the browser's clock; `ayni.admin.changed`
+      with no grant, Hide Admin (`DELETE {sessions}/admin/grant`) and a `403 admin-closed` end it too. An Audit or
+      Operations page then open closes to the list with the notice "Admin access ended". Disconnect forgets it all.
+    - **Audit** (UI-ADMIN-004). A reason before the first read, kept for the grant (it goes when the grant ends), shown
+      as "Reason: …" with Change; every read carries it in the query. Four segments: Conversations (person, space,
+      from, to; a row opens the messages, decrypted, read-only, each with its entry id so that an operator can name it,
+      "Earlier messages" by pages), Evidence (a person's records: their fields and the values stored), Call records (the
+      six filters, a table of the record's main fields) and Admin audit (read when the segment opens, newest first,
+      More by pages). The person filter takes a Principal id: the wire names no person otherwise, and the space field
+      offers the auditor's own spaces by title while taking any id. A period is two days, from the start of the first to
+      the end of the last in the browser's time zone.
+    - **Operations** (UI-ADMIN-005). Erase entries (ids typed, separated by spaces, commas or lines), Legal hold (on
+      entries or a conversation, set or release) and Keys. Each action opens a confirmation that names what it acts on
+      ("Entries: …", "Every entry of the conversation …", "Index key, to a new version") and asks its own reason; the
+      answer is said line by line (erased, kept by a legal hold, not found; changed, skipped). The keys are a read with
+      its own reason: each key's versions, the rotation's progress ("From version 1 to 2: 40 of 100"), and Rotate,
+      disabled with "This agent cannot rotate it yet." for a key that is not `rotatable` (the reference agent answers
+      `rotatable: false` and `501` while its key store is not built; a `501` reads the same).
+    - **Refusals** (UI-ADMIN-006): `admin-closed` "Admin access ended" (and the page closes), `not-auditor` and
+      `not-operator` "You don't have this role any more", `reason-required` "Say why you need this".
+    - **Words.** `ADMIN_COPY` in the core, in the four languages; the spec gives the menu's, the request's, the area's
+      and the refusals' words, the others are this client's.
+    - **Tests.** `packages/core/tests/adminAccess.test.ts` (the state, the menu, the area by the clock, the request, the
+      refusals, the reason, the period, the signal, every call with its reason) and `tests/adminAccess.test.tsx` (the
+      menu for Jonas, Ben and an agent without the feature; the three outcomes of Show Admin; the area above the spaces,
+      its pages, its end by the clock, by the event and by Hide Admin; Audit's reason and reads; Operations' erase, legal
+      hold and keys; the refusals; the words in four languages); `forget.test.ts` extended.
+54. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

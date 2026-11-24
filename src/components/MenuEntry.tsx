@@ -10,6 +10,8 @@ import {
   ArchiveRestore,
   Bell,
   BookUser,
+  Eye,
+  EyeOff,
   Info,
   KeyRound,
   Link2Off,
@@ -52,6 +54,8 @@ const ICONS: Record<MenuIconName, LucideIcon> = {
   'archive-restore': ArchiveRestore,
   'shield-plus': ShieldPlus,
   search: Search,
+  eye: Eye,
+  'eye-off': EyeOff,
 }
 
 /** The size of the icon, as the other menus of this client draw theirs (a message's, a tile's). */
