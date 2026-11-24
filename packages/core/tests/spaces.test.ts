@@ -16,6 +16,7 @@ import {
   ruleChoicesOf,
   type SpaceInfo,
   sharedConversationsOf,
+  sharedRowsOf,
   showsHeaderChip,
   showsSpaceChooser,
   spaceActivityOf,
@@ -396,5 +397,26 @@ describe('the members of a space (PROF-SPACE-003, UI-CONV-040)', () => {
         lastActivityAt: '2026-11-12T11:00:00Z',
       },
     ])
+  })
+
+  it("lists every conversation shared with the space, the person's own with their session of it (UI-CONV-031)", () => {
+    const at = '2026-11-12T10:00:00Z'
+    const shared = [
+      { id: 'conv_9', title: 'Recall R-2291', author: { name: 'Jonas Weber' }, sharedAt: at, lastActivityAt: at },
+      { id: 'conv_3', title: 'Caliper check', author: { name: 'Ana Ríos' }, sharedAt: at, lastActivityAt: at },
+    ]
+    const sessions = [
+      { sessionId: 's_old', agentDid: 'did:web:a', conversationId: 'conv_3', archived: true },
+      { sessionId: 's3', agentDid: 'did:web:a', conversationId: 'conv_3' },
+      // another agent's conversation with the same id is not the person's own here
+      { sessionId: 's9', agentDid: 'did:web:b', conversationId: 'conv_9' },
+    ]
+    const rows = sharedRowsOf(shared, sessions, 'did:web:a')
+    expect(rows.map((r) => r.conversation.id)).toEqual(['conv_9', 'conv_3'])
+    expect(rows[0].own).toBeNull()
+    expect(rows[1].own?.sessionId).toBe('s3')
+    // an archived record is still the person's own
+    expect(sharedRowsOf(shared, sessions.slice(0, 1), 'did:web:a')[1].own?.sessionId).toBe('s_old')
+    expect(sharedRowsOf([], sessions, 'did:web:a')).toEqual([])
   })
 })
