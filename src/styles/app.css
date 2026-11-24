@@ -1142,6 +1142,15 @@ fieldset.quick {
     opacity: 1;
   }
 }
+/*
+ * Under reduced motion the indicator stands still, its dots and its words "Thinking…" (UI-CONV-016, UI-A11Y-004): after
+ * the rule that sets the bounce, which the page-wide rule for reduced motion does not outweigh.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .dots span {
+    animation: none;
+  }
+}
 
 .composer {
   border-top: 1px solid var(--border);
@@ -2068,6 +2077,15 @@ mark.hit.current {
   color: var(--muted);
 }
 .row.mine .attachment .meta {
+  text-align: right;
+}
+/* under an attachment the agent held back because it carried a credential (UI-MEDIA-009, UI-SEC-006) */
+.attachment-withheld {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.row.mine .attachment-withheld {
   text-align: right;
 }
 .attachment.file {
@@ -3209,6 +3227,12 @@ mark.hit.current {
 .tool-card .tool-account {
   font-size: 13px;
   color: var(--muted);
+}
+/* the addresses outside the organization the call would reach, whole (UI-CONV-045, agent TOOL-FEAT-013) */
+.tool-card .tool-outside {
+  font-size: 13px;
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
 .tool-approval-head {
   font-size: 14px;

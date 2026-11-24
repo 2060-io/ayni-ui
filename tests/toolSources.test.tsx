@@ -246,3 +246,50 @@ describe('the sources before sharing (UI-CONV-048)', () => {
     expect(agent.calls.filter((c) => c.url.includes('/sources'))).toHaveLength(0)
   })
 })
+
+describe('every source named by the feature it serves, "<feature> · <source>" (UI-CONV-064, PROF-TOOL-035, C1)', () => {
+  const CRM_FEATURE = { source: 'relaticle', title: 'Relaticle', feature: { id: 'crm', title: 'CRM' } }
+  // a source whose feature has the same title is named once
+  const WEB_FEATURE = { source: 'web', title: 'Web search', feature: { id: 'web', title: 'Web search' } }
+
+  it("in a reply's Info, the name once when the feature's and the source's titles are the same", async () => {
+    const { sources } = await info(
+      reply({
+        sources: [
+          { ...CRM_FEATURE, account: 'space' },
+          { ...WEB_FEATURE, account: 'agent' },
+        ] as never,
+      })
+    )
+    expect(sources()).toBe("CRM · Relaticle, the space's account · Web search, Fleet support's account")
+  })
+
+  it('in the dialog before sharing', async () => {
+    fakeAgent([
+      [
+        'GET /conversations/conv_s3/sources',
+        () =>
+          json({
+            sources: [
+              { ...CRM_FEATURE, account: { kind: 'space', space: { id: TRUCK.id, title: TRUCK.title } }, results: 3 },
+              { ...WEB_FEATURE, account: { kind: 'agent' }, results: 1 },
+            ],
+          }),
+      ],
+    ])
+    const hub = await tab({
+      sessions: [record({ sessionId: 's3', title: 'Acme renewal', spaceId: TRUCK.id })],
+      spaces: SPACES,
+      features: { tools: true },
+      profileVersion: '3.4',
+    })
+    const el = await render(hub, <ConversationRow session={hub.getSnapshot().sessions[0]} selected={false} />)
+    await click(el.querySelector('[aria-label="Agent options"]'))
+    await click(byText(el, '[role="menuitem"]', 'Share with Truck 14 recall'))
+    await until(() => document.querySelector('[role="dialog"] .share-sources li'))
+    expect([...document.querySelectorAll('.share-sources li')].map((li) => li.textContent)).toEqual([
+      "CRM · Relaticle, with the space's account · 3 results",
+      "Web search, with Fleet support's account · 1 result",
+    ])
+  })
+})

@@ -5,7 +5,7 @@
  * once for the browser and the Ayni app. The wire types are written here until the profile package of 3.5 is the one
  * every client has.
  */
-import type { SpaceToolAccountField } from './tools.js'
+import { type FeatureRef, featureRefOf, type SpaceToolAccountField } from './tools.js'
 
 /** The live event of a change of one of the person's own accounts, or of an attempt to connect one (PROF-TOOL-019). */
 export const CONNECTIONS_CHANGED = 'ayni.connections.changed'
@@ -91,6 +91,8 @@ export interface ConnectionsChange {
 export interface ConnectCard {
   source: string
   title: string
+  /** the feature of the source the card is for (PROF-TOOL-035), when the agent gives it: the card names it first */
+  feature?: FeatureRef
   description: string
   method: ConnectionMethod
   why: 'connect' | 'reconnect'
@@ -240,9 +242,11 @@ export function connectCardOf(content: unknown): ConnectCard | null {
   const c = obj(content)
   if (typeof c.source !== 'string' || !c.source) return null
   const binding = obj(c.binding)
+  const feature = featureRefOf(c.feature)
   return {
     source: c.source,
     title: str(c.title, c.source),
+    ...(feature ? { feature } : {}),
     description: str(c.description),
     method: methodOf(c.method),
     why: c.why === 'reconnect' ? 'reconnect' : 'connect',

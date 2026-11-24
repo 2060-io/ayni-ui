@@ -3,8 +3,8 @@
  * UI-CONV-053..058, UI-APPR-006; AG-UI profile 3.5), written once for the browser and the Ayni app: the browser's
  * English translation file must say the same (a test compares them, row by row of the table of UI-CONV-058), and the
  * app starts from these (APP-CONV-058). Keys are paths in the translation file; `{{name}}` marks what the screen puts
- * in. Two texts are this client's own, for cases the table does not name: `accounts.empty` (an agent that offers the
- * person nothing to connect) and `accounts.noTab` (a browser that refused the new tab of a sign-in).
+ * in. The Info of a message held back for a credential is `conversation.withheldCredentialInfo`, followed, for an
+ * agent that declares `features.connections`, by `conversation.withheldCredentialAccounts` (UI-SEC-006).
  */
 export const CONNECTIONS_COPY = {
   'accounts.menu': 'Your accounts',
@@ -60,7 +60,8 @@ export const CONNECTIONS_COPY = {
   'tools.connectToChoose': 'Connect your account to choose',
   'tools.notYourAccount': 'Choose one of your own accounts of {{source}}.',
   'conversation.withheldCredentialInfo':
-    'This looked like a password or a key. {{agent}} did not keep it and did not show it to the AI. To connect an account, open Your accounts.',
+    'This looked like a password or a key. {{agent}} did not keep it and did not show it to the AI.',
+  'conversation.withheldCredentialAccounts': 'To connect an account, open Your accounts.',
 } as const
 
 export type ConnectionsCopyKey = keyof typeof CONNECTIONS_COPY

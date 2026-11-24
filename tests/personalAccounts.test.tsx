@@ -161,6 +161,17 @@ describe('the Connect card (UI-CONV-057, PROF-TOOL-020)', () => {
     why: 'connect',
   }
 
+  it('names the source by the feature of the card, "<feature> · <source>" (UI-CONV-064, PROF-TOOL-035)', async () => {
+    const { card } = await conversation([
+      asked,
+      answered,
+      connectCard({ ...GITHUB_CARD, feature: { id: 'code', title: 'Code and issues' } }),
+    ])
+    await until(() => card()?.querySelector('.connect-title'))
+    expect(card()?.querySelector('.connect-title')?.textContent).toBe('Code and issues · GitHub')
+    expect(card()?.getAttribute('aria-label')).toBe('Code and issues · GitHub')
+  })
+
   it('shows the source, what it is for, and Connect, at its place in the reply; Connect opens the sign-in', async () => {
     const opened = fakeTab()
     let list: unknown[] = [GITHUB, RELATICLE, TASKS]
@@ -396,6 +407,23 @@ describe('a message held back because it carried a credential (UI-CONV-044, agen
       "Only the service's code read this. It was not shared with the AI."
     )
   })
+
+  it('points to Your accounts only for an agent that declares `features.connections` (UI-SEC-006, F13)', async () => {
+    fakeAgent([])
+    const message = { id: 'msg_9', role: 'user', content: KEPT, at: at(1), modelVisible: false, withheld: 'credential' }
+    const hub = await tab({
+      sessions: [record({ sessionId: 's1' })],
+      transcripts: [transcript('s1', [message as TranscriptMessage])],
+      spaces: SPACES,
+      features: { tools: true, queue: true },
+      profileVersion: '3.5',
+      snapshot: { selectedSessionId: 's1', inspect: { sessionId: 's1', messageId: 'msg_9' } },
+    })
+    const el = await render(hub, <MessageInfo />)
+    expect(el.querySelector('.withheld-note')?.textContent).toBe(
+      'This looked like a password or a key. Fleet support did not keep it and did not show it to the AI.'
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------------------------------- call cards
@@ -423,6 +451,63 @@ const approvalCard = (content: Record<string, unknown>): TranscriptMessage => ({
   activityType: 'ayni.approval',
   content,
   at: at(1),
+})
+
+describe('an attachment held back because it carried a credential (UI-MEDIA-009, UI-SEC-006, agent D113, F11)', () => {
+  const sent: TranscriptMessage = { id: 'u1', role: 'user', content: 'Here is the contract', at: at(3) }
+  const file = (id: string, filename: string, more: Record<string, unknown> = {}): TranscriptMessage => ({
+    id,
+    role: 'activity',
+    activityType: 'ayni.attachment',
+    content: { attachmentId: `f_${id}`, type: 'file', role: 'user', filename, mimeType: 'application/pdf', ...more },
+    at: at(2),
+  })
+  const LINE = 'One attachment was held back: it contained a credential.'
+
+  async function shown(messages: TranscriptMessage[]) {
+    fakeAgent([])
+    const hub = await tab({
+      sessions: [record({ sessionId: 's1' })],
+      transcripts: [transcript('s1', messages)],
+      spaces: SPACES,
+      features: FEATURES,
+      profileVersion: '3.5',
+      snapshot: { selectedSessionId: 's1', view: 'conversation' },
+    })
+    const el = await render(hub, <Conversation />)
+    const lines = () => [...el.querySelectorAll('.attachment-withheld')].map((x) => x.textContent)
+    return { hub, el, lines }
+  }
+
+  it('says so under it, from history or the mirror; the words of the message and its other attachments as any other', async () => {
+    const { el, lines } = await shown([
+      sent,
+      file('att_1', 'contract.pdf', { withheld: 'credential' }),
+      file('att_2', 'annex.pdf'),
+    ])
+    expect(lines()).toEqual([LINE])
+    expect(el.querySelector('.msg.user.withheld')).toBeNull()
+    expect(byText(el, '.msg .body', 'Here is the contract')).toBeTruthy()
+  })
+
+  it('says so once `ayni.messages.withheld` names it for a credential, with no text', async () => {
+    const { hub, el, lines } = await shown([sent, file('att_1', 'contract.pdf')])
+    expect(lines()).toEqual([])
+    // @ts-expect-error private: the event in the run that carried the message
+    await hub.onEvent(
+      's1',
+      {
+        type: 'CUSTOM',
+        name: 'ayni.messages.withheld',
+        value: { conversationId: 'conv_s1', messageIds: ['att_1'], reason: 'credential', texts: {} },
+      },
+      undefined,
+      true
+    )
+    await until(() => lines().length === 1)
+    expect(lines()).toEqual([LINE])
+    expect(el.querySelector('.msg.user.withheld')).toBeNull()
+  })
 })
 
 describe("the account line of a call made with the person's own account (UI-CONV-045, UI-APPR-006)", () => {
@@ -988,10 +1073,12 @@ describe("the words of each person's own accounts (UI-CONV-058)", () => {
     ['tools.useValue', 'Use {{value}}'],
     ['tools.connectToChoose', 'Connect your account to choose'],
     ['tools.notYourAccount', 'Choose one of your own accounts of {{source}}.'],
+    // followed, for an agent that declares `features.connections`, by the sentence after it (UI-SEC-006)
     [
       'conversation.withheldCredentialInfo',
-      'This looked like a password or a key. {{agent}} did not keep it and did not show it to the AI. To connect an account, open Your accounts.',
+      'This looked like a password or a key. {{agent}} did not keep it and did not show it to the AI.',
     ],
+    ['conversation.withheldCredentialAccounts', 'To connect an account, open Your accounts.'],
   ]
 
   it('says each row of the table as the spec writes it, as the core gives it to the app', () => {

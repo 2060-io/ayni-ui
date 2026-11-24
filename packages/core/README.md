@@ -142,5 +142,21 @@ ending with `noTurn: "decision"`; a refusal is a `RunError` whose code is `decid
 The English wording is `NOTIFICATIONS_COPY`, the rows of the table of UI-CONV-052 for the Notifications and the card,
 keyed by its path in the translation files.
 
+## Profile 3.5 as amended on 2026-11-23: a source named by its feature, the addresses outside, three refusals
+
+The owner's answers of 2026-11-23 to the clean spec (C1, C6, C7, F11, F13). A source carries the feature it serves
+(`feature`, PROF-TOOL-035) on a card's action, in `metadata.sources`, in the sources of a conversation, on a space's
+tool and on a Connect card, read by `featureRefOf`; `sourceNameOf` names every source the same way: "<feature> ·
+<source>" ("CRM · Relaticle"), and its title once when the two titles are the same ("Web search") or when the agent
+gave no feature. A card's action carries the addresses outside the organization the call would reach
+(`outsideOrganization`, PROF-TOOL-007), which `tools.card.outsideOrganization` names. `toolRefusalOf` reads
+`409 space-account-not-set` and `409 provider-not-used`; `NOTIFICATIONS_COPY` words `409 not-pending` to Decide on
+your phone "This request was already decided or has ended.". `timeLeftOf` writes hours and minutes from one hour
+("23 h 59 min"). The reducer marks an attachment the agent held back for a credential (`isAttachmentWithheld`, from its
+`ayni.attachment` or from `ayni.messages.withheld` with no text for it), whose message reads
+`CONVERSATION_COPY.attachmentWithheld`. The Info of a message held back for a credential is
+`conversation.withheldCredentialInfo`, followed by `conversation.withheldCredentialAccounts` only for an agent that
+declares `features.connections`.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

@@ -28,6 +28,7 @@ import {
   type SpaceToolAccountField,
   type SpaceToolAnswer,
   type SpaceToolBinding,
+  sourceNameOf,
   type ToolRule,
   timeLeftOf,
   toolRefusalOf,
@@ -94,7 +95,7 @@ export function ToolsSegment({ agent, space }: { agent: AgentRecord; space: Spac
               <li key={x.source} className="tool-row" data-state={state}>
                 <button type="button" className="tool-row-main" onClick={() => setOpen(x.source)}>
                   <span className="space-text">
-                    <span className="space-name">{x.title}</span>
+                    <span className="space-name">{sourceNameOf(x)}</span>
                     {x.description ? <span className="space-sub">{x.description}</span> : null}
                   </span>
                   <span className={state === 'ready' ? 'tag' : 'state-tag'}>{stateWords(x, t)}</span>
@@ -537,7 +538,7 @@ function ToolPanel({
         <button type="button" className="link" onClick={onBack}>
           <ArrowLeft size={15} aria-hidden="true" /> {t('tools.back')}
         </button>
-        <h3 className="tool-panel-title">{tool.title}</h3>
+        <h3 className="tool-panel-title">{sourceNameOf(tool)}</h3>
         {tool.description ? <p className="muted tool-panel-description">{tool.description}</p> : null}
         <span className={toolRowStateOf(tool) === 'ready' ? 'tag' : 'state-tag'}>{stateWords(tool, t)}</span>
       </div>

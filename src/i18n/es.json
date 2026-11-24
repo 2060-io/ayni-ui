@@ -168,6 +168,7 @@
     "contextCached": "Contexto {{used}} / {{max}} · {{cached}} en caché",
     "withheld": "No compartido con la IA",
     "withheldInfo": "Solo el código del servicio leyó esto. No se compartió con la IA.",
+    "attachmentWithheld": "Se retuvo un adjunto: contenía una credencial.",
     "media": {
       "image": "Foto",
       "voice": "Nota de voz",
@@ -219,7 +220,8 @@
       "refused": "{{agent}} no eliminó el mensaje: ha vuelto."
     },
     "spaceLeft": "Ya no estás en {{space}}: esta conversación es de solo lectura.",
-    "withheldCredentialInfo": "Esto parecía una contraseña o una clave. {{agent}} no lo guardó ni se lo mostró a la IA. Para conectar una cuenta, abre Tus cuentas."
+    "withheldCredentialInfo": "Esto parecía una contraseña o una clave. {{agent}} no lo guardó ni se lo mostró a la IA.",
+    "withheldCredentialAccounts": "Para conectar una cuenta, abre Tus cuentas."
   },
   "approval": {
     "title": "Aprobación",
@@ -265,7 +267,7 @@
     "phoneUnreachable": "{{agent}} no puede llegar a la app Ayni de tu teléfono.",
     "more": "Ver más",
     "waiting": "{{count}} en espera",
-    "ended": "Esta solicitud ya terminó.",
+    "ended": "Esta solicitud ya se decidió o ya terminó.",
     "notEligible": "Ya no puedes decidir esta solicitud.",
     "notSent": "Tu respuesta no se envió. Inténtalo de nuevo."
   },
@@ -875,12 +877,15 @@
     "alreadyAdded": "Esta herramienta ya está en el espacio.",
     "notOwner": "Solo el propietario del espacio cambia sus herramientas.",
     "noSpaceAccount": "Esta herramienta no usa ninguna cuenta del espacio.",
+    "spaceAccountNotSet": "La cuenta de este espacio aún no está configurada; pídeselo a su propietario.",
+    "providerNotUsed": "Este proveedor no se usa en este espacio.",
     "personalSpace": "Personal no tiene herramientas de un espacio.",
     "notFound": "Esta herramienta no se ofrece en este espacio.",
     "card": {
       "label": "Confirmación: {{title}}, {{source}}",
       "accountSpace": "Con la cuenta de {{space}}",
       "accountAgent": "Con la cuenta de {{agent}}",
+      "outsideOrganization": "Fuera de tu organización: {{addresses}}",
       "untrusted": "Esta respuesta leyó contenido de fuera de tu organización: {{sources}}. Revisa la acción antes de permitirla.",
       "pinned": "Fijado por {{agent}}",
       "allow": "Permitir",

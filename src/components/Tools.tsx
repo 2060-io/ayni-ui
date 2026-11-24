@@ -23,6 +23,7 @@ import {
   ruleGroupsOf,
   type SpaceInfo,
   type SpaceTool,
+  sourceNameOf,
   sourcesOf,
   type ToolAction,
   type ToolRuleGroup,
@@ -69,9 +70,11 @@ function accountLine(
 }
 
 /**
- * The exact action (UI-CONV-045, UI-APPR-006): the source in small muted words, the action's title in bold, the account
- * in a muted line, the amber notice of untrusted content, then every field whole, the pinned ones first with a lock.
- * Nothing is cut, folded or reworded. Once the message that asked for it was deleted, a line says the details went.
+ * The exact action (UI-CONV-045, UI-APPR-006): the source in small muted words, named "<feature> · <source>"
+ * (UI-CONV-064), the action's title in bold, the account in a muted line, the addresses outside the organization the
+ * call would reach (`outsideOrganization`), the amber notice of untrusted content, then every field whole, the pinned
+ * ones first with a lock. Nothing is cut, folded or reworded. Once the message that asked for it was deleted, a line
+ * says the details went.
  */
 export function ToolActionView({
   action,
@@ -94,9 +97,14 @@ export function ToolActionView({
   const account = accountLine(action, agentName, t, viewer, requester)
   return (
     <>
-      <div className="tool-source">{action.source.title}</div>
+      <div className="tool-source">{sourceNameOf(action.source)}</div>
       {titled ? <h3 className="tool-title">{action.title}</h3> : null}
       {account ? <div className="tool-account">{account}</div> : null}
+      {action.outsideOrganization && !action.erased ? (
+        <div className="tool-outside">
+          {t('tools.card.outsideOrganization', { addresses: action.outsideOrganization.join(', ') })}
+        </div>
+      ) : null}
       {untrusted && !action.erased ? (
         <div className="untrusted-notice" role="note">
           <TriangleAlert
@@ -198,7 +206,7 @@ export function ConfirmationCard({
     <section
       className="card tool-card confirmation"
       data-status={card.status}
-      aria-label={t('tools.card.label', { title: card.action.title, source: card.action.source.title })}
+      aria-label={t('tools.card.label', { title: card.action.title, source: sourceNameOf(card.action.source) })}
     >
       <ToolActionView action={card.action} agentName={agentName} untrusted={card.untrusted} />
       {outcome === 'pending' ? (
@@ -328,17 +336,19 @@ export function ToolApprovalCard({
 }
 
 /**
- * One source a reply used, in the words of its Info (UI-CONV-047): with whose account, none for `none`. The person's
- * own account is "your own account", and in a conversation shared with the space, its author's (`author`).
+ * One source a reply used, in the words of its Info (UI-CONV-047): named "<feature> · <source>" (UI-CONV-064), with
+ * whose account, none for `none`. The person's own account is "your own account", and in a conversation shared with
+ * the space, its author's (`author`).
  */
 export function sourceWords(source: MessageSource, agentName: string, t: Tr, author?: string): string {
-  if (source.account === 'space') return t('tools.sources.space', { source: source.title })
-  if (source.account === 'agent') return t('tools.sources.agent', { source: source.title, agent: agentName })
+  const name = sourceNameOf(source)
+  if (source.account === 'space') return t('tools.sources.space', { source: name })
+  if (source.account === 'agent') return t('tools.sources.agent', { source: name, agent: agentName })
   if (source.account === 'personal')
     return author
-      ? t('tools.sources.personalOf', { source: source.title, author })
-      : t('tools.sources.personal', { source: source.title })
-  return source.title
+      ? t('tools.sources.personalOf', { source: name, author })
+      : t('tools.sources.personal', { source: name })
+  return name
 }
 
 /**
@@ -374,10 +384,10 @@ export function MessageSources({
   )
 }
 
-/** One source a conversation holds, before sharing it (UI-CONV-048). */
+/** One source a conversation holds, before sharing it (UI-CONV-048), named "<feature> · <source>" (UI-CONV-064). */
 function shareLine(source: ConversationSource, agentName: string, t: Tr): string {
   const kind = source.account.kind
-  return t(`tools.share.${kind}`, { source: source.title, agent: agentName, count: source.results })
+  return t(`tools.share.${kind}`, { source: sourceNameOf(source), agent: agentName, count: source.results })
 }
 
 /**
@@ -498,7 +508,7 @@ export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceI
           const groups = ruleGroupsOf(tool)
           return (
             <li key={tool.source} className="about-tool">
-              <span className="about-tool-title">{tool.title}</span>
+              <span className="about-tool-title">{sourceNameOf(tool)}</span>
               {tool.description ? <span className="about-tool-description">{tool.description}</span> : null}
               {tool.account.kind === 'personal' ? (
                 <>

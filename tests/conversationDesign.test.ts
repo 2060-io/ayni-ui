@@ -156,6 +156,14 @@ describe('the stylesheet follows the shared conversation design', () => {
     expect(squeezed).toContain(`${pct(d.peakAt)} { transform: translateY(${px(-d.lift)}); opacity: 1; }`)
   })
 
+  it('stands still under reduced motion, with its words "Thinking…" (UI-CONV-016, UI-A11Y-004, F12)', () => {
+    // after the rule that sets the bounce, so that it wins: the page-wide rule for reduced motion does not
+    const still = /@media \(prefers-reduced-motion: reduce\) \{\s*\.dots span \{\s*animation: none;\s*\}\s*\}/.exec(css)
+    expect(still).toBeTruthy()
+    expect(still?.index ?? -1).toBeGreaterThan(css.indexOf('\n.dots span {'))
+    expect(CONVERSATION_COPY.thinking).toBe('Thinking…')
+  })
+
   it('the button back to the latest message', () => {
     const l = D.latestButton
     const latest = rule('.latest')

@@ -207,6 +207,27 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     ])
   })
 
+  it('names each source by its feature, "<feature> · <source>", on its row and atop its panel (UI-CONV-064)', async () => {
+    const { el } = await ownersTools([
+      [
+        `GET ${TOOLS_PATH}`,
+        () =>
+          json({
+            tools: [
+              { ...READY, title: 'Relaticle', feature: { id: 'crm', title: 'CRM', profile: null } },
+              { ...WEB, feature: { id: 'web', title: 'Web search', profile: null } },
+            ],
+          }),
+      ],
+    ])
+    await until(() => el.querySelectorAll('.tool-row').length === 2)
+    // the name once when the feature's title and the source's are the same
+    expect(rowTexts(el).map((r) => r.title)).toEqual(['CRM · Relaticle', 'Web search'])
+    await open(el, 'CRM · Relaticle')
+    await until(() => el.querySelector('.tool-panel-title'))
+    expect(el.querySelector('.tool-panel-title')?.textContent).toBe('CRM · Relaticle')
+  })
+
   it("opens a source's panel: its settings, its account, what each tool asks, who can use it, Remove", async () => {
     const { el } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ tools: [READY] })]])
     await until(() => el.querySelector('.tool-row'))
@@ -386,6 +407,9 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
       [409, 'change-pending', 'A change of this tool is already waiting for your phone.'],
       [409, 'not-added', 'Add the tool to the space first.'],
       [409, 'no-space-account', 'This tool uses no account of the space.'],
+      // a provider the template allows, which the space does not use for its feature; a space's account not set (C7)
+      [409, 'provider-not-used', "This provider isn't used in this space."],
+      [409, 'space-account-not-set', "This space's account isn't set up yet; ask its owner."],
       [409, 'personal-space', 'Personal has no tools of a space.'],
       [409, 'confirmation-unavailable', 'Your phone must be connected to Fleet support to confirm this change.'],
     ]
@@ -946,6 +970,21 @@ describe('the tools a member reads in About (UI-CONV-031, UI-CONV-049)', () => {
     )
     expect(el.textContent).not.toContain('Export')
     expect(agent.find('GET', TOOLS_PATH)).toHaveLength(1)
+  })
+
+  it('names a source by its feature, "<feature> · <source>" (UI-CONV-064)', async () => {
+    const { el } = await ownersTools(
+      [
+        [
+          `GET ${TOOLS_PATH}`,
+          () =>
+            json({ tools: [{ ...READY, title: 'Relaticle', feature: { id: 'crm', title: 'CRM', profile: null } }] }),
+        ],
+      ],
+      { segment: 'about' }
+    )
+    await until(() => el.querySelector('.about-tool-title'))
+    expect(el.querySelector('.about-tool-title')?.textContent).toBe('CRM · Relaticle')
   })
 
   it('tells the owner "Needs your approval", and names each step-up after its own tool', async () => {

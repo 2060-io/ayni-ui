@@ -148,6 +148,32 @@ describe('the confirmation card (UI-CONV-045)', () => {
     expect(none.card()?.querySelector('.tool-account')).toBeNull()
   })
 
+  it('names its source by the feature it serves, "<feature> · <source>" (UI-CONV-064, PROF-TOOL-035)', async () => {
+    const { card } = await conversation([
+      cardMessage(
+        confirmation({}, { source: { id: 'relaticle', title: 'Relaticle', feature: { id: 'crm', title: 'CRM' } } })
+      ),
+    ])
+    const c = card() as HTMLElement
+    expect(c.querySelector('.tool-source')?.textContent).toBe('CRM · Relaticle')
+    expect(c.getAttribute('aria-label')).toBe('Confirmation: Add a note, CRM · Relaticle')
+  })
+
+  it('names the addresses outside the organization the call would reach, before the fields (C6)', async () => {
+    const outside = ['p.lee@partner.example', 'm.ito@other.example']
+    const { card } = await conversation([cardMessage(confirmation({}, { outsideOrganization: outside }))])
+    const c = card() as HTMLElement
+    const line = c.querySelector('.tool-outside')
+    expect(line?.textContent).toBe('Outside your organization: p.lee@partner.example, m.ito@other.example')
+    expect(line?.compareDocumentPosition(c.querySelector('.tool-fields') as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
+    teardown()
+    // a card that names none has no such line
+    const none = await conversation([cardMessage(confirmation())])
+    expect(none.card()?.querySelector('.tool-outside')).toBeNull()
+  })
+
   it('warns in amber before the fields after content from outside, with no Allow for this conversation', async () => {
     const { card } = await conversation([
       cardMessage(

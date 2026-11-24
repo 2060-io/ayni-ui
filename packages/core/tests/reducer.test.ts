@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emptyTranscript, isWithheld, mergeHistory, orderAgents, reduce } from '../src/index.js'
+import { emptyTranscript, isAttachmentWithheld, isWithheld, mergeHistory, orderAgents, reduce } from '../src/index.js'
 import type { SessionRecord, TranscriptMessage } from '../src/types.js'
 
 const session = (): SessionRecord => ({
@@ -554,5 +554,61 @@ describe('messages of the person the AI never received (UI-CONV-044, D95, PROF-S
       true
     ).transcript
     expect(marked(replayed)).toEqual(['msg_1'])
+  })
+})
+
+describe('an attachment the agent held back because it carried a credential (agent D113, PROF-STREAM-011, F11)', () => {
+  const at = (s: number) => `2026-01-01T00:00:0${s}.000Z`
+  const file = (content: Record<string, unknown> = {}): TranscriptMessage => ({
+    id: 'att_1',
+    role: 'activity',
+    activityType: 'ayni.attachment',
+    content: { attachmentId: 'f1', type: 'file', role: 'user', filename: 'contract.pdf', ...content },
+    at: at(2),
+  })
+  const held = () => ({
+    ...emptyTranscript('s1'),
+    messages: [{ id: 'u1', role: 'user' as const, content: 'Here is the contract', at: at(1) }, file()],
+  })
+  const withheld = (value: unknown) =>
+    reduce(
+      held(),
+      { ...session(), conversationId: 'c1' },
+      { type: 'CUSTOM', name: 'ayni.messages.withheld', value },
+      true,
+      true
+    ).transcript
+  const heldBack = (t: { messages: TranscriptMessage[] }) => t.messages.filter(isAttachmentWithheld).map((m) => m.id)
+
+  it('live: named for a credential with no text, the attachment is held back; its words stay as they are', () => {
+    const t = withheld({ conversationId: 'c1', messageIds: ['att_1'], reason: 'credential', texts: {} })
+    expect(heldBack(t)).toEqual(['att_1'])
+    // the message's words are drawn as any other
+    expect(t.messages.filter(isWithheld)).toEqual([])
+    expect(t.messages[0]).toEqual(held().messages[0])
+  })
+
+  it('an email check, or no reason, holds back no attachment', () => {
+    expect(heldBack(withheld({ conversationId: 'c1', messageIds: ['att_1'] }))).toEqual([])
+    expect(heldBack(withheld({ conversationId: 'c1', messageIds: ['att_1'], reason: 'email-check' }))).toEqual([])
+  })
+
+  it('history and the live activity say so on the attachment itself (`withheld: "credential"`, PROF-HIST-014)', () => {
+    expect(isAttachmentWithheld(file({ withheld: 'credential' }))).toBe(true)
+    expect(isAttachmentWithheld(file())).toBe(false)
+    const t = mergeHistory(
+      emptyTranscript('s1'),
+      [
+        {
+          id: 'att_9',
+          role: 'activity',
+          activityType: 'ayni.attachment',
+          content: { attachmentId: 'f9', type: 'file', role: 'user', filename: 'keys.txt', withheld: 'credential' },
+          metadata: { createdAt: at(3), modelVisible: false, withheld: 'credential' },
+        },
+      ],
+      null
+    )
+    expect(heldBack(t)).toEqual(['att_9'])
   })
 })
