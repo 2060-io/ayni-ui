@@ -74,6 +74,7 @@ import {
   turnToDelete,
   unreadFrom,
   type VoiceMeasures,
+  withAgentForgotten,
   withAllowanceEnded,
   withDecided,
   withoutOrphans,
@@ -404,6 +405,8 @@ export class Hub {
       this.noteConnectionsChange(m.agentDid, m.change, false)
     } else if (m.kind === 'notifications-changed') {
       this.noteNotificationsChange(m.agentDid, m.change, false)
+    } else if (m.kind === 'agent-forgotten') {
+      this.forgetAgent(m.agentDid, m.sessionIds, false)
     } else if (m.kind === 'leader' && m.tabId !== this.bus?.tabId) {
       this.set({ leaders: { ...this.snapshot.leaders, [m.sessionId]: false } })
     }
@@ -665,10 +668,12 @@ export class Hub {
 
   public async removeAgent(did: string): Promise<void> {
     const agent = this.snapshot.agents.find((a) => a.did === did)
+    const sessionIds = this.snapshot.sessions.filter((x) => x.agentDid === did).map((s) => s.sessionId)
     for (const s of this.snapshot.sessions.filter((x) => x.agentDid === did))
       await this.closeConversation(s.sessionId, true)
     await this.store.deleteAgent(did)
     await this.reload()
+    this.forgetAgent(did, sessionIds)
     this.bus?.post({ kind: 'changed', what: 'agents' })
     if (this.snapshot.selectedAgentDid === did) {
       const sibling = this.snapshot.agents.find((a) => a.controllerDid === agent?.controllerDid)
@@ -1399,12 +1404,15 @@ export class Hub {
   }
 
   /**
-   * Disconnect from an agent (UI-AGENTS-006): revokes the pairing with the device proof, closes the
-   * agent's conversations and clears their local data; the agent stays listed, unpaired.
+   * Disconnect from an agent (UI-AGENTS-006): revokes the pairing with the device proof, closes the agent's
+   * conversations and clears their local data, and forgets everything else this browser read from the agent for the
+   * person: its spaces, its Notifications count, Your accounts, roles and stewardship, and their pages. The agent
+   * stays listed, unpaired; pairing again reads all of it again from the agent.
    */
   public async disconnectAgent(did: string): Promise<void> {
     const agent = this.snapshot.agents.find((a) => a.did === did)
     if (!agent) return
+    const sessionIds = this.snapshot.sessions.filter((x) => x.agentDid === did).map((s) => s.sessionId)
     if (agent.deviceHandle && agent.deviceSecret)
       await this.client(agent)
         .revokeDevice(agent.deviceHandle, { deviceProof: agent.deviceSecret })
@@ -1414,7 +1422,19 @@ export class Hub {
     if (current)
       await this.store.putAgent({ ...current, deviceHandle: undefined, deviceSecret: undefined, linkedAt: undefined })
     await this.reload()
+    this.forgetAgent(did, sessionIds)
     this.bus?.post({ kind: 'changed', what: 'agents' })
+  }
+
+  /**
+   * Forgets what this tab read from the agent for the person (UI-AGENTS-005, UI-AGENTS-006), and has every other tab
+   * forget it too: nothing of it stays on screen, and nothing is kept to be shown again before the agent gives it.
+   */
+  private forgetAgent(did: string, sessionIds: string[], tell = true): void {
+    for (const id of sessionIds) this.unsavedDrafts.delete(id)
+    this.connectionReads.delete(did)
+    this.set(withAgentForgotten(this.snapshot, did, sessionIds))
+    if (tell) this.bus?.post({ kind: 'agent-forgotten', agentDid: did, sessionIds })
   }
 
   /** The paired browsers of this Principal with the agent (PROF-SESS-011). */
