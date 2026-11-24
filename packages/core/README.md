@@ -74,7 +74,7 @@ the profile package of 3.3 is the one every client has, with tolerant readers fo
 | --- | --- |
 | The rows of the agent's card (UI-CONV-028) | `hasOtherSpace`, `spaceRowsOf` (three, then "N more", or the titles a search matches), `spacesWithLocal` and `spaceUnreadOf` (the unread and latest activity of the person's conversations here), `isPersonalConversation`, `membersLineOf` |
 | The chips of a conversation (UI-CONV-029, UI-CONV-030) | `showsSpaceChooser`, `chooserSpacesOf`, `showsHeaderChip`, `spaceRefOf` (`state.ayni.space`) |
-| The space's page (UI-CONV-031, UI-CONV-040, UI-CONV-041, UI-CONV-043) | `spaceSegmentsOf`, `lawfulBasisKeyOf`, `memberStateOf`, `ruleChoicesOf`, `canWriteIn`, `memberRefusalOf`, `looksLikeEmail` |
+| The space's page (UI-CONV-031, UI-CONV-040, UI-CONV-041, UI-CONV-043) | `spaceSegmentsOf`, `sharedRowsOf` (everything shared with the space, the person's own with their session of it), `lawfulBasisKeyOf`, `memberStateOf`, `ruleChoicesOf`, `canWriteIn`, `memberRefusalOf`, `looksLikeEmail` |
 | Memories (UI-CONV-032..035) | `memoryLineOf` (the reducer turns `ayni.memory.updated` into the `ayni.memory-update` line), `placeMemoryLines` (each line after its reply), `usageOf`, `usageSummaryOf`, `withUsageFrom` (what history says a reply used) |
 | Deleting a message (UI-CONV-036) | `deletionWindowOf`, `canDeleteMessage`, `deletableUntil`, `deletionIdOf`, `turnToDelete` (the message and the reply to it; the cards stay), `withRestored`, `deletionRefusalOf` |
 
@@ -189,7 +189,10 @@ and colour (UI-TRUST-008), and nothing of it for any other agent.
 One owner who controls a space, or none once the owner left with no successor; a successor the owner names; the
 stewards of a template, who name an owner; the timeouts of the approvals of a space; and an approval policy per tool of a
 space, whose approvers may be the owner, a person, any member, a role or a department, each required or optional. The
-shapes of package 3.5.4 are written here (it is not on npm yet), with tolerant readers.
+shapes are package 3.5.4's, re-exported under the names below, with tolerant readers (`ApprovalPolicyView`,
+`ApprovalProgress`, `ApproverView`, `ProgressEntry`, `ApprovalPolicyInput`, `GovernanceNotice`, `StewardedSpace`,
+`OwnerCandidate`, `OwnerChange`, `SpaceActivityKind`, `NotificationKind`); those the readers fill stay written here
+(`SpaceInfo`, `SpaceRules`, `TemplateBounds`, `SpaceActivityItem`, `NotificationApproval`, `NotificationItem`).
 
 | Surface | Functions |
 | --- | --- |

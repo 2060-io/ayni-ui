@@ -1,10 +1,19 @@
 /**
  * Spaces (AG-UI profile 3.3 §3.7, PROF-SPACE-001..007, agent D80 to D84; UI-CONV-028..031, 038..041, 043): one piece
  * of work in one agent, with its own purpose, people and rules. Every conversation belongs to one; the person's own is
- * Personal. The wire types are written here until the profile package of 3.3 is the one every client has; the rules a
- * screen follows (which rows the agent's card shows, when a chip shows, how members and rules read) are here too, so
- * that the browser and the Ayni app apply the same ones.
+ * Personal. The wire types are written here as the readers fill them (a space, its rules, its template's bounds, a line
+ * of its activity); those the readers take as the agent gives them are the profile package's (the kinds of activity,
+ * how the owner changed, a steward's space and an owner candidate, 3.5.4). The rules a screen follows (which rows the
+ * agent's card shows, when a chip shows, how members and rules read) are here too, so that the browser and the Ayni
+ * app apply the same ones.
  */
+
+import type {
+  OwnerCandidatesResponse,
+  OwnerChange,
+  SpaceActivityKind,
+  StewardedSpace,
+} from '@ayni.org/ayni-agui-profile'
 
 export type SpaceKind = 'personal' | 'team' | 'organization'
 export type SpaceRole = 'owner' | 'member' | 'guest'
@@ -125,25 +134,12 @@ export interface SpacePatch {
   rules?: Partial<SpaceRules>
 }
 
-export type SpaceActivityKind =
-  | 'created'
-  | 'joined'
-  | 'left'
-  | 'invited'
-  | 'removed'
-  | 'owner-changed'
-  /** the owner named a successor, or it was cleared (profile 3.5.4, PROF-SPACE-008) */
-  | 'successor-set'
-  | 'successor-cleared'
-  | 'rules-changed'
-  | 'shared'
-  | 'unshared'
-  /** the changes of the space's tools (profile 3.4, PROF-TOOL-006) */
-  | 'tool-added'
-  | 'tool-changed'
-  | 'tool-removed'
-  | 'account-set'
-  | 'account-cleared'
+/**
+ * The kinds of a space's activity (`SpaceActivityKind`: with the changes of its tools, profile 3.4 PROF-TOOL-006, and a
+ * successor named or cleared, profile 3.5.4 PROF-SPACE-008) and how its owner changed (`OwnerChange`, agent
+ * SPACE-MEMB-012) are the profile package's; the package lists no activity kinds, so the list is here.
+ */
+export type { OwnerChange, SpaceActivityKind }
 
 export const SPACE_ACTIVITY_KINDS: readonly SpaceActivityKind[] = [
   'created',
@@ -176,9 +172,6 @@ export interface SpaceActivityItem {
   how?: OwnerChange
   reason?: string
 }
-
-/** How the owner of a space changed (agent SPACE-MEMB-012). */
-export type OwnerChange = 'handover' | 'succession' | 'steward'
 
 export interface SpaceActivityPage {
   activity: SpaceActivityItem[]
@@ -386,6 +379,28 @@ export function sharedConversationsOf(body: unknown): SharedConversation[] {
       sharedAt: str(c.sharedAt),
       lastActivityAt: str(c.lastActivityAt, str(c.sharedAt)),
     }))
+}
+
+/** A row of "Shared with the space" (UI-CONV-031): the shared conversation, and the person's own record of it. */
+export interface SharedRow<S> {
+  conversation: SharedConversation
+  /** the person's own session of the conversation, when they shared it: the row opens it as theirs, not read-only */
+  own: S | null
+}
+
+/**
+ * The rows of "Shared with the space" (UI-CONV-031): every conversation shared with the space, in the agent's order,
+ * the person's own included; one of theirs carries their session of it, an unarchived one first.
+ */
+export function sharedRowsOf<S extends { agentDid: string; conversationId?: string; archived?: boolean }>(
+  shared: readonly SharedConversation[],
+  sessions: readonly S[],
+  agentDid: string
+): SharedRow<S>[] {
+  return shared.map((conversation) => {
+    const records = sessions.filter((s) => s.agentDid === agentDid && s.conversationId === conversation.id)
+    return { conversation, own: records.find((s) => !s.archived) ?? records[0] ?? null }
+  })
 }
 
 /** The conversation's space in its state (PROF-STREAM-009); null before the agent gave one. */
@@ -648,22 +663,14 @@ export function timeoutFits(choice: Pick<TimeoutChoice, 'min' | 'max'>, typed: s
   )
 }
 
-/** One space of `GET {sessions}/stewardship` (PROF-SPACE-009): of a template whose steward roles the person holds. */
-export interface StewardedSpace {
-  id: string
-  title: string
-  templateId: string
-  kind: Exclude<SpaceKind, 'personal'>
-  owner: { name: string } | null
-  successor: { name: string } | null
-  memberCount: number
-}
+/**
+ * One space of `GET {sessions}/stewardship` (PROF-SPACE-009): of a template whose steward roles the person holds. The
+ * profile package's.
+ */
+export type { StewardedSpace }
 
 /** A person who could own a space, to a steward (PROF-SPACE-009): by `memberId` in a list space, `directoryId` in a rule one. */
-export type OwnerCandidate = ({ memberId: string } | { directoryId: string }) & {
-  name: string
-  department: string | null
-}
+export type OwnerCandidate = OwnerCandidatesResponse['candidates'][number]
 
 /** A space as a steward reads it; null for one with no id. */
 export function stewardedSpaceOf(value: unknown): StewardedSpace | null {

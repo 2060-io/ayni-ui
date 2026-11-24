@@ -13,6 +13,7 @@ import {
   type SharedConversation,
   type SpaceInfo,
   type SpaceSegment,
+  sharedRowsOf,
   spaceSegmentsOf,
 } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, Cpu, Eye, EyeOff, Globe, History, Lock, Plus, Scale, Share2 } from 'lucide-react'
@@ -103,7 +104,8 @@ export function SpacePage() {
       </div>
       <div className="space-body" role="tabpanel">
         {segment === 'conversations' ? (
-          <ConversationsSegment agent={agent} space={space} />
+          // keyed by its space: a space never shows another space's list, not even while its own is read
+          <ConversationsSegment key={`${agent.did} ${space.id}`} agent={agent} space={space} />
         ) : segment === 'notifications' ? (
           <NotificationList key={space.id} agent={agent} spaceId={space.id} focus={ref.approvalId} />
         ) : segment === 'memories' ? (
@@ -124,7 +126,10 @@ export function SpacePage() {
   )
 }
 
-/** Conversations (UI-CONV-031): New conversation; the person's own, private; those shared with the space, read-only. */
+/**
+ * Conversations (UI-CONV-031): New conversation; the person's own, private; every conversation shared with the space,
+ * the person's own included, which opens as theirs while another member's opens read-only (UI-CONV-038).
+ */
 function ConversationsSegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const snap = useSnapshot()
   const hub = useHub()
@@ -151,8 +156,7 @@ function ConversationsSegment({ agent, space }: { agent: AgentRecord; space: Spa
       live = false
     }
   }, [agent.did, space.id, takesShares, hub])
-  const own = new Set(mine.map((s) => s.conversationId))
-  const others = (shared ?? []).filter((c) => !own.has(c.id))
+  const rows = sharedRowsOf(shared ?? [], snap.sessions, agent.did)
   return (
     <>
       <button
@@ -190,19 +194,21 @@ function ConversationsSegment({ agent, space }: { agent: AgentRecord; space: Spa
           </p>
           {shared === null ? (
             <div className="muted">{t('app.loading')}</div>
-          ) : others.length ? (
-            others.map((c) => (
+          ) : rows.length ? (
+            rows.map(({ conversation: c, own }) => (
               <button
                 key={c.id}
                 type="button"
                 className="shared-row"
-                onClick={() => hub.openShared(agent.did, space.id, c)}
+                onClick={() => (own ? hub.selectSession(own.sessionId) : hub.openShared(agent.did, space.id, c))}
               >
                 <Avatar name={c.author.name} size={32} />
                 <span className="space-text">
                   <span className="space-name">{c.title || t('column.untitled')}</span>
                   <span className="space-sub">
-                    {t('spaces.sharedBy', { name: c.author.name, time: formatTime(c.sharedAt, i18n.language) })}
+                    {own
+                      ? t('spaces.sharedByYou', { time: formatTime(c.sharedAt, i18n.language) })
+                      : t('spaces.sharedBy', { name: c.author.name, time: formatTime(c.sharedAt, i18n.language) })}
                   </span>
                 </span>
               </button>
