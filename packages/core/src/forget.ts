@@ -12,7 +12,17 @@ type ByAgent<V> = Record<string, V | undefined>
 type BySession = Record<string, unknown>
 
 /** The pages of an agent that close when it is forgotten: each names the agent it shows. */
-export const AGENT_PAGES = ['space', 'keeps', 'admin', 'steward', 'shared', 'accounts', 'notifications'] as const
+export const AGENT_PAGES = [
+  'space',
+  'keeps',
+  'admin',
+  'steward',
+  'shared',
+  'accounts',
+  'notifications',
+  'audit',
+  'operations',
+] as const
 
 /** What a screen holds of the person, per agent and per conversation, in the shape the browser's state keeps it. */
 export interface HeldOfPerson {
@@ -23,6 +33,10 @@ export interface HeldOfPerson {
   admins: ByAgent<boolean>
   /** per agent: whether the person stewards a space of it (UI-CONV-068) */
   stewards: ByAgent<boolean>
+  /** per agent: the person's admin roles and the device's grant (UI-ADMIN-001), a Show Admin that waits, a reason */
+  adminAccess: ByAgent<unknown>
+  adminRequests: ByAgent<unknown>
+  auditReasons: ByAgent<unknown>
   /** per agent: the person's own accounts (PROF-TOOL-014) */
   connections: ByAgent<unknown>
   /** per agent: how many of its Notifications wait for the person (PROF-TOOL-025) */
@@ -39,6 +53,8 @@ export interface HeldOfPerson {
   memoryFor: { agentDid: string } | null
   accountsFor: { agentDid: string } | null
   notificationsFor: { agentDid: string } | null
+  /** the agent whose Audit or Operations is open (UI-ADMIN-003) */
+  adminPageFor: string | null
   /** per conversation: its transcript, and what a screen holds of it */
   transcripts: BySession
   pending: BySession
@@ -81,6 +97,7 @@ export function withAgentForgotten<S extends HeldOfPerson>(
     memoryFor: held.memoryFor,
     accountsFor: held.accountsFor,
     notificationsFor: held.notificationsFor,
+    adminPageFor: held.adminPageFor,
   }
   const pageOf: Record<(typeof AGENT_PAGES)[number], keyof typeof pages> = {
     space: 'spaceFor',
@@ -90,6 +107,8 @@ export function withAgentForgotten<S extends HeldOfPerson>(
     shared: 'sharedFor',
     accounts: 'accountsFor',
     notifications: 'notificationsFor',
+    audit: 'adminPageFor',
+    operations: 'adminPageFor',
   }
   const page = pageOf[held.view as (typeof AGENT_PAGES)[number]]
   const onPage = page !== undefined && ofAgent(pages[page], agentDid)
@@ -101,6 +120,9 @@ export function withAgentForgotten<S extends HeldOfPerson>(
     spaces: without(held.spaces, [agentDid]),
     admins: without(held.admins, [agentDid]),
     stewards: without(held.stewards, [agentDid]),
+    adminAccess: without(held.adminAccess, [agentDid]),
+    adminRequests: without(held.adminRequests, [agentDid]),
+    auditReasons: without(held.auditReasons, [agentDid]),
     connections: without(held.connections, [agentDid]),
     agentNotifications: without(held.agentNotifications, [agentDid]),
     toolChanges: held.toolChanges.filter((c) => c.agentDid !== agentDid),
@@ -113,6 +135,7 @@ export function withAgentForgotten<S extends HeldOfPerson>(
     memoryFor: keep(held.memoryFor),
     accountsFor: keep(held.accountsFor),
     notificationsFor: keep(held.notificationsFor),
+    adminPageFor: keep(held.adminPageFor),
     transcripts: without(held.transcripts, sessionIds),
     pending: without(held.pending, sessionIds),
     replyTo: without(held.replyTo, sessionIds),
