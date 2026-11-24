@@ -4002,7 +4002,7 @@ mark.hit.current {
   display: flex;
   gap: 8px;
 }
-/* a person found by name: the list of the people found under the field, the one picked in its place */
+/* a person found by name: the field and Search people, the people found under them, the one picked in their place */
 .person-picker {
   position: relative;
   display: grid;
@@ -4010,23 +4010,40 @@ mark.hit.current {
   font-size: 14px;
   margin-bottom: 10px;
 }
+.person-search-row {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+.person-search {
+  flex: 1;
+  min-width: 0;
+}
+.person-search-button {
+  flex: none;
+}
 .person-results {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
   z-index: 20;
-  list-style: none;
-  margin: 2px 0 0;
+  margin-top: 2px;
   padding: 4px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
-  max-height: 280px;
+  max-height: 300px;
   overflow-y: auto;
 }
-.person-none {
+.person-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.person-none,
+.person-more {
   padding: 7px 8px;
 }
 .person-chosen {

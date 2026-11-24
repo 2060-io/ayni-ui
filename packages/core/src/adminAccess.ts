@@ -393,6 +393,30 @@ export function auditPeopleQueryOf(text: string): string | null {
   return q ? q : null
 }
 
+/**
+ * What a person filter of Audit holds: the name typed, and the person picked from what its search found. A search is
+ * a read of Audit, recorded with the reason in force: a screen runs it when asked (a button, the keyboard's return),
+ * never on each letter typed.
+ */
+export interface AuditPersonChoice {
+  text: string
+  person?: AuditPerson
+}
+
+/**
+ * The Principal a person filter gives a read: the person picked; undefined for a field left empty (anyone); null for a
+ * name typed and no person picked, which a read does not take for anyone (`adminAccess.auditPage.pickOrClear`).
+ */
+export function auditPrincipalOf(choice: AuditPersonChoice): string | undefined | null {
+  if (choice.person) return choice.person.principalId
+  return choice.text.trim() ? null : undefined
+}
+
+/** Whether an answer holds as many people as one search gives: the screen asks for more of the name. */
+export function auditPeopleCapped(people: readonly AuditPerson[]): boolean {
+  return people.length >= AUDIT_PEOPLE_MAX
+}
+
 export function auditPeopleOf(body: unknown): AuditPeopleResponse {
   const b = isRecord(body) ? body : {}
   const people = records(b.people)
@@ -492,7 +516,8 @@ export const TOOL_CALL_FIELDS = [
  * browser's English translation file must say the same (a test compares them). Keys are paths in the translation file;
  * `{{name}}` marks what the screen puts in. The spec gives "Show Admin", "Hide Admin", "Confirm on your phone", "Not
  * confirmed on your phone", "The request expired", "Admin", "Audit", "Operations", "Until 14:32", "Admin access ended",
- * "You don't have this role any more" and "Say why you need this"; the others are this client's own.
+ * "You don't have this role any more" and "Say why you need this"; the words of the person picker are the app's; the
+ * others are this client's own.
  */
 export const ADMIN_COPY = {
   'adminAccess.show': 'Show Admin',
@@ -511,4 +536,16 @@ export const ADMIN_COPY = {
   'adminAccess.reasonInForce': 'Reason: {{reason}}',
   'adminAccess.changeReason': 'Change',
   'adminAccess.useReason': 'Continue',
+  // a person found by name in Audit, as the app's picker says it
+  'adminAccess.auditPage.person': 'Person',
+  'adminAccess.auditPage.personHint': 'Type a name',
+  'adminAccess.auditPage.personHintOptional': 'Type a name, or leave for anyone',
+  'adminAccess.auditPage.searchPeople': 'Search people',
+  'adminAccess.auditPage.searching': 'Searching…',
+  'adminAccess.auditPage.typeName': 'Type a name to search',
+  'adminAccess.auditPage.noPeople': 'No one found.',
+  'adminAccess.auditPage.typeMore': 'The first {{max}} found: type more of the name to narrow it.',
+  'adminAccess.auditPage.pickOrClear': 'Pick the person from the list, or clear the name',
+  'adminAccess.auditPage.noDepartment': 'No department',
+  'adminAccess.auditPage.clearPerson': 'Clear {{name}}',
 } as const

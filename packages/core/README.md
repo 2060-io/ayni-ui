@@ -218,7 +218,7 @@ a person by name, `GET {sessions}/admin/audit/people?q=&reason=`, which the agen
 | The state and the menu (UI-ADMIN-001) | `takesAdmin`, `adminAccessOf`, `adminMenuEntryOf` (`showAdmin`, `hideAdmin` in `MENU_ICON`); `ProfileClient.adminAccess` |
 | Show Admin and Hide Admin (UI-ADMIN-002) | `AdminRequestState`, `adminRequestAfter`, `adminRequestWordsOf`, `ADMIN_CHANGED`, `adminChangedOf` (the reducer's signal `admin`); `ProfileClient.requestAdminGrant`, `hideAdmin` |
 | The ADMIN area (UI-ADMIN-003) | `grantOpen`, `adminAreaOf`, `adminPageOpen` (the icon of each row in `MENU_ICON` by its page: `audit`, `operations`) |
-| Audit (UI-ADMIN-004) | `adminReasonFits`, `auditPeriodOf`, `auditValueOf`, `TOOL_CALL_FIELDS`, a person found by name: `AuditPerson`, `auditPeopleQueryOf`, `auditPeopleOf`, `AUDIT_PEOPLE_MAX`; `ProfileClient.auditPeople`, `auditConversations`, `auditMessages`, `auditEvidence`, `auditToolCalls`, `auditLog` |
+| Audit (UI-ADMIN-004) | `adminReasonFits`, `auditPeriodOf`, `auditValueOf`, `TOOL_CALL_FIELDS`, a person found by name: `AuditPerson`, `AuditPersonChoice`, `auditPeopleQueryOf`, `auditPeopleOf`, `auditPrincipalOf`, `auditPeopleCapped`, `AUDIT_PEOPLE_MAX`; `ProfileClient.auditPeople`, `auditConversations`, `auditMessages`, `auditEvidence`, `auditToolCalls`, `auditLog` |
 | Operations (UI-ADMIN-005) | `entryIdsOf`; `ProfileClient.eraseEntries`, `legalHold`, `adminKeys`, `rotateKey` |
 | The refusals (UI-ADMIN-006) | `adminRefusalOf`, `ADMIN_REFUSAL_WORDS` |
 

@@ -18,9 +18,11 @@ import {
   adminRefusalOf,
   adminRequestAfter,
   adminRequestWordsOf,
+  auditPeopleCapped,
   auditPeopleOf,
   auditPeopleQueryOf,
   auditPeriodOf,
+  auditPrincipalOf,
   auditValueOf,
   entryIdsOf,
   grantOpen,
@@ -405,6 +407,17 @@ describe('the endpoints of §3.14 as the client calls them', () => {
       people: [{ principalId: 'prn_x', name: 'prn_x', department: null }],
     })
     expect(auditPeopleOf(undefined)).toEqual({ people: [] })
+  })
+
+  it('gives a read the person picked, anyone for an empty field, and no one for a name typed and not picked', () => {
+    const ana = { principalId: 'prn_ana', name: 'Ana Ruiz', department: 'Sales' }
+    expect(auditPrincipalOf({ text: 'Ana', person: ana })).toBe('prn_ana')
+    expect(auditPrincipalOf({ text: '  ' })).toBeUndefined()
+    expect(auditPrincipalOf({ text: 'Ana' })).toBeNull()
+    expect(ADMIN_COPY['adminAccess.auditPage.pickOrClear']).toBe('Pick the person from the list, or clear the name')
+    const many = Array.from({ length: 20 }, (_, i) => ({ ...ana, principalId: `prn_${i}` }))
+    expect(auditPeopleCapped(many)).toBe(true)
+    expect(auditPeopleCapped(many.slice(1))).toBe(false)
   })
 
   it('names the refusals of a search for a person as those of the other reads of Audit', async () => {

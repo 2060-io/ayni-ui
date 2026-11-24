@@ -8,6 +8,7 @@
  * The agent's answers are mocked as the agent of ayni-agent #120 gives them; nothing real is contacted.
  */
 import { ADMIN_COPY } from '@ayni.org/ayni-ui-core'
+import { act } from 'react'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { AuditPage } from '../src/components/Audit.js'
 import { Column } from '../src/components/Column.js'
@@ -325,6 +326,10 @@ describe('Audit (UI-ADMIN-004, UI-ADMIN-006)', () => {
     const fields = el.querySelectorAll<HTMLInputElement>('.audit-filters input')
     expect(fields[0].classList.contains('person-search')).toBe(true)
     await type(fields[0], 'ana r')
+    // nothing is searched while typing: a search is a read the agent records
+    await settle()
+    expect(reads()).toHaveLength(0)
+    await click(byText(el, 'button', 'Search people'))
     await until(() => el.querySelector('.person-option') !== null)
     const search = new URL(reads()[0].url)
     expect(search.pathname.endsWith('/admin/audit/people')).toBe(true)
@@ -378,29 +383,37 @@ describe('Audit (UI-ADMIN-004, UI-ADMIN-006)', () => {
     await click(byText(el, '[role="tab"]', 'Evidence'))
     const read = byText(el, 'button', 'Read') as HTMLButtonElement
     expect(read.disabled).toBe(true)
-    // the field takes a name: typing an id picks no one
+    expect(el.querySelector<HTMLInputElement>('.person-search')?.placeholder).toBe('Type a name')
+    // the field takes a name: typing an id finds no one
     await type(el.querySelector('.person-search'), 'prn_ana')
+    await click(byText(el, 'button', 'Search people'))
     await until(() => el.querySelector('.person-none') !== null)
-    expect(el.querySelector('.person-none')?.textContent).toBe('No one by that name.')
+    expect(el.querySelector('.person-none')?.textContent).toBe('No one found.')
     expect(read.disabled).toBe(true)
+    // Enter in the field searches, and reads nothing
     await type(el.querySelector('.person-search'), 'Ana')
+    await act(async () => {
+      el.querySelector('.person-search')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
     await until(() => el.querySelectorAll('.person-option').length === 2)
+    expect(calls.some((c) => c.url.includes('/admin/audit/evidence?'))).toBe(false)
     // each one found by name and department
     expect([...el.querySelectorAll('.person-option')].map((o) => o.textContent)).toEqual([
       'Ana RuizSales',
-      'Anabel Costa',
+      'Anabel CostaNo department',
     ])
     await click(byText(el, '.person-option', /Anabel Costa/))
     expect(el.querySelector('.person-search')).toBeNull()
+    expect(el.querySelector('.person-chosen')?.textContent).toBe('Anabel CostaNo department')
     expect((byText(el, 'button', 'Read') as HTMLButtonElement).disabled).toBe(false)
     await click(byText(el, 'button', 'Read'))
     await until(() => el.textContent?.includes('ana@x'))
     const evidence = calls.find((c) => c.url.includes('/admin/audit/evidence?')) as Call
     expect(new URL(evidence.url).searchParams.get('principal')).toBe('prn_anabel')
     expect(new URL(evidence.url).searchParams.get('reason')).toBe('Complaint 4411')
-    // another person: the field is a name to type again
-    await click(el.querySelector('.person-chosen [aria-label="Choose another person"]'))
-    expect((el.querySelector('.person-search') as HTMLInputElement).value).toBe('')
+    // cleared, the field holds the name again, and Read waits for another pick
+    await click(el.querySelector('.person-chosen [aria-label="Clear Anabel Costa"]'))
+    expect((el.querySelector('.person-search') as HTMLInputElement).value).toBe('Ana')
     expect((byText(el, 'button', 'Read') as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -408,7 +421,9 @@ describe('Audit (UI-ADMIN-004, UI-ADMIN-006)', () => {
     const { el, calls } = await audit()
     await withReason(el)
     await click(byText(el, '[role="tab"]', 'Call records'))
+    expect(el.querySelector<HTMLInputElement>('.person-search')?.placeholder).toBe('Type a name, or leave for anyone')
     await type(el.querySelector('.person-search'), 'Ruiz')
+    await click(byText(el, 'button', 'Search people'))
     await until(() => el.querySelector('.person-option') !== null)
     await click(byText(el, '.person-option', /Ana Ruiz/))
     await click(byText(el, 'button', 'Find'))
@@ -418,25 +433,47 @@ describe('Audit (UI-ADMIN-004, UI-ADMIN-006)', () => {
     expect(el.querySelector('.audit-table tbody')?.textContent).toContain('Ana Ruiz')
   })
 
-  it('searches nothing for an empty name, and once per pause in the typing', async () => {
+  it('an empty field searches nothing and means anyone; a name typed and not picked blocks the read', async () => {
     const { el, calls } = await audit()
     await withReason(el)
     const searches = () => calls.filter((c) => c.url.includes('/admin/audit/people?'))
+    const finds = () => calls.filter((c) => c.url.includes('/admin/audit/conversations?'))
     await type(el.querySelector('.person-search'), '   ')
-    await settle()
-    await new Promise((r) => setTimeout(r, 400))
+    await click(byText(el, 'button', 'Search people'))
+    expect(el.querySelector('.person-picker .admin-error')?.textContent?.trim()).toBe('Type a name to search')
     expect(searches()).toHaveLength(0)
-    await type(el.querySelector('.person-search'), 'A')
-    await type(el.querySelector('.person-search'), 'An')
+    // a name typed, not picked: no read, for anyone or for her
     await type(el.querySelector('.person-search'), 'Ana')
-    await until(() => el.querySelector('.person-option') !== null)
-    expect(searches().map((c) => new URL(c.url).searchParams.get('q'))).toEqual(['Ana'])
+    await click(byText(el, 'button', 'Find'))
+    expect(el.querySelector('.audit-page .admin-error')?.textContent?.trim()).toBe(
+      'Pick the person from the list, or clear the name'
+    )
+    expect(finds()).toHaveLength(0)
+    // the field emptied: anyone
+    await type(el.querySelector('.person-search'), '')
+    await click(byText(el, 'button', 'Find'))
+    await until(() => finds().length === 1)
+    expect(new URL(finds()[0].url).searchParams.has('principal')).toBe(false)
+    expect(searches()).toHaveLength(0)
+  })
+
+  it('says to type more of the name when a search finds as many as it gives', async () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({ principalId: `prn_${i}`, name: `Ana ${i}`, department: 'X' }))
+    const { el } = await audit([[/^GET \/admin\/audit\/people\?/, () => json({ people: many })]])
+    await withReason(el)
+    await type(el.querySelector('.person-search'), 'Ana')
+    await click(byText(el, 'button', 'Search people'))
+    await until(() => el.querySelectorAll('.person-option').length === 20)
+    expect(el.querySelector('.person-more')?.textContent).toBe(
+      'The first 20 found: type more of the name to narrow it.'
+    )
   })
 
   it('says "You don\'t have this role any more" when the search for a person answers not-auditor', async () => {
     const { el } = await audit([[/^GET \/admin\/audit\/people\?/, () => json({ error: 'not-auditor' }, 403)]])
     await withReason(el)
     await type(el.querySelector('.person-search'), 'Ana')
+    await click(byText(el, 'button', 'Search people'))
     await until(() => el.querySelector('.person-picker .admin-error') !== null)
     expect(el.querySelector('.person-picker .admin-error')?.textContent?.trim()).toBe(
       "You don't have this role any more"
@@ -444,10 +481,23 @@ describe('Audit (UI-ADMIN-004, UI-ADMIN-006)', () => {
   })
 
   it('says the words of the person picker in every language', () => {
+    const keys = [
+      'person',
+      'personHint',
+      'personHintOptional',
+      'searchPeople',
+      'searching',
+      'typeName',
+      'people',
+      'noPeople',
+      'typeMore',
+      'pickOrClear',
+      'noDepartment',
+      'clearPerson',
+    ]
     for (const words of [en, es, fr, pt]) {
       const page = words.adminAccess.auditPage as Record<string, unknown>
-      for (const key of ['person', 'personHint', 'people', 'noPeople', 'otherPerson'])
-        expect(typeof page[key], key).toBe('string')
+      for (const key of keys) expect(typeof page[key], key).toBe('string')
       // the field names a person, not an id to type
       expect(String(page.person)).not.toMatch(/Principal/)
     }

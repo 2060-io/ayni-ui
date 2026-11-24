@@ -4,20 +4,25 @@
  * kept for the next reads of the grant, with Change; every read carries the reason in force. It offers the conversations
  * found by person, space and period, each opening its messages, decrypted, as a transcript nothing can be written to;
  * the evidence of a person; the call records, filtered; and the admin audit, newest first. Nothing here writes. A
- * person is found by name and picked from what the agent answers (name and department); the filter sends its id.
+ * person is found by name, searched when asked, and picked from what the agent answers (name and department); the
+ * filter sends its id.
  */
 import { ACTIVITY } from '@ayni.org/ayni-agui-profile'
 import {
   ADMIN_REFUSAL_WORDS,
   type AdminAuditItem,
   type AgentRecord,
+  AUDIT_PEOPLE_MAX,
   type AuditConversation,
   type AuditEvidenceResponse,
   type AuditPerson,
+  type AuditPersonChoice,
   adminReasonFits,
   adminRefusalOf,
+  auditPeopleCapped,
   auditPeopleQueryOf,
   auditPeriodOf,
+  auditPrincipalOf,
   auditValueOf,
   deletionIdOf,
   TOOL_CALL_FIELDS,
@@ -203,54 +208,50 @@ function DateInput({ value, onChange }: { value: string; onChange: (v: string) =
   return <input className="input" type="date" value={value} onChange={(e) => onChange(e.target.value)} />
 }
 
-/** How long the typing pauses before the name typed is searched: each search is a read the agent audits. */
-export const PERSON_SEARCH_PAUSE_MS = 300
-
 /**
- * The person a filter of Audit takes, found by name: the name typed is searched once the typing pauses, with the
- * reason in force, and the people the agent answers are offered by name and department; the one picked is the filter,
- * by its Principal id, until another is chosen.
+ * The person a filter of Audit takes, found by name, as the app's picker does it: the name typed is searched when
+ * asked (Search people, or Enter in the field), never on each letter, since each search is a read of Audit recorded
+ * with the reason in force; the people found are offered by name and department; the one picked is the filter, by its
+ * Principal id, with a control to clear it. An empty field sends nothing. A name typed and not picked is no filter: the
+ * panel refuses its read (`auditPrincipalOf`).
  */
 function PersonPicker({
   agent,
   reason,
-  person,
+  value,
   onChange,
+  optional = false,
 }: {
   agent: AgentRecord
   reason: string
-  person: AuditPerson | null
-  onChange: (person: AuditPerson | null) => void
+  value: AuditPersonChoice
+  onChange: (choice: AuditPersonChoice) => void
+  /** a filter that may be left empty, for anyone */
+  optional?: boolean
 }) {
   const hub = useHub()
   const { t } = useTranslation()
   const id = useId()
-  const [text, setText] = useState('')
   const [people, setPeople] = useState<AuditPerson[] | null>(null)
+  const [searching, setSearching] = useState(false)
   const [error, setError] = useState('')
-  useEffect(() => {
-    const q = person ? null : auditPeopleQueryOf(text)
-    setError('')
+  const search = () => {
+    const q = auditPeopleQueryOf(value.text)
     if (!q) {
       setPeople(null)
+      setError(t('adminAccess.auditPage.typeName'))
       return
     }
-    let current = true
-    const timer = setTimeout(() => {
-      hub
-        .adminCall(agent.did, (client, token) => client.auditPeople(token, reason, q))
-        .then((answer) => {
-          if (current) setPeople(answer.people)
-        })
-        .catch((e) => {
-          if (current) setError(adminErrorWords(e, t))
-        })
-    }, PERSON_SEARCH_PAUSE_MS)
-    return () => {
-      current = false
-      clearTimeout(timer)
-    }
-  }, [text, person, reason, agent.did])
+    setSearching(true)
+    setError('')
+    hub
+      .adminCall(agent.did, (client, token) => client.auditPeople(token, reason, q))
+      .then((answer) => setPeople(answer.people))
+      .catch((e) => setError(adminErrorWords(e, t)))
+      .finally(() => setSearching(false))
+  }
+  const department = (p: AuditPerson) => p.department ?? t('adminAccess.auditPage.noDepartment')
+  const person = value.person
   return (
     <div className="field audit-field person-picker">
       <label htmlFor={id}>{t('adminAccess.auditPage.person')}</label>
@@ -258,52 +259,76 @@ function PersonPicker({
         <div className="person-chosen">
           <span className="space-text">
             <span className="space-name">{person.name}</span>
-            {person.department ? <span className="space-sub">{person.department}</span> : null}
+            <span className="space-sub">{department(person)}</span>
           </span>
           <button
             id={id}
             type="button"
             className="icon-btn small"
-            aria-label={t('adminAccess.auditPage.otherPerson')}
-            onClick={() => {
-              setText('')
-              onChange(null)
-            }}
+            aria-label={t('adminAccess.auditPage.clearPerson', { name: person.name })}
+            onClick={() => onChange({ text: value.text })}
           >
             <X size={14} aria-hidden="true" />
           </button>
         </div>
       ) : (
         <>
-          <input
-            id={id}
-            className="input person-search"
-            value={text}
-            placeholder={t('adminAccess.auditPage.personHint')}
-            autoComplete="off"
-            onChange={(e) => setText(e.target.value)}
-            // Enter picks nothing and runs no search of the form: a person is picked from the list
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.preventDefault()
-            }}
-          />
-          {people === null ? null : (
-            <ul className="person-results" aria-label={t('adminAccess.auditPage.people')}>
-              {people.length ? (
-                people.map((p) => (
-                  <li key={p.principalId}>
-                    <button type="button" className="space-row person-option" onClick={() => onChange(p)}>
-                      <span className="space-text">
-                        <span className="space-name">{p.name}</span>
-                        {p.department ? <span className="space-sub">{p.department}</span> : null}
-                      </span>
-                    </button>
-                  </li>
-                ))
-              ) : (
-                <li className="muted person-none">{t('adminAccess.auditPage.noPeople')}</li>
+          <div className="person-search-row">
+            <input
+              id={id}
+              className="input person-search"
+              value={value.text}
+              placeholder={t(
+                optional ? 'adminAccess.auditPage.personHintOptional' : 'adminAccess.auditPage.personHint'
               )}
-            </ul>
+              autoComplete="off"
+              onChange={(e) => {
+                onChange({ text: e.target.value })
+                setPeople(null)
+                setError('')
+              }}
+              // Enter searches people, not the form's own read
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                search()
+              }}
+            />
+            <button type="button" className="btn person-search-button" disabled={searching} onClick={search}>
+              {t(searching ? 'adminAccess.auditPage.searching' : 'adminAccess.auditPage.searchPeople')}
+            </button>
+          </div>
+          {people === null ? null : (
+            <div className="person-results">
+              {people.length ? (
+                <ul className="person-list" aria-label={t('adminAccess.auditPage.people')}>
+                  {people.map((p) => (
+                    <li key={p.principalId}>
+                      <button
+                        type="button"
+                        className="space-row person-option"
+                        onClick={() => {
+                          onChange({ text: value.text, person: p })
+                          setPeople(null)
+                        }}
+                      >
+                        <span className="space-text">
+                          <span className="space-name">{p.name}</span>
+                          <span className="space-sub">{department(p)}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="muted person-none">{t('adminAccess.auditPage.noPeople')}</div>
+              )}
+              {auditPeopleCapped(people) ? (
+                <div className="muted small person-more">
+                  {t('adminAccess.auditPage.typeMore', { max: AUDIT_PEOPLE_MAX })}
+                </div>
+              ) : null}
+            </div>
           )}
         </>
       )}
@@ -313,8 +338,8 @@ function PersonPicker({
 }
 
 /** The name of the person picked, for the id the agent answers with; the id itself for anyone else. */
-const personWords = (person: AuditPerson | null, principalId: string) =>
-  person && person.principalId === principalId ? person.name : principalId
+const personWords = (choice: AuditPersonChoice, principalId: string) =>
+  choice.person?.principalId === principalId ? choice.person.name : principalId
 
 /** The spaces the auditor knows, offered by title for the field Space, which takes any space's id. */
 function SpaceOptions({ agent, id }: { agent: AgentRecord; id: string }) {
@@ -335,7 +360,7 @@ function ConversationsPanel({ agent, reason }: { agent: AgentRecord; reason: str
   const snap = useSnapshot()
   const hub = useHub()
   const { t, i18n } = useTranslation()
-  const [person, setPerson] = useState<AuditPerson | null>(null)
+  const [person, setPerson] = useState<AuditPersonChoice>({ text: '' })
   const [space, setSpace] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -345,12 +370,14 @@ function ConversationsPanel({ agent, reason }: { agent: AgentRecord; reason: str
   const [error, setError] = useState('')
   const find = async (e: FormEvent) => {
     e.preventDefault()
+    const principal = auditPrincipalOf(person)
+    if (principal === null) return setError(t('adminAccess.auditPage.pickOrClear'))
     setBusy(true)
     setError('')
     try {
       const answer = await hub.adminCall(agent.did, (client, token) =>
         client.auditConversations(token, reason, {
-          principal: person?.principalId,
+          principal,
           space: space.trim() || undefined,
           ...auditPeriodOf(from, to),
         })
@@ -376,7 +403,7 @@ function ConversationsPanel({ agent, reason }: { agent: AgentRecord; reason: str
   return (
     <>
       <form className="audit-filters" onSubmit={(e) => void find(e)}>
-        <PersonPicker agent={agent} reason={reason} person={person} onChange={setPerson} />
+        <PersonPicker agent={agent} reason={reason} value={person} onChange={setPerson} optional />
         <Field label={t('adminAccess.auditPage.space')}>
           <TextInput value={space} onChange={setSpace} list="audit-spaces" />
         </Field>
@@ -548,19 +575,19 @@ function AuditMessage({ m, agentName }: { m: TranscriptMessage; agentName: strin
 function EvidencePanel({ agent, reason }: { agent: AgentRecord; reason: string }) {
   const hub = useHub()
   const { t } = useTranslation()
-  const [person, setPerson] = useState<AuditPerson | null>(null)
+  const [person, setPerson] = useState<AuditPersonChoice>({ text: '' })
   const [found, setFound] = useState<AuditEvidenceResponse['evidence'] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const read = async (e: FormEvent) => {
     e.preventDefault()
-    if (!person) return
+    // the evidence of a person picked, never of anyone
+    const principal = auditPrincipalOf(person)
+    if (!principal) return
     setBusy(true)
     setError('')
     try {
-      const answer = await hub.adminCall(agent.did, (client, token) =>
-        client.auditEvidence(token, reason, person.principalId)
-      )
+      const answer = await hub.adminCall(agent.did, (client, token) => client.auditEvidence(token, reason, principal))
       setFound(answer.evidence)
     } catch (err) {
       setError(adminErrorWords(err, t))
@@ -571,9 +598,9 @@ function EvidencePanel({ agent, reason }: { agent: AgentRecord; reason: string }
   return (
     <>
       <form className="audit-filters" onSubmit={(e) => void read(e)}>
-        <PersonPicker agent={agent} reason={reason} person={person} onChange={setPerson} />
+        <PersonPicker agent={agent} reason={reason} value={person} onChange={setPerson} />
         <div className="audit-actions">
-          <button type="submit" className="btn primary" disabled={busy || !person}>
+          <button type="submit" className="btn primary" disabled={busy || !person.person}>
             {t('adminAccess.auditPage.read')}
           </button>
         </div>
@@ -616,7 +643,7 @@ function EvidencePanel({ agent, reason }: { agent: AgentRecord; reason: string }
 function CallsPanel({ agent, reason }: { agent: AgentRecord; reason: string }) {
   const hub = useHub()
   const { t, i18n } = useTranslation()
-  const [person, setPerson] = useState<AuditPerson | null>(null)
+  const [person, setPerson] = useState<AuditPersonChoice>({ text: '' })
   const [f, setF] = useState({ space: '', conversation: '', source: '', from: '', to: '' })
   const [calls, setCalls] = useState<Record<string, unknown>[] | null>(null)
   const [busy, setBusy] = useState(false)
@@ -624,12 +651,14 @@ function CallsPanel({ agent, reason }: { agent: AgentRecord; reason: string }) {
   const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }))
   const read = async (e: FormEvent) => {
     e.preventDefault()
+    const principal = auditPrincipalOf(person)
+    if (principal === null) return setError(t('adminAccess.auditPage.pickOrClear'))
     setBusy(true)
     setError('')
     try {
       const answer = await hub.adminCall(agent.did, (client, token) =>
         client.auditToolCalls(token, reason, {
-          principal: person?.principalId,
+          principal,
           space: f.space.trim() || undefined,
           conversation: f.conversation.trim() || undefined,
           source: f.source.trim() || undefined,
@@ -652,7 +681,7 @@ function CallsPanel({ agent, reason }: { agent: AgentRecord; reason: string }) {
   return (
     <>
       <form className="audit-filters" onSubmit={(e) => void read(e)}>
-        <PersonPicker agent={agent} reason={reason} person={person} onChange={setPerson} />
+        <PersonPicker agent={agent} reason={reason} value={person} onChange={setPerson} optional />
         <Field label={t('adminAccess.auditPage.space')}>
           <TextInput value={f.space} onChange={set('space')} list="audit-call-spaces" />
         </Field>

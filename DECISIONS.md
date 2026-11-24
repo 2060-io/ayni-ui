@@ -1012,13 +1012,18 @@
     - **A person found by name** (product owner, 2026-11-24). The person of Conversations, Evidence and Call records
       is picked, not typed as an id: `GET {sessions}/admin/audit/people?q=&reason=` (auditor only, at most 20, from
       ayni-agent `fix/admin-people-and-device`, not merged; profile 3.5.7 is not on npm, so the shapes are written in
-      the core: `AuditPerson`, `auditPeopleOf`, `ProfileClient.auditPeople`). The name typed is searched once the
-      typing pauses (300 ms; each search is a read the agent audits, with the reason in force), never for an empty or
-      blank text (the agent answers `400 bad-request`, `field: 'q'`; the client refuses it before it goes). The people
-      found are listed under the field by name and department; the one picked takes the field's place with a button to
-      choose another, and its id is what the filter sends. Enter in the field neither picks nor submits. Evidence's Read
-      waits for a pick. The rows found and the call records name the picked person by name, anyone else by id. The
-      refusals read as the other reads of Audit.
+      the core: `AuditPerson`, `auditPeopleOf`, `ProfileClient.auditPeople`). It behaves and reads as the app's picker
+      (ayni-app #121), with its rules in the core (`AuditPersonChoice`, `auditPrincipalOf`, `auditPeopleCapped`) and
+      its English in `ADMIN_COPY`: a search runs only when asked, with Search people or Enter in the field, never on
+      each letter, since each one is an Audit read the agent records with the reason in force; an empty field sends
+      nothing and reads "Type a name to search" (the agent would answer `400 bad-request`, `field: 'q'`; the client
+      refuses it before it goes). The people found are listed under the field by name and department ("No
+      department" for none); none reads "No one found."; twenty (the most one search gives) add "The first 20 found:
+      type more of the name to narrow it." The one picked takes the field's place, name and department, with a clear
+      (X) control that gives back the name typed; its id is what the filter sends. An empty field means anyone
+      (placeholder "Type a name, or leave for anyone"), except in Evidence, whose Read waits for a pick; a name typed
+      and not picked blocks Find with "Pick the person from the list, or clear the name". The rows found and the call
+      records name the picked person by name, anyone else by id. The refusals read as the other reads of Audit.
     - **Operations** (UI-ADMIN-005). Erase entries (ids typed, separated by spaces, commas or lines), Legal hold (on
       entries or a conversation, set or release) and Keys. Each action opens a confirmation that names what it acts on
       ("Entries: …", "Every entry of the conversation …", "Index key, to a new version") and asks its own reason; the
@@ -1035,7 +1040,7 @@
       menu for Jonas, Ben and an agent without the feature; the three outcomes of Show Admin; the area above the spaces,
       its pages, its end by the clock, by the event and by Hide Admin; Audit's reason and reads; Operations' erase, legal
       hold and keys; the refusals; the words in four languages; the icons of the table; the person picked by name in
-      the three segments, no search for a blank name, one search per pause, a refusal of the search, the picker's words
-      in four languages); `forget.test.ts` extended.
+      the three segments, a search only when asked, an empty field for anyone, a name not picked blocking the read, the
+      cap of twenty, a refusal of the search, the picker's words in four languages); `forget.test.ts` extended.
 54. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
