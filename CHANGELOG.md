@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.25.0](https://github.com/2060-io/ayni-ui/compare/v0.24.0...v0.25.0) (2026-11-24)
+
+
+### Features
+
+* **admin:** Show Admin and Hide Admin in the agent's menu, the ADMIN area above the spaces while the grant is open, the Audit and Operations pages (UI-ADMIN-001 to 006) ([aacbded](https://github.com/2060-io/ayni-ui/commit/aacbded012e1458ce8dfd0db71befa8566efbdab))
+* **admin:** Show Admin, the ADMIN area while the grant is open, Audit and Operations with a reason for each call (UI-ADMIN-001 to 006, core 0.14.0) ([65ffd39](https://github.com/2060-io/ayni-ui/commit/65ffd396de3a275dc2df9c1d64f513c51a31bb02))
+* **admin:** the admin icons from the core's table, and the person of Audit picked by name (UI-ADMIN-001, UI-ADMIN-003, UI-ADMIN-004) ([29ab9b8](https://github.com/2060-io/ayni-ui/commit/29ab9b8ce84489f594ad51e4470e2162fb82d673))
+* **core:** admin access from the agent's card: the admin state and grant, Show Admin and Hide Admin, the ADMIN area by the clock, Audit and Operations with a reason for each call (profile 3.5.5, agent D132 to D134, core 0.13.0) ([fc5af6c](https://github.com/2060-io/ayni-ui/commit/fc5af6c75bbf22b7b412e9f947ce1275b39ca88e))
+* **core:** the admin icons in the one table, MENU_ICON, and a person found by name for Audit (core 0.14.0) ([ac48064](https://github.com/2060-io/ayni-ui/commit/ac48064eda9b0624fc01d2bfe0ba9bc7f75fc7b6))
+
+
+### Bug Fixes
+
+* **admin:** the person picker of Audit searches when asked and words it as the app does (ayni-app [#121](https://github.com/2060-io/ayni-ui/issues/121)) ([9dba76c](https://github.com/2060-io/ayni-ui/commit/9dba76c19d9f6c8fc30a24fddde35189159b0efc))
+
 ## [0.24.0](https://github.com/2060-io/ayni-ui/compare/v0.23.0...v0.24.0) (2026-11-24)
 
 
