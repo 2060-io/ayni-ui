@@ -580,6 +580,7 @@
     "noConversations": "Você ainda não tem conversas neste espaço.",
     "noShared": "Ainda não há nada compartilhado com este espaço.",
     "sharedBy": "{{name}} · {{time}}",
+    "sharedByYou": "Você · {{time}}",
     "left": "Você não está mais em {{space}}",
     "onlyYouSee": "Só você as vê",
     "memoriesHint": "{{agent}} as usa nas suas conversas de {{space}}.",

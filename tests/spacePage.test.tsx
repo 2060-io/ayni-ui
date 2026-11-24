@@ -3,6 +3,7 @@
  * for its owner Members, Settings and Activity (UI-CONV-040, UI-CONV-041); a conversation shared by someone else, read
  * only (UI-CONV-038); New space from a template (UI-CONV-039); a space the person left (UI-CONV-043).
  */
+import { act } from 'react'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { SharedConversationView } from '../src/components/SharedConversation.js'
 import { SpacePage } from '../src/components/SpacePage.js'
@@ -80,7 +81,7 @@ function agentFor(space = TRUCK) {
               sharedAt: '2026-11-12T10:00:00Z',
               lastActivityAt: '2026-11-12T11:00:00Z',
             },
-            // Ana's own, shared: listed under Yours, not twice
+            // Ana's own, shared: under Yours with its tag, and under Shared with the space as hers
             {
               id: 'conv_s3',
               title: 'Caliper check',
@@ -129,7 +130,7 @@ describe('the page of a space (UI-CONV-031)', () => {
     expect(tabs(el)).toEqual(['Conversations', 'Your memories', 'About', 'Members', 'Settings', 'Activity'])
   })
 
-  it('Conversations: New conversation, the person own ones, then those shared with the space', async () => {
+  it('Conversations: New conversation, the person own ones, then everything shared with the space', async () => {
     agentFor()
     const { hub, el } = await page()
     await until(() => !!el.querySelector('.shared-row'))
@@ -142,15 +143,62 @@ describe('the page of a space (UI-CONV-031)', () => {
     // shared by Ana: its row says so
     expect(yours.querySelector('.shared-tag')?.textContent).toBe('Shared with Truck 14 recall')
     const shared = [...el.querySelectorAll('.shared-row')]
-    expect(shared).toHaveLength(1)
+    expect(shared).toHaveLength(2)
     expect(shared[0].textContent).toContain('Recall R-2291, first inspection')
     expect(shared[0].textContent).toContain('Jonas Weber · ')
+    // Ana's own share is listed too, with "You" as its author
+    expect(shared[1].textContent).toContain('Caliper check')
+    expect(shared[1].querySelector('.space-sub')?.textContent).toMatch(/^You · /)
     expect(byText(el, '.section-label', 'Shared with the space')?.parentElement?.textContent).toContain(
       'Read-only, shared by their author'
     )
     await click(shared[0])
     expect(hub.getSnapshot()).toMatchObject({ view: 'shared', sharedFor: { spaceId: TRUCK.id } })
     expect(hub.getSnapshot().sharedFor?.conversation.id).toBe('conv_9')
+  })
+
+  it("the person's own share opens as their conversation, not read-only", async () => {
+    agentFor()
+    const { hub, el } = await page()
+    await until(() => el.querySelectorAll('.shared-row').length === 2)
+    await click(el.querySelectorAll('.shared-row')[1])
+    expect(hub.getSnapshot()).toMatchObject({ view: 'conversation', selectedSessionId: 's3' })
+    expect(hub.getSnapshot().sharedFor ?? null).toBeNull()
+  })
+
+  it("another space never shows this space's shared list, not even while its own is read", async () => {
+    let answer: (r: Response) => void = () => undefined
+    fakeAgent([
+      [
+        `GET /spaces/${TRUCK.id}/shared`,
+        () =>
+          json({
+            conversations: [
+              {
+                id: 'conv_9',
+                title: 'Recall R-2291, first inspection',
+                author: { name: 'Jonas Weber' },
+                sharedAt: '2026-11-12T10:00:00Z',
+                lastActivityAt: '2026-11-12T11:00:00Z',
+              },
+            ],
+          }),
+      ],
+      // the other space's list is still on its way
+      [`GET /spaces/${DEPOT.id}/shared`, () => new Promise<Response>((r) => (answer = r))],
+      [/^GET \/spaces\/[^/]+$/, () => json({})],
+      [/^GET \/memories/, () => json({ preferences: [], memories: [] })],
+      ['GET /spaces', () => json(SPACES)],
+    ])
+    const { hub, el } = await page()
+    await until(() => el.querySelectorAll('.shared-row').length === 1)
+    await act(async () => hub.openSpace(AGENT, DEPOT.id))
+    expect(el.querySelector('.space-header h1')?.textContent).toBe('Depot Rotterdam')
+    expect(el.querySelector('.shared-row')).toBeNull()
+    expect(el.textContent).not.toContain('Recall R-2291, first inspection')
+    await act(async () => answer(json({ conversations: [] })))
+    await until(() => el.textContent?.includes('Nothing is shared with this space yet.'))
+    expect(el.querySelector('.shared-row')).toBeNull()
   })
 
   it('Your memories: the person memories of the space, newest first, which only they see', async () => {
