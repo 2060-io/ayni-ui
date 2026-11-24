@@ -5,7 +5,6 @@
  */
 import { ACTIVITY, type AyniState, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import { CONNECTIONS_CHANGED } from './connections.js'
-import { withoutVoiceEchoes } from './mediaMessages.js'
 import { MEMORY_UPDATE, MEMORY_UPDATED, memoryLineOf } from './memories.js'
 import { NOTIFICATIONS_CHANGED } from './notifications.js'
 import type { AgUiEvent } from './profileClient.js'
@@ -342,8 +341,6 @@ export function reduce(
         at: held?.at ?? flowAt,
         entryId: content.entryId as string | undefined,
       })
-      // a voice note shows once: not beside a text that only repeats its transcription (UI-MEDIA-007)
-      if (activityType === ACTIVITY.attachment) messages = withoutVoiceEchoes(messages)
       t = { ...t, routed, messages }
       if (activityType === ACTIVITY.attachment && !fromRun) {
         signals.push('message')
@@ -741,8 +738,7 @@ export function mergeHistory(
     page
   )
   const older = page.map(toTranscriptMessage).filter((m) => !known.has(m.id) && !renamedIds.has(m.id))
-  // a voice note shows once, whatever the agent's history and what this device kept say (UI-MEDIA-007)
-  let messages = withoutVoiceEchoes([...older, ...kept].sort((a, b) => a.at.localeCompare(b.at)))
+  let messages = [...older, ...kept].sort((a, b) => a.at.localeCompare(b.at))
   if (read) messages = withoutVanished(messages, page, nextBefore, read)
   const reactions = { ...transcript.reactions, ...reactionsOf(page) }
   for (const [own, theirs] of ownIdOf) {

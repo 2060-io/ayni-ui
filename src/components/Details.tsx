@@ -90,7 +90,7 @@ export function MessageInfo() {
           ) : null}
         </dl>
       </section>
-      {m.role === 'assistant' && agent && hub.speaks33(agent.did) ? (
+      {m.role === 'assistant' && agent ? (
         <UsedMemories
           sessionId={session.sessionId}
           message={m}

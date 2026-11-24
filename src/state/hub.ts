@@ -938,7 +938,7 @@ export class Hub {
       const { client, token } = this.clientOf(bound)
       const created = await client
         .create(
-          clientDescription(agent.descriptor.profileVersion, platformDescription()),
+          clientDescription(platformDescription()),
           locale,
           token,
           undefined,
@@ -982,7 +982,7 @@ export class Hub {
       // a paired device binds silently with its proof (UI-BIND-011); a rejected proof is dropped
       const created = await this.client(agent)
         .create(
-          clientDescription(agent.descriptor.profileVersion, platformDescription()),
+          clientDescription(platformDescription()),
           locale,
           undefined,
           agent.deviceHandle,
@@ -2385,15 +2385,7 @@ export class Hub {
 
   // ---- spaces (UI-CONV-028..031, 038..041, 043; profile 3.3 §3.7) ------------------------------------------------
 
-  /** Whether the agent speaks profile 3.3: spaces, memories, people, deleting within a window. */
-  public speaks33(agentDid: string): boolean {
-    const version = this.snapshot.agents.find((a) => a.did === agentDid)?.descriptor.profileVersion ?? '3.0'
-    const [major, minor] = version.split('.').map(Number)
-    return major > 3 || (major === 3 && (minor ?? 0) >= 3)
-  }
-
   private async loadSpacesWith(agentDid: string, client: ProfileClient, token: string): Promise<void> {
-    if (!this.speaks33(agentDid)) return
     try {
       const spaces = await client.spaces(token)
       this.set({ spaces: { ...this.snapshot.spaces, [agentDid]: spaces } })
@@ -2421,7 +2413,7 @@ export class Hub {
 
   /** Whether the agent answers this person its admin view (UI-CONV-042): asked once per page load. */
   private async probeAdmin(agentDid: string, client: ProfileClient, token: string): Promise<void> {
-    if (!this.speaks33(agentDid) || this.snapshot.admins[agentDid] !== undefined) return
+    if (this.snapshot.admins[agentDid] !== undefined) return
     this.snapshot = { ...this.snapshot, admins: { ...this.snapshot.admins, [agentDid]: false } }
     try {
       await client.adminRoles(token)

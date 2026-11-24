@@ -856,5 +856,24 @@
     - **Tests.** `tests/dangerColour.test.tsx` (the entries in red, the tokens, the contrasts); the colour tests of
       `tests/conversationDesign.test.ts`, `tests/notifications.test.tsx` and `tests/personalAccounts.test.tsx` take the
       dark red. Each fails without the change.
-50. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+50. **No test of the agent's version, no interrupts, no voice-note echo** (2026-11-23, Fabrice reviewing the clean spec,
+    ayni-spec #123: A1, A2, B4, B10 a). Code the spec no longer states, removed. Core 0.10.0.
+    - **The client's version.** Sessions no longer carry `client.profileVersion` (PROF-SESS-016 and UI-SESS-018 are
+      gone): `clientDescription(browser)` is the web platform and the browser for every agent, and the description of
+      a 3.0 agent, the browser as its platform, is gone with `PROFILE_VERSION`.
+    - **The agent's version.** `hub.speaks33` is gone: the spaces and the admin view are asked of every agent (one that
+      serves none answers `404`, as before), and What <agent> keeps about you is offered from the agent's menu, a
+      conversation's menu and the trust card to a linked browser, and the memories a reply used are read, whatever minor
+      version the descriptor declares. Its major version is still checked (UI-TRUST-001).
+    - **Interrupts.** A run carries no `resume` (UI-CONV-008 is gone, B4): nothing filled it.
+    - **The voice note's echo.** The text of the person that only repeated a voice note's transcription, which an agent
+      of an earlier revision sent, is no longer dropped (`withoutVoiceEchoes`, UI-MEDIA-007 amended, A1).
+    - **Already gone.** Create a service and the rail's Mine group (B10 a) have no code here: the add page offers Find a
+      service only, and `/app/explore/create` says "on your phone", as AG-UI profile §10 lists it. No note of a
+      hardening phase remains in the code or its documents.
+    - **Tests.** `packages/core/tests/reducer34.test.ts` (the client's description), `packages/core/tests/queue.test.ts`
+      (no `resume`), `packages/core/tests/mediaMessages.test.ts` (the person's text kept beside a note),
+      `tests/confirmationCard.test.tsx` (no `client.profileVersion`), `tests/spacesColumn.test.tsx` (What <agent> keeps
+      for an agent of 3.1). Each fails without the change.
+51. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

@@ -187,7 +187,7 @@ describe("the agent's menu (UI-CONV-033, UI-CONV-039, UI-CONV-042)", () => {
     expect(await menuItems(el)).not.toContain('Roles')
   })
 
-  it('keeps a template-less, space-less agent menu as it was', async () => {
+  it('offers no New space with no template, and what the agent keeps whatever version of the profile it declares', async () => {
     const hub = await tab({
       sessions: conversations,
       spaces: { spaces: [PERSONAL], templates: [] },
@@ -196,7 +196,8 @@ describe("the agent's menu (UI-CONV-033, UI-CONV-039, UI-CONV-042)", () => {
     const el = await render(hub, <Column />)
     const items = await menuItems(el)
     expect(items).not.toContain('New space')
-    expect(items).not.toContain('What Fleet support keeps about you')
+    // no test of the agent's version: what it serves is in its features and its answers (A2)
+    expect(items).toContain('What Fleet support keeps about you')
     expect(TEMPLATES).toHaveLength(1)
   })
 })

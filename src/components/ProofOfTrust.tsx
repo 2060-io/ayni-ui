@@ -238,7 +238,7 @@ export function ProofOfTrust({
           ) : null}
 
           {/* what this agent keeps about the person, from its trust card (UI-CONV-033) */}
-          {hub.speaks33(agent.did) && linkOf(agent, snap.sessions).linked ? (
+          {linkOf(agent, snap.sessions).linked ? (
             <button type="button" className="pot-keeps" onClick={() => hub.openKeeps(agent.did)}>
               <Eye size={16} aria-hidden="true" />
               <span>{t('column.keeps', { agent: agent.name })}</span>

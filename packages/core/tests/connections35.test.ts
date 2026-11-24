@@ -24,7 +24,6 @@ import {
   usageOfConnection,
 } from '../src/connections.js'
 import { CONNECTIONS_COPY } from '../src/connectionsCopy.js'
-import { PROFILE_VERSION } from '../src/index.js'
 import { ProfileClient, ProfileError } from '../src/profileClient.js'
 import {
   emptyTranscript,
@@ -632,10 +631,6 @@ describe('the stream, history and links of 3.5', () => {
     })
     expect(parseAppLink('/app/service/did:webvh:fleet/other', origin)).toEqual({ path: 'unknown' })
     expect(parseAppLink('/app/service/did:webvh:fleet', origin)).toEqual({ path: 'service', did: 'did:webvh:fleet' })
-  })
-
-  it('declares profile 3.5 (UI-SESS-018)', () => {
-    expect(PROFILE_VERSION).toBe('3.5')
   })
 
   it('writes the English wording once, with no em-dash', () => {

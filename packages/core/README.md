@@ -76,8 +76,8 @@ The wire types of AG-UI profile 3.4 (§3.10, §6, §8; agent D96 to D100) are wr
 `SpaceToolsChange`, `ToolAction`, `ToolConfirmation`, `MessageSource`, `ConversationSource`), with tolerant readers
 (`spaceToolsOf`, `spaceToolsChangeOf`, `toolActionOf`, `confirmationOf`, `toolApprovalOf`, `messageSourcesOf`,
 `conversationSourcesOf`). `ProfileClient` calls the endpoints of §3.10 (a change answers `200`, applied, or `202`,
-waiting for the owner's phone: `SpaceToolAnswer.status`), the sources of a conversation and the end of an allowance;
-`clientDescription` sends `client.profileVersion: "3.4"` (PROF-SESS-016). The reducer applies `ayni.approval.update`
+waiting for the owner's phone: `SpaceToolAnswer.status`), the sources of a conversation and the end of an allowance.
+The reducer applies `ayni.approval.update`
 to the card it names, where it is (status, scope, end of an allowance), signals `ayni.space.tools.changed`, and reads
 `metadata.sources` from history; a decision run ends with `noTurn: "decision"` and the status the agent holds.
 
@@ -101,7 +101,7 @@ The wire types of AG-UI profile 3.5 (§3.11, §5, §6, PROF-TOOL-014 to 021; age
 a `ProfileError` carries the `expected` and `chosen` of a `422 wrong-binding`. `personal` is a kind of account in the
 shapes of 3.4: a space's tool says whether the reader's own account is `connected`, a binding a personal account is
 for has its `valueLabel`, `fromAccount` and the owner's `choices`, and the action of a card carries the account's
-`label` on its person's card only. `clientDescription` sends `client.profileVersion: "3.5"`. The reducer signals
+`label` on its person's card only. The reducer signals
 `ayni.connections.changed` and, for `ayni.messages.withheld` with `reason: "credential"`, puts the text the agent kept
 in place of the one the device holds (`withheldTextsOf`, a message's `withheld: "credential"`), as history's
 `metadata.withheld` does. `parseAppLink` reads `/app/service/{did}/accounts` (PROF-LINK-004).
@@ -157,6 +157,15 @@ your phone "This request was already decided or has ended.". `timeLeftOf` writes
 `CONVERSATION_COPY.attachmentWithheld`. The Info of a message held back for a credential is
 `conversation.withheldCredentialInfo`, followed by `conversation.withheldCredentialAccounts` only for an agent that
 declares `features.connections`.
+
+## No test of the agent's version (the owner's answers of 2026-11-23)
+
+A client tells the agent nothing of the version of the profile it implements, and asks nothing of the agent's but
+the major version its descriptor declares (`discoverAgent`, UI-TRUST-001): what an agent serves is in its features
+and its answers. `clientDescription(browser)` is `{ name, version, platform: "web", description }` for every agent
+(PROF-SESS-014); `client.profileVersion`, `PROFILE_VERSION` and the description of a 3.0 agent are gone. A run carries
+no `resume`: the profile has no interrupts. The text that only repeated a voice note's transcription, which an agent
+of an earlier revision sent, is no longer dropped (`withoutVoiceEchoes` is gone): no agent sends it.
 
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

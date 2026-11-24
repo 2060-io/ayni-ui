@@ -212,18 +212,13 @@ describe('a decision run (PROF-TOOL-008)', () => {
   })
 })
 
-describe('session creation says which profile this client implements (PROF-SESS-016, UI-SESS-018)', () => {
-  it('sends `profileVersion: "3.5"` under `client`, to every agent (phase 2: Connect cards in sessions of 3.5)', () => {
-    expect(clientDescription('3.5', 'Firefox on Linux')).toEqual({
+describe('session creation describes the client (PROF-SESS-014)', () => {
+  it('as the web platform and the browser, to every agent, with no version of the profile (PROF-SESS-016 is gone)', () => {
+    expect(clientDescription('Firefox on Linux')).toEqual({
       name: 'ayni-ui',
       version: '3.5.0',
       platform: 'web',
       description: 'Firefox on Linux',
-      profileVersion: '3.5',
-    })
-    expect(clientDescription('3.0', 'Firefox on Linux')).toMatchObject({
-      platform: 'Firefox on Linux',
-      profileVersion: '3.5',
     })
   })
 })

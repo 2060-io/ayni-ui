@@ -14,12 +14,6 @@ import type { Transcript, TranscriptMessage } from './types.js'
 export const SPACE_TOOLS_CHANGED = 'ayni.space.tools.changed'
 /** The kind of an `ayni.approval` activity that is the person's confirmation of a tool call (PROF-TOOL-007). */
 export const CONFIRMATION = 'confirmation'
-/**
- * The version of the AG-UI profile this client implements, sent at session creation (PROF-SESS-016, UI-SESS-018): the
- * agent asks the confirmations of tool calls of sessions of 3.4 or later, and shows Connect cards in those of 3.5.
- */
-export const PROFILE_VERSION = '3.5'
-
 /** Whose account a source's calls run with; `personal`: the account of the person who asks (3.5, agent D104). */
 export type ToolAccountKind = 'none' | 'agent' | 'space' | 'personal'
 export type ToolEffect = 'read' | 'write' | 'delete' | 'external'

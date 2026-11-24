@@ -1,5 +1,3 @@
-import { PROFILE_VERSION } from './tools.js'
-
 export * from './agents.js'
 export * from './appLinks.js'
 export * from './connections.js'
@@ -35,21 +33,14 @@ export * from './voiceNote.js'
 
 export const CLIENT = { name: 'ayni-ui', version: '3.5.0' } as const
 
-/**
- * The client description sent at session creation (PROF-SESS-014): a 3.1 agent gets `platform: web` and the
- * browser as `description`; a 3.0 agent gets the browser as the free-text platform it expects. Every session says
- * which version of the profile this client implements (`profileVersion`, PROF-SESS-016): the agent asks the
- * confirmations of tool calls only of sessions of 3.4 or later, and shows Connect cards only in those of 3.5 or later.
- */
-export function clientDescription(
-  profileVersion: string | undefined,
-  browser: string
-): { name: string; version: string; platform: string; description?: string; profileVersion: string } {
-  const [major, minor] = (profileVersion ?? '3.0').split('.').map(Number)
-  const supportsDescription = major > 3 || (major === 3 && (minor ?? 0) >= 1)
-  return supportsDescription
-    ? { ...CLIENT, platform: 'web', description: browser, profileVersion: PROFILE_VERSION }
-    : { ...CLIENT, platform: browser, profileVersion: PROFILE_VERSION }
+/** The client description sent at session creation (PROF-SESS-014): `platform: web` and the browser as `description`. */
+export function clientDescription(browser: string): {
+  name: string
+  version: string
+  platform: string
+  description: string
+} {
+  return { ...CLIENT, platform: 'web', description: browser }
 }
 
 export const CLOSURE_REASON_KEYS: Record<string, string> = {
