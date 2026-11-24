@@ -12,6 +12,8 @@
 
 ### Bug Fixes
 
+* **agents:** Disconnect forgets the agent's spaces and everything else read of the person (UI-AGENTS-006) ([2b86140](https://github.com/2060-io/ayni-ui/commit/2b86140f1a4c0a00fc11e4522e47d47e8c6c9ec5))
+* **agents:** Disconnect forgets the agent's spaces and everything else read of the person (UI-AGENTS-006) ([5fbceb9](https://github.com/2060-io/ayni-ui/commit/5fbceb94e65a919f4e58edd49fae1244b29ec9e9))
 * **core:** the rows of Shared with the space, the person's own share with their session of it (UI-CONV-031, core 0.12.1) ([4820a93](https://github.com/2060-io/ayni-ui/commit/4820a939b599ce754db70def95dd803cf0cf4e34))
 * **spaces:** Shared with the space lists the person's own shares, and a space never shows another space's list (UI-CONV-031) ([7e2dcbb](https://github.com/2060-io/ayni-ui/commit/7e2dcbb5bdb0b2da588cebedbf23f5678201bdad))
 * **spaces:** Shared with the space lists the person's own shares, and a space never shows another space's list (UI-CONV-031) ([ee8344d](https://github.com/2060-io/ayni-ui/commit/ee8344d6fe85909bd945a30fe7aab9c19c970c32))
