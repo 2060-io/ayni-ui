@@ -255,7 +255,10 @@
     "approvedByYouWaiting": "Approved by you · Waiting for other approvers",
     "rejectedByYouWaiting": "Rejected by you · Waiting for other approvers",
     "notAnswered": "Not answered in time",
-    "withdrawn": "Withdrawn"
+    "withdrawn": "Withdrawn",
+    "progress": "{{approvals}} of {{threshold}} approvals, waiting for {{entries}}",
+    "progressCount": "{{approvals}} of {{threshold}} approvals",
+    "noApprover": "No other approver can decide this"
   },
   "notifications": {
     "title": "Notifications",
@@ -269,7 +272,8 @@
     "waiting": "{{count}} waiting",
     "ended": "This request was already decided or has ended.",
     "notEligible": "You can no longer decide this request.",
-    "notSent": "Your answer was not sent. Try again."
+    "notSent": "Your answer was not sent. Try again.",
+    "ownRequest": "Your own request"
   },
   "elevation": {
     "title": "Request access",
@@ -680,7 +684,22 @@
       "transferSearch": "Search the {{organization}} employee list",
       "transferHint": "You become a member, and the new owner manages the space.",
       "transferred": "{{name}} now owns {{space}}.",
-      "notEligible": "This person cannot own the space."
+      "notEligible": "This person cannot own the space.",
+      "timeouts": "Approvals",
+      "timeout": {
+        "tool-call": "How long an approval of a tool waits"
+      },
+      "timeoutOther": "How long an approval of the kind {{kind}} waits",
+      "minutes": "minutes",
+      "timeoutBounds": "The template allows {{min}} to {{max}} minutes.",
+      "timeoutBad": "Give a whole number of minutes the template allows.",
+      "successor": "Successor",
+      "successorHint": "Becomes the owner if you leave {{organization}}.",
+      "noSuccessor": "No successor",
+      "setSuccessor": "Name successor",
+      "successorClear": "Clear",
+      "successorSet": "{{name}} is the successor of {{space}}.",
+      "successorCleared": "{{space}} has no successor now."
     },
     "activity": {
       "created": "{{by}} created the space",
@@ -699,7 +718,11 @@
       "account-cleared": "{{by}} removed the account of {{tool}}",
       "someone": "Someone",
       "empty": "No activity yet.",
-      "more": "Earlier activity"
+      "more": "Earlier activity",
+      "successor-set": "{{by}} named {{member}} successor",
+      "successor-cleared": "{{member}} is no longer the successor",
+      "ownerSuccession": "{{member}} became the owner as successor",
+      "ownerSteward": "{{by}}, a steward, named {{member}} owner: {{reason}}"
     },
     "create": {
       "title": "New space",
@@ -726,7 +749,8 @@
       "readOnly": "Read-only: you cannot write or react here.",
       "gone": "This conversation is no longer shared.",
       "loadOlder": "Earlier messages"
-    }
+    },
+    "ownerLineNone": "{{kind}} · No owner"
   },
   "memories": {
     "title": "A memory of yours",
@@ -807,12 +831,15 @@
     "rule": {
       "none": "Runs without asking",
       "confirm": "Asks you first",
-      "approval": "Needs {{owner}}'s approval"
+      "approval": "Needs {{name}}'s approval",
+      "approvalYou": "Needs your approval",
+      "approvals_one": "Needs {{count}} approval: {{entries}}",
+      "approvals_other": "Needs {{count}} approvals: {{entries}}"
     },
     "ownerRule": {
       "none": "Runs without asking",
       "confirm": "Asks the person first",
-      "approval": "Needs your approval",
+      "approval": "Needs approval",
       "off": "Off in this space"
     },
     "stepUp": {
@@ -969,5 +996,79 @@
     },
     "empty": "{{agent}} offers you no account of your own to connect.",
     "noTab": "The browser did not open a new tab. Allow pop-ups for this page and try again."
+  },
+  "policy": {
+    "entry": {
+      "anyMember": "Any member",
+      "role": "Someone with the role {{role}}",
+      "department": "Someone of {{department}}",
+      "you": "{{name}} (you)",
+      "owner": "The space's owner",
+      "required": "{{entry}} (required)"
+    },
+    "who": "Who approves",
+    "required": "Required",
+    "remove": "Remove",
+    "addApprover": "Add approver",
+    "kind": {
+      "owner": "The owner",
+      "person": "A member of the space",
+      "member": "Any member",
+      "role": "A role",
+      "department": "A department"
+    },
+    "add": "Add",
+    "member": "Member",
+    "role": "Role",
+    "department": "Department",
+    "needed": "Approvals needed",
+    "refusal": "When someone refuses",
+    "refusalAny": "One refusal rejects",
+    "refusalRequired": "Only a required approver's refusal rejects",
+    "attested": "Confirm with fingerprint or face",
+    "whenAsks": "When an approver makes the request",
+    "anotherApprover": "Another approver decides",
+    "ownConfirmation": "Their own confirmation counts",
+    "possessive": "{{name}}'s",
+    "and": " and ",
+    "ownRequestsBlocked": "{{names}} own requests can never be approved.",
+    "unreachable": "Nobody's requests can be approved with these approvers.",
+    "lowerNeeded": "Lower the number needed",
+    "useOwnConfirmation": "Use their own confirmation",
+    "needsAttention": "Needs attention: {{entries}} can no longer approve",
+    "belowPackMinimum": "{{agent}} needs at least {{n}} approvals for this tool.",
+    "thresholdBelowRequired": "The number needed counts every required approver.",
+    "approverNotAllowed": "{{agent}} does not allow this approver for this tool.",
+    "notEligible": "This person can't approve in this space.",
+    "attestationRequired": "{{agent}} requires a confirmation with fingerprint or face for this tool.",
+    "repeatedEntry": "This approver is already in the list.",
+    "notApproval": "This tool no longer needs approval in this space.",
+    "badPolicy": "{{agent}} does not take this policy."
+  },
+  "notices": {
+    "ownerChanged": {
+      "handover": "{{to}} now owns {{space}} · handed over by {{from}}",
+      "succession": "{{to}} now owns {{space}} · after {{from}} left",
+      "steward": "{{to}} now owns {{space}} · named by a steward: {{reason}}"
+    },
+    "policyAttention": "{{tool}} needs attention: {{entries}} can no longer approve",
+    "openTool": "Open the tool",
+    "noApprover": "{{requester}}'s request for {{tool}} was refused: no other approver could decide it.",
+    "spaceWithoutOwner": "{{space}} has no owner",
+    "nameOwner": "Name the owner"
+  },
+  "steward": {
+    "title": "Spaces you steward",
+    "noOwner": "No owner",
+    "notSteward": "Only a steward of this kind of space names its owner.",
+    "reason": "Reason",
+    "nameOwner": "Name the owner",
+    "successor": "Successor: {{name}}",
+    "candidates": "Who could own it",
+    "noCandidates": "Nobody can own this space now.",
+    "empty": "No spaces.",
+    "named": "{{name}} now owns {{space}}.",
+    "reasonRequired": "Give a reason of 1 to 500 characters.",
+    "notEligible": "This person cannot own the space."
   }
 }

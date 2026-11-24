@@ -255,7 +255,10 @@
     "approvedByYouWaiting": "Approuvée par vous · En attente d'autres approbateurs",
     "rejectedByYouWaiting": "Refusée par vous · En attente d'autres approbateurs",
     "notAnswered": "Sans réponse à temps",
-    "withdrawn": "Retirée"
+    "withdrawn": "Retirée",
+    "progress": "{{approvals}} sur {{threshold}} approbations, en attente de {{entries}}",
+    "progressCount": "{{approvals}} sur {{threshold}} approbations",
+    "noApprover": "Aucun autre approbateur ne peut en décider"
   },
   "notifications": {
     "title": "Notifications",
@@ -269,7 +272,8 @@
     "waiting": "{{count}} en attente",
     "ended": "Cette demande a déjà été décidée ou est terminée.",
     "notEligible": "Vous ne pouvez plus décider de cette demande.",
-    "notSent": "Votre réponse n'a pas été envoyée. Réessayez."
+    "notSent": "Votre réponse n'a pas été envoyée. Réessayez.",
+    "ownRequest": "Votre propre demande"
   },
   "elevation": {
     "title": "Demander un accès",
@@ -680,7 +684,22 @@
       "transferSearch": "Chercher dans la liste des employés de {{organization}}",
       "transferHint": "Vous devenez membre, et le nouveau propriétaire gère l'espace.",
       "transferred": "{{name}} est maintenant propriétaire de {{space}}.",
-      "notEligible": "Cette personne ne peut pas être propriétaire de l'espace."
+      "notEligible": "Cette personne ne peut pas être propriétaire de l'espace.",
+      "timeouts": "Approbations",
+      "timeout": {
+        "tool-call": "Durée d'attente de l'approbation d'un outil"
+      },
+      "timeoutOther": "Durée d'attente d'une approbation du type {{kind}}",
+      "minutes": "minutes",
+      "timeoutBounds": "Le modèle permet de {{min}} à {{max}} minutes.",
+      "timeoutBad": "Donnez un nombre entier de minutes que le modèle permet.",
+      "successor": "Successeur",
+      "successorHint": "Devient propriétaire si vous quittez {{organization}}.",
+      "noSuccessor": "Aucun successeur",
+      "setSuccessor": "Nommer successeur",
+      "successorClear": "Effacer",
+      "successorSet": "{{name}} est le successeur pour {{space}}.",
+      "successorCleared": "{{space}} n'a plus de successeur."
     },
     "activity": {
       "created": "{{by}} a créé l'espace",
@@ -699,7 +718,11 @@
       "account-cleared": "{{by}} a retiré le compte de {{tool}}",
       "someone": "Quelqu'un",
       "empty": "Pas encore d'activité.",
-      "more": "Activité précédente"
+      "more": "Activité précédente",
+      "successor-set": "{{by}} a nommé {{member}} successeur",
+      "successor-cleared": "{{member}} n'est plus le successeur",
+      "ownerSuccession": "{{member}} est devenu propriétaire en tant que successeur",
+      "ownerSteward": "{{by}}, en tant que responsable, a nommé {{member}} propriétaire : {{reason}}"
     },
     "create": {
       "title": "Nouvel espace",
@@ -735,7 +758,8 @@
     "ruleGroup_many": "Tout le groupe {{name}}, {{count}} personnes",
     "ruleOrganization_many": "Tout le monde chez {{name}}, {{count}} personnes",
     "ruleOther_many": "Par règle, {{count}} personnes",
-    "listKept_many": "{{count}} membres, une liste tenue par {{name}}"
+    "listKept_many": "{{count}} membres, une liste tenue par {{name}}",
+    "ownerLineNone": "{{kind}} · Sans propriétaire"
   },
   "memories": {
     "title": "Un de vos souvenirs",
@@ -819,12 +843,16 @@
     "rule": {
       "none": "S'exécute sans demander",
       "confirm": "Vous demande d'abord",
-      "approval": "Requiert l'approbation de {{owner}}"
+      "approval": "Requiert l'approbation de {{name}}",
+      "approvalYou": "Requiert votre approbation",
+      "approvals_one": "Requiert {{count}} approbation : {{entries}}",
+      "approvals_many": "Requiert {{count}} approbations : {{entries}}",
+      "approvals_other": "Requiert {{count}} approbations : {{entries}}"
     },
     "ownerRule": {
       "none": "S'exécute sans demander",
       "confirm": "Demande d'abord à la personne",
-      "approval": "Requiert votre approbation",
+      "approval": "Requiert une approbation",
       "off": "Désactivé dans cet espace"
     },
     "stepUp": {
@@ -985,5 +1013,79 @@
     },
     "empty": "{{agent}} ne vous propose aucun compte personnel à connecter.",
     "noTab": "Le navigateur n'a pas ouvert de nouvel onglet. Autorisez les fenêtres pop-up pour cette page et réessayez."
+  },
+  "policy": {
+    "entry": {
+      "anyMember": "N'importe quel membre",
+      "role": "Une personne avec le rôle {{role}}",
+      "department": "Une personne de {{department}}",
+      "you": "{{name}} (vous)",
+      "owner": "Le propriétaire de l'espace",
+      "required": "{{entry}} (obligatoire)"
+    },
+    "who": "Qui approuve",
+    "required": "Obligatoire",
+    "remove": "Retirer",
+    "addApprover": "Ajouter un approbateur",
+    "kind": {
+      "owner": "Le propriétaire",
+      "person": "Un membre de l'espace",
+      "member": "N'importe quel membre",
+      "role": "Un rôle",
+      "department": "Un service"
+    },
+    "add": "Ajouter",
+    "member": "Membre",
+    "role": "Rôle",
+    "department": "Service",
+    "needed": "Approbations nécessaires",
+    "refusal": "Quand quelqu'un refuse",
+    "refusalAny": "Un refus suffit à rejeter",
+    "refusalRequired": "Seul le refus d'un approbateur obligatoire rejette",
+    "attested": "Confirmer par empreinte ou visage",
+    "whenAsks": "Quand un approbateur fait la demande",
+    "anotherApprover": "Un autre approbateur décide",
+    "ownConfirmation": "Sa propre confirmation compte",
+    "possessive": "{{name}}",
+    "and": " et ",
+    "ownRequestsBlocked": "Les propres demandes de {{names}} ne pourront jamais être approuvées.",
+    "unreachable": "Avec ces approbateurs, aucune demande ne peut être approuvée.",
+    "lowerNeeded": "Baisser le nombre nécessaire",
+    "useOwnConfirmation": "Utiliser leur propre confirmation",
+    "needsAttention": "À revoir : {{entries}} ne peut plus approuver",
+    "belowPackMinimum": "{{agent}} exige au moins {{n}} approbations pour cet outil.",
+    "thresholdBelowRequired": "Le nombre nécessaire compte chaque approbateur obligatoire.",
+    "approverNotAllowed": "{{agent}} n'autorise pas cet approbateur pour cet outil.",
+    "notEligible": "Cette personne ne peut pas approuver dans cet espace.",
+    "attestationRequired": "{{agent}} exige une confirmation par empreinte ou visage pour cet outil.",
+    "repeatedEntry": "Cet approbateur est déjà dans la liste.",
+    "notApproval": "Cet outil ne requiert plus d'approbation dans cet espace.",
+    "badPolicy": "{{agent}} n'accepte pas cette politique."
+  },
+  "notices": {
+    "ownerChanged": {
+      "handover": "{{space}} appartient désormais à {{to}} · confié par {{from}}",
+      "succession": "{{space}} appartient désormais à {{to}} · après le départ de {{from}}",
+      "steward": "{{space}} appartient désormais à {{to}} · nommé par un responsable : {{reason}}"
+    },
+    "policyAttention": "{{tool}} est à revoir : {{entries}} ne peut plus approuver",
+    "openTool": "Ouvrir l'outil",
+    "noApprover": "La demande de {{requester}} pour {{tool}} a été refusée : aucun autre approbateur ne pouvait en décider.",
+    "spaceWithoutOwner": "{{space}} n'a pas de propriétaire",
+    "nameOwner": "Nommer le propriétaire"
+  },
+  "steward": {
+    "title": "Espaces dont vous êtes responsable",
+    "noOwner": "Sans propriétaire",
+    "notSteward": "Seul un responsable de ce type d'espace en nomme le propriétaire.",
+    "reason": "Motif",
+    "nameOwner": "Nommer le propriétaire",
+    "successor": "Successeur : {{name}}",
+    "candidates": "Qui pourrait en être propriétaire",
+    "noCandidates": "Personne ne peut être propriétaire de cet espace pour le moment.",
+    "empty": "Aucun espace.",
+    "named": "{{space}} appartient désormais à {{name}}.",
+    "reasonRequired": "Donnez un motif de 1 à 500 caractères.",
+    "notEligible": "Cette personne ne peut pas être propriétaire de l'espace."
   }
 }

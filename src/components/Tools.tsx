@@ -35,7 +35,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
-import { ApprovalStatusIcon, approvalStatusWords } from './ApprovalWords.js'
+import { ApprovalStatusIcon, approvalRuleText, approvalStatusWords } from './ApprovalWords.js'
 import { Dialog } from './Dialog.js'
 
 const D = CONVERSATION_DESIGN.toolCard
@@ -285,7 +285,7 @@ export function ToolApprovalCard({
   const requester = requesterNameOf(content)
   const { action, space } = approval
   const owner = space
-    ? snap.spaces[agent?.did ?? '']?.spaces.find((x) => x.id === space.id)?.owner.name || undefined
+    ? snap.spaces[agent?.did ?? '']?.spaces.find((x) => x.id === space.id)?.owner?.name || undefined
     : undefined
   const line = cardStatusOf(content, owner)
   const words = approvalStatusWords(line, t, i18n.language, Date.now())
@@ -431,14 +431,28 @@ export function ShareSourcesDialog({
 
 /**
  * A group of a source's tools in About (UI-CONV-049): the rule's words, a colon, and the titles, each followed by its
- * step-up ("Needs Jonas Weber's approval: Delete note, then a check on your phone"). The space's owner reads "Needs
- * your approval", never their own name.
+ * step-up ("Needs Jonas Weber's approval: Delete note, then a check on your phone"). The rule `approval` reads its
+ * policy (profile 3.5.4): "Needs your approval" for the one person it names when that is the reader, never their own
+ * name, or "Needs 2 approvals: Jonas Weber (required), Marta Kova". From an agent that gives no policy, the owner
+ * approves, as before.
  */
-function groupWords(group: ToolRuleGroup, space: Pick<SpaceInfo, 'owner' | 'role'>, t: Tr): string {
+function groupWords(
+  group: ToolRuleGroup,
+  space: Pick<SpaceInfo, 'owner' | 'role'>,
+  me: string | undefined,
+  t: Tr
+): string {
+  const isOwner = space.role === 'owner'
   const rule =
-    group.rule === 'approval' && space.role === 'owner'
-      ? t('tools.ownerRule.approval')
-      : t(`tools.rule.${group.rule}`, { owner: space.owner.name })
+    group.rule !== 'approval'
+      ? t(`tools.rule.${group.rule}`)
+      : group.approval
+        ? approvalRuleText(group.approval, { name: me, isOwner }, t)
+        : isOwner
+          ? t('tools.rule.approvalYou')
+          : space.owner
+            ? t('tools.rule.approval', { name: space.owner.name })
+            : t('tools.ownerRule.approval')
   const titles = group.tools.map((x) => `${x.title}${x.stepUp ? t(`tools.stepUp.${x.stepUp}`) : ''}`)
   return `${rule}: ${titles.join(', ')}`
 }
@@ -495,7 +509,10 @@ export function useSpaceTools(
  */
 export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
+  const snap = useSnapshot()
   const { t } = useTranslation()
+  // the name the agent shows of the reader, so that a policy naming them alone reads "Needs your approval"
+  const me = snap.sessions.find((s) => s.agentDid === agent.did && s.principal?.displayName)?.principal?.displayName
   const wanted = hub.takesTools(agent.did) && space.kind !== 'personal' && space.state === 'active'
   const { tools } = useSpaceTools(agent, space, wanted)
   const ready = readyToolsOf(tools ?? [])
@@ -539,9 +556,9 @@ export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceI
               {groups.length ? (
                 <span className="about-tool-rules">
                   {groups.map((g, i) => (
-                    <span key={g.rule}>
+                    <span key={`${g.rule}-${i}`}>
                       {i ? ' · ' : ''}
-                      {groupWords(g, space, t)}
+                      {groupWords(g, space, me, t)}
                     </span>
                   ))}
                 </span>

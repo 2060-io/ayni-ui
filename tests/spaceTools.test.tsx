@@ -264,11 +264,12 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     expect(options(0)).toEqual([
       'Runs without asking',
       'Asks the person first',
-      'Needs your approval',
+      // the rule `approval` in the owner's segment, followed by its policy (UI-CONV-049, profile 3.5.4)
+      'Needs approval',
       'Off in this space',
     ])
-    expect(options(2)).toEqual(['Asks the person first', 'Needs your approval', 'Off in this space'])
-    expect(options(3)).toEqual(['Needs your approval', 'Off in this space'])
+    expect(options(2)).toEqual(['Asks the person first', 'Needs approval', 'Off in this space'])
+    expect(options(3)).toEqual(['Needs approval', 'Off in this space'])
     expect(rows[3]?.querySelector('.tool-rule-choice .tool-step-up')).toBeNull()
     expect(rows[2]?.querySelector('select')?.value).toBe('confirm')
     // one Save for the settings, bindings and rules, at the end of what each tool asks; one for the account

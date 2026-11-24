@@ -11,6 +11,7 @@ import type {
   SessionStatus,
   UploadResponse,
 } from '@ayni.org/ayni-agui-profile'
+import type { ApprovalPolicyInput } from './approvalPolicy.js'
 import {
   type Connection,
   type ConnectionAttempt,
@@ -32,17 +33,22 @@ import {
 } from './people.js'
 import { type RunEnd, runEvents } from './queue.js'
 import {
+  type OwnerCandidate,
+  ownerCandidatesOf,
   type SharedConversation,
   type SpaceActivityPage,
   type SpaceDetail,
   type SpaceInfo,
   type SpacePatch,
   type Spaces,
+  type StewardedSpace,
   sharedConversationsOf,
   spaceActivityOf,
   spaceDetailOf,
   spaceOf,
   spacesOf,
+  stewardedSpaceOf,
+  stewardshipOf,
 } from './spaces.js'
 import { readSse } from './sse.js'
 import {
@@ -460,6 +466,57 @@ export class ProfileClient {
     await this.send(token, 'POST', `/spaces/${encodeURIComponent(spaceId)}/owner`, to)
   }
 
+  /**
+   * The owner names the space's successor (PROF-SPACE-008): a member of a list space, a person of the directory for a
+   * rule space; answered with the space. `403 not-owner` and `422 not-eligible` reach the caller.
+   */
+  public async setSuccessor(
+    token: string,
+    spaceId: string,
+    to: { memberId: string } | { directoryId: string }
+  ): Promise<SpaceDetail> {
+    const detail = spaceDetailOf(await this.send(token, 'PUT', `/spaces/${encodeURIComponent(spaceId)}/successor`, to))
+    if (!detail) throw new ProfileError(502, 'bad-response')
+    return detail
+  }
+
+  /** The owner clears the successor (PROF-SPACE-008); answered with the space. */
+  public async clearSuccessor(token: string, spaceId: string): Promise<SpaceDetail> {
+    const detail = spaceDetailOf(await this.send(token, 'DELETE', `/spaces/${encodeURIComponent(spaceId)}/successor`))
+    if (!detail) throw new ProfileError(502, 'bad-response')
+    return detail
+  }
+
+  /**
+   * The spaces of the templates the person stewards (PROF-SPACE-009), the ones with no owner first; `403 not-steward`
+   * for a person who stewards none.
+   */
+  public async stewardship(token: string): Promise<StewardedSpace[]> {
+    return stewardshipOf(await this.getJson(token, '/stewardship'))
+  }
+
+  /** Who could own a space, to a steward of its template (PROF-SPACE-009). */
+  public async ownerCandidates(token: string, spaceId: string): Promise<OwnerCandidate[]> {
+    return ownerCandidatesOf(await this.getJson(token, `/spaces/${encodeURIComponent(spaceId)}/owner/candidates`))
+  }
+
+  /**
+   * A steward names the owner of a space, with a reason (PROF-SPACE-009): answered with the space as the stewardship
+   * list gives it. `400` at `field: "reason"`, `403 not-steward` and `422 not-eligible` reach the caller.
+   */
+  public async nameOwner(
+    token: string,
+    spaceId: string,
+    to: { memberId: string } | { directoryId: string },
+    reason: string
+  ): Promise<StewardedSpace> {
+    const space = stewardedSpaceOf(
+      await this.send(token, 'POST', `/spaces/${encodeURIComponent(spaceId)}/owner`, { ...to, reason })
+    )
+    if (!space) throw new ProfileError(502, 'bad-response')
+    return space
+  }
+
   /** The space's activity, newest first (PROF-SPACE-006). */
   public async spaceActivity(token: string, spaceId: string, before?: string, limit = 50): Promise<SpaceActivityPage> {
     const query = new URLSearchParams({ limit: String(limit), ...(before ? { before } : {}) })
@@ -544,12 +601,19 @@ export class ProfileClient {
     return this.toolChange(token, 'POST', ProfileClient.toolsPath(spaceId), input)
   }
 
-  /** The owner changes bindings and rules: `200` when it only narrows, `202` when it grants (PROF-TOOL-003). */
+  /**
+   * The owner changes bindings, rules and approval policies (each policy whole, profile 3.5.4 PROF-TOOL-036): `200`
+   * when it only narrows, `202` when it grants (PROF-TOOL-003).
+   */
   public async patchSpaceTool(
     token: string,
     spaceId: string,
     source: string,
-    patch: { bindings?: Record<string, string>; calls?: Record<string, ToolRule> }
+    patch: {
+      bindings?: Record<string, string>
+      calls?: Record<string, ToolRule>
+      approvals?: Record<string, ApprovalPolicyInput>
+    }
   ): Promise<SpaceToolAnswer> {
     return this.toolChange(token, 'PATCH', ProfileClient.toolsPath(spaceId, source), patch)
   }

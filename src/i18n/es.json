@@ -255,7 +255,10 @@
     "approvedByYouWaiting": "Aprobada por ti · Esperando a otros aprobadores",
     "rejectedByYouWaiting": "Rechazada por ti · Esperando a otros aprobadores",
     "notAnswered": "Sin respuesta a tiempo",
-    "withdrawn": "Retirada"
+    "withdrawn": "Retirada",
+    "progress": "{{approvals}} de {{threshold}} aprobaciones, esperando a {{entries}}",
+    "progressCount": "{{approvals}} de {{threshold}} aprobaciones",
+    "noApprover": "Ningún otro aprobador puede decidir esto"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -269,7 +272,8 @@
     "waiting": "{{count}} en espera",
     "ended": "Esta solicitud ya se decidió o ya terminó.",
     "notEligible": "Ya no puedes decidir esta solicitud.",
-    "notSent": "Tu respuesta no se envió. Inténtalo de nuevo."
+    "notSent": "Tu respuesta no se envió. Inténtalo de nuevo.",
+    "ownRequest": "Tu propia solicitud"
   },
   "elevation": {
     "title": "Solicitar acceso",
@@ -680,7 +684,22 @@
       "transferSearch": "Buscar en la lista de empleados de {{organization}}",
       "transferHint": "Pasas a ser miembro, y la nueva persona propietaria gestiona el espacio.",
       "transferred": "{{name}} es ahora propietario de {{space}}.",
-      "notEligible": "Esta persona no puede ser propietaria del espacio."
+      "notEligible": "Esta persona no puede ser propietaria del espacio.",
+      "timeouts": "Aprobaciones",
+      "timeout": {
+        "tool-call": "Cuánto espera la aprobación de una herramienta"
+      },
+      "timeoutOther": "Cuánto espera una aprobación del tipo {{kind}}",
+      "minutes": "minutos",
+      "timeoutBounds": "La plantilla permite de {{min}} a {{max}} minutos.",
+      "timeoutBad": "Indica un número entero de minutos que la plantilla permita.",
+      "successor": "Sucesor",
+      "successorHint": "Pasa a ser propietario si dejas {{organization}}.",
+      "noSuccessor": "Sin sucesor",
+      "setSuccessor": "Nombrar sucesor",
+      "successorClear": "Quitar",
+      "successorSet": "{{name}} es el sucesor de {{space}}.",
+      "successorCleared": "{{space}} ya no tiene sucesor."
     },
     "activity": {
       "created": "{{by}} creó el espacio",
@@ -699,7 +718,11 @@
       "account-cleared": "{{by}} quitó la cuenta de {{tool}}",
       "someone": "Alguien",
       "empty": "Aún no hay actividad.",
-      "more": "Actividad anterior"
+      "more": "Actividad anterior",
+      "successor-set": "{{by}} nombró sucesor a {{member}}",
+      "successor-cleared": "{{member}} ya no es el sucesor",
+      "ownerSuccession": "{{member}} pasó a ser propietario como sucesor",
+      "ownerSteward": "{{by}}, como responsable, nombró propietario a {{member}}: {{reason}}"
     },
     "create": {
       "title": "Nuevo espacio",
@@ -735,7 +758,8 @@
     "ruleGroup_many": "Todas las personas del grupo {{name}}, {{count}} personas",
     "ruleOrganization_many": "Todas las personas de {{name}}, {{count}} personas",
     "ruleOther_many": "Por regla, {{count}} personas",
-    "listKept_many": "{{count}} miembros, una lista que lleva {{name}}"
+    "listKept_many": "{{count}} miembros, una lista que lleva {{name}}",
+    "ownerLineNone": "{{kind}} · Sin propietario"
   },
   "memories": {
     "title": "Un recuerdo tuyo",
@@ -819,12 +843,16 @@
     "rule": {
       "none": "Funciona sin preguntar",
       "confirm": "Te pregunta antes",
-      "approval": "Necesita la aprobación de {{owner}}"
+      "approval": "Necesita la aprobación de {{name}}",
+      "approvalYou": "Necesita tu aprobación",
+      "approvals_one": "Necesita {{count}} aprobación: {{entries}}",
+      "approvals_many": "Necesita {{count}} aprobaciones: {{entries}}",
+      "approvals_other": "Necesita {{count}} aprobaciones: {{entries}}"
     },
     "ownerRule": {
       "none": "Funciona sin preguntar",
       "confirm": "Pregunta antes a la persona",
-      "approval": "Necesita tu aprobación",
+      "approval": "Necesita aprobación",
       "off": "Desactivada en este espacio"
     },
     "stepUp": {
@@ -985,5 +1013,79 @@
     },
     "empty": "{{agent}} no te ofrece ninguna cuenta propia que conectar.",
     "noTab": "El navegador no abrió una pestaña nueva. Permite las ventanas emergentes en esta página e inténtalo de nuevo."
+  },
+  "policy": {
+    "entry": {
+      "anyMember": "Cualquier miembro",
+      "role": "Alguien con el rol {{role}}",
+      "department": "Alguien de {{department}}",
+      "you": "{{name}} (tú)",
+      "owner": "El propietario del espacio",
+      "required": "{{entry}} (obligatorio)"
+    },
+    "who": "Quién aprueba",
+    "required": "Obligatorio",
+    "remove": "Quitar",
+    "addApprover": "Añadir aprobador",
+    "kind": {
+      "owner": "El propietario",
+      "person": "Un miembro del espacio",
+      "member": "Cualquier miembro",
+      "role": "Un rol",
+      "department": "Un departamento"
+    },
+    "add": "Añadir",
+    "member": "Miembro",
+    "role": "Rol",
+    "department": "Departamento",
+    "needed": "Aprobaciones necesarias",
+    "refusal": "Cuando alguien rechaza",
+    "refusalAny": "Un rechazo basta para rechazar",
+    "refusalRequired": "Solo rechaza el rechazo de un aprobador obligatorio",
+    "attested": "Confirmar con huella o rostro",
+    "whenAsks": "Cuando un aprobador hace la solicitud",
+    "anotherApprover": "Decide otro aprobador",
+    "ownConfirmation": "Cuenta su propia confirmación",
+    "possessive": "{{name}}",
+    "and": " y ",
+    "ownRequestsBlocked": "Las solicitudes propias de {{names}} nunca podrán aprobarse.",
+    "unreachable": "Con estos aprobadores no se puede aprobar la solicitud de nadie.",
+    "lowerNeeded": "Bajar el número necesario",
+    "useOwnConfirmation": "Usar su propia confirmación",
+    "needsAttention": "Requiere atención: {{entries}} ya no puede aprobar",
+    "belowPackMinimum": "{{agent}} necesita al menos {{n}} aprobaciones para esta herramienta.",
+    "thresholdBelowRequired": "El número necesario cuenta a cada aprobador obligatorio.",
+    "approverNotAllowed": "{{agent}} no permite este aprobador para esta herramienta.",
+    "notEligible": "Esta persona no puede aprobar en este espacio.",
+    "attestationRequired": "{{agent}} exige una confirmación con huella o rostro para esta herramienta.",
+    "repeatedEntry": "Este aprobador ya está en la lista.",
+    "notApproval": "Esta herramienta ya no necesita aprobación en este espacio.",
+    "badPolicy": "{{agent}} no acepta esta política."
+  },
+  "notices": {
+    "ownerChanged": {
+      "handover": "{{to}} es ahora propietario de {{space}} · se lo entregó {{from}}",
+      "succession": "{{to}} es ahora propietario de {{space}} · tras la salida de {{from}}",
+      "steward": "{{to}} es ahora propietario de {{space}} · nombrado por un responsable: {{reason}}"
+    },
+    "policyAttention": "{{tool}} requiere atención: {{entries}} ya no puede aprobar",
+    "openTool": "Abrir la herramienta",
+    "noApprover": "Se rechazó la solicitud de {{requester}} para {{tool}}: ningún otro aprobador podía decidirla.",
+    "spaceWithoutOwner": "{{space}} no tiene propietario",
+    "nameOwner": "Nombrar al propietario"
+  },
+  "steward": {
+    "title": "Espacios a tu cargo",
+    "noOwner": "Sin propietario",
+    "notSteward": "Solo un responsable de este tipo de espacio nombra a su propietario.",
+    "reason": "Motivo",
+    "nameOwner": "Nombrar al propietario",
+    "successor": "Sucesor: {{name}}",
+    "candidates": "Quién podría ser propietario",
+    "noCandidates": "Nadie puede ser propietario de este espacio ahora.",
+    "empty": "No hay espacios.",
+    "named": "{{name}} es ahora propietario de {{space}}.",
+    "reasonRequired": "Indica un motivo de 1 a 500 caracteres.",
+    "notEligible": "Esta persona no puede ser propietaria del espacio."
   }
 }

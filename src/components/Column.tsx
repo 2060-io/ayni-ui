@@ -279,6 +279,18 @@ function AgentCard({ agent }: { agent: AgentRecord }) {
                 {t('accounts.menu')}
               </MenuEntry>
             ) : null}
+            {snap.stewards[agent.did] ? (
+              // for a steward of a template of spaces (UI-CONV-068)
+              <MenuEntry
+                entry="steward"
+                onClick={() => {
+                  setMenuOpen(false)
+                  hub.openSteward(agent.did)
+                }}
+              >
+                {t('steward.title')}
+              </MenuEntry>
+            ) : null}
             {snap.admins[agent.did] ? (
               <MenuEntry
                 entry="roles"

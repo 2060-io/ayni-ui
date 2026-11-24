@@ -8,6 +8,7 @@ import {
   type AgentRecord,
   type AgUiEvent,
   type AppLinkDestination,
+  type ApprovalPolicyInput,
   type ApprovalStatus,
   type BrandConfig,
   BroadcastSyncBus,
@@ -37,6 +38,7 @@ import {
   type NotificationsChange,
   type NotificationsPage,
   notificationsChangeOf,
+  type OwnerCandidate,
   type Preferences,
   ProfileClient,
   ProfileError,
@@ -57,6 +59,7 @@ import {
   type SpaceTool,
   type SpaceToolAnswer,
   type SpaceToolsChange,
+  type StewardedSpace,
   type SyncBus,
   type SyncMessage,
   spaceToolsChangeOf,
@@ -105,6 +108,8 @@ export type View =
   | 'accounts'
   /** the agent's Notifications, for the approvals no space holds (UI-APPR-007, agent D114) */
   | 'notifications'
+  /** Spaces you steward (UI-CONV-068, profile 3.5.4 PROF-SPACE-009) */
+  | 'steward'
 
 export interface Snapshot {
   ready: boolean
@@ -156,13 +161,27 @@ export interface Snapshot {
    * the space whose page is open (view `space`, UI-CONV-031); `approvalId`, the item of its Notifications a link
    * names, shown selected (UI-APPR-007, PROF-LINK-005)
    */
-  spaceFor: { agentDid: string; spaceId: string; segment: SpaceSegment; approvalId?: string } | null
+  spaceFor: {
+    agentDid: string
+    spaceId: string
+    segment: SpaceSegment
+    approvalId?: string
+    /** the source whose panel the Tools segment opens at (Open the tool, UI-APPR-011) */
+    source?: string
+  } | null
   /** the agent whose page "What <agent> keeps about you" is open (view `keeps`, UI-CONV-033) */
   keepsFor: string | null
   /** the agent whose admin view of roles is open (view `admin`, UI-CONV-042) */
   adminFor: string | null
   /** per agent: whether its admin view answers this person (UI-CONV-042); unknown until asked */
   admins: Record<string, boolean | undefined>
+  /**
+   * per agent: whether `GET {sessions}/stewardship` gives this person at least one space (UI-CONV-068): the entry Spaces
+   * you steward of the agent's menu; unknown until asked
+   */
+  stewards: Record<string, boolean | undefined>
+  /** the agent whose Spaces you steward is open (view `steward`, UI-CONV-068), and the space it opens at */
+  stewardFor: { agentDid: string; spaceId?: string } | null
   /** the conversation shared with a space that is open, read-only (view `shared`, UI-CONV-038) */
   sharedFor: { agentDid: string; spaceId: string; conversation: SharedConversation } | null
   /** the sheet of a memory or of a preference (UI-CONV-032) */
@@ -252,6 +271,8 @@ export class Hub {
       keepsFor: null,
       adminFor: null,
       admins: {},
+      stewards: {},
+      stewardFor: null,
       sharedFor: null,
       memoryFor: null,
       memoriesVersion: 0,
@@ -1242,6 +1263,7 @@ export class Hub {
     // whether the admin view answers
     await this.loadSpacesWith(agentDid, client, token).catch((e) => warn('the spaces could not be read', e))
     void this.probeAdmin(agentDid, client, token)
+    void this.probeSteward(agentDid, client, token)
   }
 
   /** The bound session of the record's conversation on this device, if any (UI-SESS-014). */
@@ -2426,6 +2448,22 @@ export class Hub {
   }
 
   /**
+   * Whether the agent gives this person spaces to steward (UI-CONV-068, PROF-SPACE-009): asked once per page load. A
+   * person who stewards none is refused (`403 not-steward`), and an agent of no governance answers `404`: no entry.
+   */
+  private async probeSteward(agentDid: string, client: ProfileClient, token: string): Promise<void> {
+    if (this.snapshot.stewards[agentDid] !== undefined) return
+    this.snapshot = { ...this.snapshot, stewards: { ...this.snapshot.stewards, [agentDid]: false } }
+    try {
+      const spaces = await client.stewardship(token)
+      this.set({ stewards: { ...this.snapshot.stewards, [agentDid]: spaces.length > 0 } })
+    } catch (e) {
+      const refused = e instanceof ProfileError && (e.status === 403 || e.status === 404)
+      this.set({ stewards: { ...this.snapshot.stewards, [agentDid]: refused ? false : undefined } })
+    }
+  }
+
+  /**
    * A call of the agent on the person's behalf, with any bound session's token (profile 3.3 §3.7 to §3.9). With none
    * bound, a paired browser gets one quietly first (UI-SESS-016): what the person has on screen stays there.
    */
@@ -2452,17 +2490,21 @@ export class Hub {
     throw new Error('link your phone first')
   }
 
-  /** A space's page in the main pane (UI-CONV-031); `approvalId`, an item of its Notifications to show selected. */
+  /**
+   * A space's page in the main pane (UI-CONV-031); `approvalId`, an item of its Notifications to show selected;
+   * `source`, the panel of a source its Tools segment opens at (UI-APPR-011).
+   */
   public openSpace(
     agentDid: string,
     spaceId: string,
     segment: SpaceSegment = 'conversations',
-    approvalId?: string
+    approvalId?: string,
+    source?: string
   ): void {
     const agent = this.snapshot.agents.find((a) => a.did === agentDid)
     this.set({
       view: 'space',
-      spaceFor: { agentDid, spaceId, segment, ...(approvalId ? { approvalId } : {}) },
+      spaceFor: { agentDid, spaceId, segment, ...(approvalId ? { approvalId } : {}), ...(source ? { source } : {}) },
       selectedAgentDid: agentDid,
       selectedControllerDid: agent?.controllerDid ?? this.snapshot.selectedControllerDid,
       inspect: null,
@@ -2471,8 +2513,8 @@ export class Hub {
 
   public setSpaceSegment(segment: SpaceSegment): void {
     if (!this.snapshot.spaceFor) return
-    // the item a link named stays selected only on the segment it opened
-    const { approvalId: _named, ...spaceFor } = this.snapshot.spaceFor
+    // the item a link named, and the panel a notice opened, stay only on the segment they opened
+    const { approvalId: _named, source: _source, ...spaceFor } = this.snapshot.spaceFor
     this.set({ spaceFor: { ...spaceFor, segment } })
   }
 
@@ -2524,6 +2566,57 @@ export class Hub {
     await this.withAgent(agentDid, (client, token) => client.transferOwnership(token, spaceId, to))
     await this.loadSpaces(agentDid).catch(() => undefined)
     if (this.snapshot.spaceFor?.spaceId === spaceId) this.setSpaceSegment('about')
+  }
+
+  /** The owner names the space's successor (UI-CONV-041, PROF-SPACE-008); the list of spaces says it. */
+  public async setSuccessor(
+    agentDid: string,
+    spaceId: string,
+    to: { memberId: string } | { directoryId: string }
+  ): Promise<void> {
+    await this.withAgent(agentDid, (client, token) => client.setSuccessor(token, spaceId, to))
+    await this.loadSpaces(agentDid).catch(() => undefined)
+  }
+
+  /** The owner clears the successor (UI-CONV-041, PROF-SPACE-008). */
+  public async clearSuccessor(agentDid: string, spaceId: string): Promise<void> {
+    await this.withAgent(agentDid, (client, token) => client.clearSuccessor(token, spaceId))
+    await this.loadSpaces(agentDid).catch(() => undefined)
+  }
+
+  // ---- Spaces you steward (UI-CONV-068; profile 3.5.4 PROF-SPACE-009) ---------------------------------------------
+
+  /** Spaces you steward in the main pane (UI-CONV-068), at the space a notice names (UI-APPR-011). */
+  public openSteward(agentDid: string, spaceId?: string): void {
+    const agent = this.snapshot.agents.find((a) => a.did === agentDid)
+    this.set({
+      view: 'steward',
+      stewardFor: { agentDid, ...(spaceId ? { spaceId } : {}) },
+      selectedAgentDid: agentDid,
+      selectedControllerDid: agent?.controllerDid ?? this.snapshot.selectedControllerDid,
+      trustFor: null,
+      inspect: null,
+    })
+  }
+
+  public stewardship(agentDid: string): Promise<StewardedSpace[]> {
+    return this.withAgent(agentDid, (client, token) => client.stewardship(token))
+  }
+
+  public ownerCandidates(agentDid: string, spaceId: string): Promise<OwnerCandidate[]> {
+    return this.withAgent(agentDid, (client, token) => client.ownerCandidates(token, spaceId))
+  }
+
+  /** A steward names the owner, with a reason (PROF-SPACE-009); the person's own spaces may change with it. */
+  public async nameOwner(
+    agentDid: string,
+    spaceId: string,
+    to: { memberId: string } | { directoryId: string },
+    reason: string
+  ): Promise<StewardedSpace> {
+    const space = await this.withAgent(agentDid, (client, token) => client.nameOwner(token, spaceId, to, reason))
+    await this.loadSpaces(agentDid).catch(() => undefined)
+    return space
   }
 
   public spaceActivity(agentDid: string, spaceId: string, before?: string) {
@@ -2666,7 +2759,11 @@ export class Hub {
     agentDid: string,
     spaceId: string,
     source: string,
-    patch: { bindings?: Record<string, string>; calls?: Record<string, ToolRule> }
+    patch: {
+      bindings?: Record<string, string>
+      calls?: Record<string, ToolRule>
+      approvals?: Record<string, ApprovalPolicyInput>
+    }
   ): Promise<SpaceToolAnswer> {
     return this.withAgent(agentDid, (client, token) => client.patchSpaceTool(token, spaceId, source, patch))
   }

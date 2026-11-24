@@ -8,13 +8,32 @@
  * (what an item offers, the words of its status, which card a conversation draws) are here too, so that the browser
  * and the Ayni app apply the same ones.
  */
+import {
+  type ApprovalPolicyView,
+  type ApprovalProgress,
+  approvalPolicyOf,
+  approvalProgressOf,
+  type ProgressEntry,
+  type ProgressLine,
+  progressLineOf,
+} from './approvalPolicy.js'
+import type { OwnerChange } from './spaces.js'
 import { type ApprovalStatus, isConfirmation, type ToolAction, toolActionOf } from './tools.js'
 
 /** The live event of a notification of the person that entered, changed or ended in a list (PROF-TOOL-025). */
 export const NOTIFICATIONS_CHANGED = 'ayni.space.notifications.changed'
 
-/** The kinds of notification; this version lists approvals only (agent D114, O43). */
-export type NotificationKind = 'approval'
+/** The notices of a space's governance (profile 3.5.4, PROF-TOOL-038; agent D142). */
+export type GovernanceNoticeKind = 'owner-changed' | 'policy-attention' | 'no-approver' | 'space-without-owner'
+export const GOVERNANCE_NOTICE_KINDS: readonly GovernanceNoticeKind[] = [
+  'owner-changed',
+  'policy-attention',
+  'no-approver',
+  'space-without-owner',
+]
+
+/** The kinds of notification: an approval, or a notice of a space's governance (agent D114, D142). */
+export type NotificationKind = 'approval' | GovernanceNoticeKind
 
 /** One decision an approver made (`decisions` of §3.12). */
 export interface ApprovalDecision {
@@ -22,12 +41,16 @@ export interface ApprovalDecision {
   by: string
   decision: 'approve' | 'reject'
   at: string
+  /** the requester's own confirmation of their own request (profile 3.5.4, PROF-TOOL-037) */
+  self?: boolean
 }
 
 /**
  * The approval an item carries (§3.12): the shape of the `ayni.approval` activity as this person may read it. `own`: a
- * request the person sent, which they read and never decide; `canDecide`: while they may decide it; `attested`: its
- * decision is made on the phone only; `myDecision`: the person's own, while it waits for other approvers.
+ * request the person sent, which they read and never decide, but their own confirmation of a tool of a space (`own`
+ * and `canDecide`, profile 3.5.4); `canDecide`: while they may decide it; `attested`: its decision is made on the phone
+ * only; `myDecision`: the person's own, while it waits for other approvers; `policy` and `progress`, for a tool of a
+ * space (PROF-TOOL-037); `reason: "no-approver"`: refused at once, for want of another approver.
  */
 export interface NotificationApproval {
   approvalId: string
@@ -48,16 +71,42 @@ export interface NotificationApproval {
   justification?: string
   decisions: ApprovalDecision[]
   closedAt?: string
+  policy?: ApprovalPolicyView
+  progress?: ApprovalProgress
+  reason?: 'no-approver'
 }
 
-/** An item of the Notifications (PROF-TOOL-024). `waiting`: the person can still decide it. */
-export interface NotificationItem {
-  id: string
-  kind: NotificationKind
-  /** when the request was made, and the list's order */
-  at: string
-  waiting: boolean
-  approval: NotificationApproval
+/**
+ * A notice of a space's governance (PROF-TOOL-038), read-only: `owner-changed` to every member (`how`, `from`, `to`, a
+ * steward's `reason`); `policy-attention` to the owner (`tool`, `entries` that name nobody); `no-approver` to the owner
+ * (`tool`, `requester`); `space-without-owner` to the stewards, in the agent's Notifications (`template`,
+ * `formerOwner`). `resolvedAt` once what it reports is resolved.
+ */
+export interface GovernanceNotice {
+  space: { id: string; title: string }
+  how?: OwnerChange
+  from?: { name: string } | null
+  to?: { name: string } | null
+  reason?: string
+  tool?: { source: string; title: string }
+  entries?: ProgressEntry[]
+  requester?: { displayName: string }
+  template?: { id: string; title: string }
+  formerOwner?: { name: string } | null
+  resolvedAt?: string
+}
+
+/**
+ * An item of the Notifications (PROF-TOOL-024): an approval, or a notice of a space's governance. `waiting`: the person
+ * can still decide the approval, or the notice waits until what it reports is resolved (it counts in the badge).
+ */
+export type NotificationItem =
+  | { id: string; kind: 'approval'; at: string; waiting: boolean; approval: NotificationApproval }
+  | { id: string; kind: GovernanceNoticeKind; at: string; waiting: boolean; notice: GovernanceNotice }
+
+/** Whether an item is an approval, which carries `approval`. */
+export function isApprovalItem(item: NotificationItem): item is Extract<NotificationItem, { kind: 'approval' }> {
+  return item.kind === 'approval'
 }
 
 /** A page of a list, newest first; `waiting` counts what waits for the person in the whole place: the badge. */
@@ -112,8 +161,12 @@ export function notificationApprovalOf(value: unknown): NotificationApproval | n
   const own = a.own === true
   const decisions = list(a.decisions).flatMap((d): ApprovalDecision[] => {
     const decision = decisionOf(d.decision)
-    return decision ? [{ by: str(obj(d.by).displayName), decision, at: str(d.at) }] : []
+    return decision
+      ? [{ by: str(obj(d.by).displayName), decision, at: str(d.at), ...(d.self === true ? { self: true } : {}) }]
+      : []
   })
+  const policy = approvalPolicyOf(a.policy)
+  const progress = approvalProgressOf(a.progress)
   return {
     approvalId: a.approvalId,
     kind: a.kind === 'elevation' ? 'elevation' : 'sensitivity',
@@ -124,8 +177,9 @@ export function notificationApprovalOf(value: unknown): NotificationApproval | n
       ...(typeof requester.role === 'string' ? { role: requester.role } : {}),
     },
     own,
-    // a request the person sent is read, never decided
-    canDecide: !own && a.canDecide === true,
+    // a request the person sent is read, never decided, but their own confirmation of a call of a space's tool, which
+    // they decide on their phone (profile 3.5.4, PROF-TOOL-037)
+    canDecide: a.canDecide === true && (!own || (!!action && !!space)),
     attested: a.attested === true,
     myDecision: decisionOf(a.myDecision),
     ...(typeof a.tool === 'string' ? { tool: a.tool } : {}),
@@ -135,12 +189,52 @@ export function notificationApprovalOf(value: unknown): NotificationApproval | n
     ...(typeof a.justification === 'string' ? { justification: a.justification } : {}),
     decisions,
     ...(typeof a.closedAt === 'string' ? { closedAt: a.closedAt } : {}),
+    ...(policy ? { policy } : {}),
+    ...(progress ? { progress } : {}),
+    ...(a.reason === 'no-approver' ? { reason: 'no-approver' as const } : {}),
+  }
+}
+
+/** A notice as the agent gives it; null for one with no space. */
+export function governanceNoticeOf(value: unknown): GovernanceNotice | null {
+  const n = obj(value)
+  const space = spaceOf(n.space)
+  if (!space) return null
+  const named = (v: unknown) =>
+    v === null ? null : typeof obj(v).name === 'string' ? { name: str(obj(v).name) } : undefined
+  const tool = obj(n.tool)
+  const template = obj(n.template)
+  const from = named(n.from)
+  const to = named(n.to)
+  const formerOwner = named(n.formerOwner)
+  const progress = approvalProgressOf({ threshold: 1, approvals: 0, waitingFor: n.entries })
+  return {
+    space,
+    ...(n.how === 'handover' || n.how === 'succession' || n.how === 'steward' ? { how: n.how } : {}),
+    ...(from !== undefined ? { from } : {}),
+    ...(to !== undefined ? { to } : {}),
+    ...(typeof n.reason === 'string' && n.reason ? { reason: n.reason } : {}),
+    ...(typeof tool.source === 'string' ? { tool: { source: tool.source, title: str(tool.title, tool.source) } } : {}),
+    ...(Array.isArray(n.entries) && progress ? { entries: progress.waitingFor } : {}),
+    ...(typeof obj(n.requester).displayName === 'string'
+      ? { requester: { displayName: str(obj(n.requester).displayName) } }
+      : {}),
+    ...(typeof template.id === 'string'
+      ? { template: { id: template.id, title: str(template.title, template.id) } }
+      : {}),
+    ...(formerOwner !== undefined ? { formerOwner } : {}),
+    ...(typeof n.resolvedAt === 'string' && n.resolvedAt ? { resolvedAt: n.resolvedAt } : {}),
   }
 }
 
 /** An item as the agent gives it; null for one this client does not know how to show. */
 export function notificationOf(value: unknown): NotificationItem | null {
   const n = obj(value)
+  if (GOVERNANCE_NOTICE_KINDS.includes(n.kind as GovernanceNoticeKind)) {
+    const notice = governanceNoticeOf(n.notice)
+    if (!notice || typeof n.id !== 'string' || !n.id) return null
+    return { id: n.id, kind: n.kind as GovernanceNoticeKind, at: str(n.at), waiting: n.waiting === true, notice }
+  }
   if (n.kind !== 'approval') return null
   const approval = notificationApprovalOf(n.approval)
   if (!approval) return null
@@ -173,7 +267,9 @@ export function notificationsChangeOf(value: unknown): NotificationsChange | nul
   return {
     spaceId: v.spaceId,
     id: str(v.id),
-    kind: 'approval',
+    kind: GOVERNANCE_NOTICE_KINDS.includes(v.kind as GovernanceNoticeKind)
+      ? (v.kind as GovernanceNoticeKind)
+      : 'approval',
     waiting: v.waiting === true,
     count: count(v.count),
   }
@@ -199,14 +295,22 @@ export function notificationsWaitingOf(space: { notificationsWaiting?: number } 
 export function notificationControlsOf(
   a: Pick<NotificationApproval, 'own' | 'canDecide' | 'status' | 'myDecision' | 'attested'>
 ): 'decide' | 'phone' | 'none' {
-  if (a.own || !a.canDecide || a.status !== 'PENDING' || a.myDecision) return 'none'
+  if (!a.canDecide || a.status !== 'PENDING' || a.myDecision) return 'none'
+  // the requester's own confirmation is always decided on their phone (UI-APPR-010, agent INTX-APPR-023)
+  if (a.own) return 'phone'
   return a.attested ? 'phone' : 'decide'
+}
+
+/** Whether an item is the person's own confirmation of their own request (UI-APPR-010): `own` and `canDecide`. */
+export function isOwnConfirmation(a: Pick<NotificationApproval, 'own' | 'canDecide'>): boolean {
+  return a.own && a.canDecide
 }
 
 /** The heading of an item (UI-APPR-007): "<requester> asks for your approval", or "Sent by you". */
 export function notificationHeadingOf(
-  a: Pick<NotificationApproval, 'own' | 'requester'>
-): { key: 'asksYou'; requester: string } | { key: 'sentByYou' } {
+  a: Pick<NotificationApproval, 'own' | 'requester'> & Partial<Pick<NotificationApproval, 'canDecide'>>
+): { key: 'asksYou'; requester: string } | { key: 'sentByYou' } | { key: 'ownRequest' } {
+  if (a.own && a.canDecide) return { key: 'ownRequest' }
   return a.own ? { key: 'sentByYou' } : { key: 'asksYou', requester: a.requester.displayName }
 }
 
@@ -219,6 +323,10 @@ export function notificationHeadingOf(
 export type ApprovalStatusLine =
   | { key: 'waitingFor'; approver: string }
   | { key: 'waiting' }
+  /** where an approval of a tool of a space stands (UI-APPR-010) */
+  | Extract<ProgressLine, { key: 'progress' }>
+  /** refused at once: "No other approver can decide this" (UI-APPR-010) */
+  | { key: 'noApprover' }
   | { key: 'timeLeft'; expiresAt: string }
   | { key: 'mine'; decision: 'approve' | 'reject' }
   | { key: 'decided'; decision: 'approve' | 'reject'; by: string; you: boolean; at?: string }
@@ -265,6 +373,7 @@ function endedLine(
  * time left while they may decide; the requester's line on a request they sent (`owner`: the space's owner's name).
  */
 export function notificationStatusOf(a: NotificationApproval, me?: string, owner?: string): ApprovalStatusLine {
+  if (a.status === 'REJECTED' && a.reason === 'no-approver') return { key: 'noApprover' }
   if (a.status !== 'PENDING') {
     const decision = a.status === 'APPROVED' ? 'approve' : 'reject'
     const ending =
@@ -279,8 +388,20 @@ export function notificationStatusOf(a: NotificationApproval, me?: string, owner
     return endedLine(a.status, decided) ?? { key: 'waiting' }
   }
   if (a.myDecision) return { key: 'mine', decision: a.myDecision }
-  if (!a.own && a.canDecide && a.expiresAt) return { key: 'timeLeft', expiresAt: a.expiresAt }
+  if (a.canDecide && a.expiresAt) return { key: 'timeLeft', expiresAt: a.expiresAt }
+  if (a.progress) return progressLineOf(a.progress, a.policy)
   return owner ? { key: 'waitingFor', approver: owner } : { key: 'waiting' }
+}
+
+/**
+ * The progress an approver's item shows beside the time left while they may decide (UI-APPR-007, UI-APPR-010): for a
+ * policy of several approvals or approvers, where it stands; none for one person and one approval, which would only
+ * name the reader.
+ */
+export function deciderProgressOf(a: NotificationApproval): Extract<ProgressLine, { key: 'progress' }> | null {
+  if (a.status !== 'PENDING' || !a.canDecide || a.myDecision || !a.progress) return null
+  const line = progressLineOf(a.progress, a.policy)
+  return line.key === 'progress' ? line : null
 }
 
 /**
@@ -291,10 +412,61 @@ export function notificationStatusOf(a: NotificationApproval, me?: string, owner
 export function cardStatusOf(content: unknown, owner?: string): ApprovalStatusLine {
   const c = obj(content)
   const status = statusOf(c.status)
+  if (status === 'REJECTED' && c.reason === 'no-approver') return { key: 'noApprover' }
   const by = str(c.decidedBy)
   const line = endedLine(status, by ? { by, you: false } : null)
   if (line) return line
+  // a tool of a space: where it stands (UI-APPR-010), updated by each `ayni.approval.update`
+  const progress = approvalProgressOf(c.progress)
+  if (progress) return progressLineOf(progress, approvalPolicyOf(c.policy))
   return owner ? { key: 'waitingFor', approver: owner } : { key: 'waiting' }
+}
+
+/** The words a notice says (UI-APPR-011, UI-CONV-052), and the control it carries while it waits. */
+export type NoticeWords =
+  | { key: 'ownerChanged'; how: OwnerChange; to: string; space: string; from: string; reason: string }
+  | { key: 'policyAttention'; tool: string; entries: ProgressEntry[]; source: string; spaceId: string }
+  | { key: 'noApprover'; requester: string; tool: string }
+  | { key: 'spaceWithoutOwner'; space: string; spaceId: string }
+
+export function noticeWordsOf(item: Extract<NotificationItem, { kind: GovernanceNoticeKind }>): NoticeWords {
+  const n = item.notice
+  switch (item.kind) {
+    case 'owner-changed':
+      return {
+        key: 'ownerChanged',
+        how: n.how ?? 'handover',
+        to: n.to?.name ?? '',
+        space: n.space.title,
+        from: n.from?.name ?? '',
+        reason: n.reason ?? '',
+      }
+    case 'policy-attention':
+      return {
+        key: 'policyAttention',
+        tool: n.tool?.title ?? '',
+        entries: n.entries ?? [],
+        source: n.tool?.source ?? '',
+        spaceId: n.space.id,
+      }
+    case 'no-approver':
+      return { key: 'noApprover', requester: n.requester?.displayName ?? '', tool: n.tool?.title ?? '' }
+    default:
+      return { key: 'spaceWithoutOwner', space: n.space.title, spaceId: n.space.id }
+  }
+}
+
+/**
+ * The control a notice offers (UI-APPR-011): Open the tool for a policy that needs attention, Name the owner for a
+ * space without one, while the notice waits; a notice resolved reads as past, with none.
+ */
+export function noticeControlOf(
+  item: Extract<NotificationItem, { kind: GovernanceNoticeKind }>
+): 'openTool' | 'nameOwner' | null {
+  if (!item.waiting || item.notice.resolvedAt) return null
+  if (item.kind === 'policy-attention' && item.notice.tool?.source) return 'openTool'
+  if (item.kind === 'space-without-owner') return 'nameOwner'
+  return null
 }
 
 /**

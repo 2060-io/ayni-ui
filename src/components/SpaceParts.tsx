@@ -71,7 +71,9 @@ export function membersLong(space: SpaceInfo, organization: string, t: T): strin
     case 'personal':
       return t('spaces.onlyYou')
     case 'list':
-      return t('spaces.listKept', { count: line.count, name: space.owner.name })
+      return space.owner
+        ? t('spaces.listKept', { count: line.count, name: space.owner.name })
+        : t('spaces.members', { count: line.count })
     case 'department':
       return t('spaces.ruleDepartment', { count: line.count, name: line.name })
     case 'group':

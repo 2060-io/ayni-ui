@@ -1,11 +1,12 @@
 /**
- * What the owner of a space manages on the web (UI-CONV-040, UI-CONV-041; agent D80, D81, D90): its members, picked
- * from the employee list or invited from another organization by email; its settings within the template's bounds and
- * the transfer of its ownership; its activity.
+ * What the owner of a space manages on the web (UI-CONV-040, UI-CONV-041; agent D80, D81, D90, D136, D138): its
+ * members, picked from the employee list or invited from another organization by email; its settings within the
+ * template's bounds, the approval timeouts among them, its successor and the transfer of its ownership; its activity.
  */
 import {
   type AgentRecord,
   type DirectoryPerson,
+  handoverCandidatesOf,
   lawfulBasisKeyOf,
   looksLikeEmail,
   memberRefusalOf,
@@ -17,6 +18,9 @@ import {
   type SpaceInfo,
   type SpacePatch,
   type SpaceRules,
+  type TimeoutChoice,
+  timeoutChoicesOf,
+  timeoutFits,
 } from '@ayni.org/ayni-ui-core'
 import { Building2, Search, ShieldCheck, UserPlus } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -68,7 +72,7 @@ function useSearch<T>(search: (q: string) => Promise<T[]>, query: string): { res
 }
 
 /** The member picker (UI-CONV-040): a search of the employee list (PROF-DIR-001); each person found is added. */
-function PeoplePicker({
+export function PeoplePicker({
   agent,
   title,
   actionLabel,
@@ -402,6 +406,13 @@ export function SettingsSegment({ agent, space }: { agent: AgentRecord; space: S
   const [basis, setBasis] = useState(space.rules.lawfulBasis)
   const [providers, setProviders] = useState<string[]>(space.rules.allowedProviders)
   const [handover, setHandover] = useState(space.rules.handover)
+  // the approval timeouts, one per kind, in minutes (UI-CONV-041, agent D138)
+  const timeouts = timeoutChoicesOf(space, template?.bounds)
+  const [minutes, setMinutes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(timeouts.map((c) => [c.kind, c.minutes === null ? '' : String(c.minutes)]))
+  )
+  const timeoutLabel = (kind: string) =>
+    kind === 'tool-call' ? t('spaces.settings.timeout.tool-call') : t('spaces.settings.timeoutOther', { kind })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const fieldLabel = (field: string) =>
@@ -414,7 +425,8 @@ export function SettingsSegment({ agent, space }: { agent: AgentRecord; space: S
       'rules.lawfulBasis': t('spaces.settings.basis', { agent: agent.name }),
       'rules.allowedProviders': t('spaces.settings.models'),
       'rules.handover': t('spaces.settings.handover'),
-    })[field] ?? field
+    })[field] ??
+    (field.startsWith('rules.approvalTimeouts.') ? timeoutLabel(field.slice('rules.approvalTimeouts.'.length)) : field)
   const save = async () => {
     if (!title.trim() || !purpose.trim()) {
       setError(t('spaces.settings.required'))
@@ -431,6 +443,18 @@ export function SettingsSegment({ agent, space }: { agent: AgentRecord; space: S
     if (basis !== space.rules.lawfulBasis) rules.lawfulBasis = basis
     if (providers.join('\n') !== space.rules.allowedProviders.join('\n')) rules.allowedProviders = providers
     if (handover !== space.rules.handover) rules.handover = handover
+    const changedTimeouts: Record<string, number> = {}
+    for (const choice of timeouts) {
+      const typed = minutes[choice.kind] ?? ''
+      if (typed.trim() === (choice.minutes === null ? '' : String(choice.minutes))) continue
+      // checked against the template's bounds first; the agent refuses the others, naming the field
+      if (!timeoutFits(choice, typed)) {
+        setError(t('spaces.settings.timeoutBad'))
+        return
+      }
+      changedTimeouts[choice.kind] = Number(typed.trim())
+    }
+    if (Object.keys(changedTimeouts).length) rules.approvalTimeouts = changedTimeouts
     if (Object.keys(rules).length) patch.rules = rules
     if (!Object.keys(patch).length) return
     setBusy(true)
@@ -548,14 +572,166 @@ export function SettingsSegment({ agent, space }: { agent: AgentRecord; space: S
             {t('spaces.settings.handoverLabel')}
           </label>
         </fieldset>
+        {timeouts.length ? (
+          <fieldset className="field">
+            <legend>{t('spaces.settings.timeouts')}</legend>
+            {timeouts.map((c) => (
+              <TimeoutField
+                key={c.kind}
+                choice={c}
+                label={timeoutLabel(c.kind)}
+                value={minutes[c.kind] ?? ''}
+                onChange={(value) => setMinutes((all) => ({ ...all, [c.kind]: value }))}
+              />
+            ))}
+          </fieldset>
+        ) : null}
         <div className="dialog-actions">
           <button type="submit" className="btn primary" disabled={busy}>
             {t('spaces.settings.save')}
           </button>
         </div>
       </form>
+      <Successor agent={agent} space={space} />
       <Transfer agent={agent} space={space} />
     </div>
+  )
+}
+
+/** One approval timeout (UI-CONV-041): its minutes, with the template's bounds when the agent gives them. */
+function TimeoutField({
+  choice,
+  label,
+  value,
+  onChange,
+}: {
+  choice: TimeoutChoice
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <label className="field timeout-field">
+      {label}
+      <span className="timeout-input">
+        <input
+          className="input timeout-minutes"
+          type="number"
+          inputMode="numeric"
+          min={choice.min ?? 1}
+          max={choice.max}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <span className="muted small">{t('spaces.settings.minutes')}</span>
+      </span>
+      {choice.min !== undefined && choice.max !== undefined ? (
+        <span className="muted small">{t('spaces.settings.timeoutBounds', { min: choice.min, max: choice.max })}</span>
+      ) : null}
+    </label>
+  )
+}
+
+/**
+ * The successor (UI-CONV-041, PROF-SPACE-008): the person who becomes the owner when the owner's entry leaves the
+ * directory, chosen among the people the space could be handed to (an active member who is not a guest, a person the
+ * rule matches), with Clear. Only the owner reads it.
+ */
+function Successor({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
+  const hub = useHub()
+  const { t } = useTranslation()
+  const refusal = useRefusal(agent)
+  const detail = useSpaceDetail(agent.did, space)
+  const [memberId, setMemberId] = useState('')
+  const [picking, setPicking] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const title = spaceTitle(space, t)
+  const organization = organizationNameOf(agent)
+  const candidates = handoverCandidatesOf(detail?.members)
+  const refused = (e: unknown) =>
+    hub.notify(
+      'error',
+      e instanceof ProfileError && e.code === 'not-eligible' ? t('spaces.settings.notEligible') : refusal(e)
+    )
+  const name = async (to: { memberId: string } | { directoryId: string }, person: string) => {
+    setBusy(true)
+    try {
+      await hub.setSuccessor(agent.did, space.id, to)
+      hub.notify('info', t('spaces.settings.successorSet', { name: person, space: title }))
+      setMemberId('')
+    } catch (e) {
+      refused(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await hub.clearSuccessor(agent.did, space.id)
+      hub.notify('info', t('spaces.settings.successorCleared', { space: title }))
+    } catch (e) {
+      refused(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section className="box successor" aria-label={t('spaces.settings.successor')}>
+      <b>{t('spaces.settings.successor')}</b>
+      <span className="muted small">{t('spaces.settings.successorHint', { organization })}</span>
+      <div className="transfer-row">
+        <span className="successor-name">{space.successor?.name ?? t('spaces.settings.noSuccessor')}</span>
+        {space.successor ? (
+          <button type="button" className="btn" disabled={busy} onClick={() => void clear()}>
+            {t('spaces.settings.successorClear')}
+          </button>
+        ) : null}
+      </div>
+      {space.membership.mode === 'list' ? (
+        <div className="transfer-row">
+          <select
+            className="input"
+            aria-label={t('spaces.settings.successor')}
+            value={memberId}
+            onChange={(e) => setMemberId(e.target.value)}
+          >
+            <option value="">{t('spaces.settings.transferPick')}</option>
+            {candidates.map((m) => (
+              <option key={m.memberId} value={m.memberId}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn"
+            disabled={!memberId || busy}
+            onClick={() => void name({ memberId }, candidates.find((m) => m.memberId === memberId)?.name ?? '')}
+          >
+            {t('spaces.settings.setSuccessor')}
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="btn" disabled={busy} onClick={() => setPicking(true)}>
+          {t('spaces.settings.transferSearch', { organization })}
+        </button>
+      )}
+      {picking ? (
+        <PeoplePicker
+          agent={agent}
+          title={t('spaces.settings.successor')}
+          actionLabel={t('spaces.settings.setSuccessor')}
+          onPick={async (p) => {
+            await name({ directoryId: p.directoryId }, p.name)
+            setPicking(false)
+          }}
+          onClose={() => setPicking(false)}
+        />
+      ) : null}
+    </section>
   )
 }
 
@@ -582,7 +758,8 @@ function Transfer({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
       )
     }
   }
-  const candidates = (detail?.members ?? []).filter((m) => m.state === 'active' && m.role !== 'owner')
+  // an active member who is not a guest: the agent refuses any other (`422 not-eligible`)
+  const candidates = handoverCandidatesOf(detail?.members)
   return (
     <section className="box transfer">
       <b>{t('spaces.settings.transfer')}</b>
@@ -632,6 +809,16 @@ function Transfer({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   )
 }
 
+/**
+ * The words of a line of activity: a change of owner by its `how` (handed over, by succession, named by a steward with
+ * the steward's reason; profile 3.5.4), every other by its kind.
+ */
+function activityKey(a: SpaceActivityItem): string {
+  if (a.kind === 'owner-changed' && a.how === 'succession') return 'spaces.activity.ownerSuccession'
+  if (a.kind === 'owner-changed' && a.how === 'steward') return 'spaces.activity.ownerSteward'
+  return `spaces.activity.${a.kind}`
+}
+
 /** Activity (UI-CONV-041, UI-CONV-051): newest first; who did what, never the value of a field nor a token. */
 export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
@@ -662,10 +849,11 @@ export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: S
             <li key={`${a.at}-${i}`}>
               <span className="time">{formatTime(a.at, i18n.language)}</span>
               <span>
-                {t(`spaces.activity.${a.kind}`, {
+                {t(activityKey(a), {
                   by: a.by?.name ?? someone,
                   member: a.member?.name ?? someone,
                   tool: a.tool?.title ?? someone,
+                  reason: a.reason ?? '',
                 })}
               </span>
             </li>

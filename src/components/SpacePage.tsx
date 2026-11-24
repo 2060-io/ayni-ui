@@ -74,7 +74,10 @@ export function SpacePage() {
               ? kind
               : space.role === 'owner'
                 ? t('spaces.ownerLineYou', { kind })
-                : t('spaces.ownerLine', { kind, name: space.owner.name })}
+                : space.owner
+                  ? t('spaces.ownerLine', { kind, name: space.owner.name })
+                  : // its owner left with no successor, until a steward names one (agent D136)
+                    t('spaces.ownerLineNone', { kind })}
           </span>
         </div>
       </header>
@@ -110,7 +113,7 @@ export function SpacePage() {
         ) : segment === 'members' ? (
           <MembersSegment agent={agent} space={space} />
         ) : segment === 'tools' ? (
-          <ToolsSegment agent={agent} space={space} />
+          <ToolsSegment key={ref.source ?? ''} agent={agent} space={space} source={ref.source} />
         ) : segment === 'settings' ? (
           <SettingsSegment agent={agent} space={space} />
         ) : (
@@ -243,7 +246,7 @@ function AboutSegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }
         <section className="space-section">
           <h3 className="section-label">{t('spaces.purpose')}</h3>
           <blockquote className="space-purpose">{space.purpose}</blockquote>
-          {space.owner.name ? <div className="muted small purpose-by">{space.owner.name}</div> : null}
+          {space.owner?.name ? <div className="muted small purpose-by">{space.owner.name}</div> : null}
         </section>
       ) : null}
       {space.brief ? (

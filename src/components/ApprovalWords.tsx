@@ -1,12 +1,87 @@
 /**
  * The words and the marks of an approval's status (UI-CONV-052; agent D114), for the requester's card and for the items
- * of the Notifications, and the badge of what waits in a place (PROF-TOOL-025).
+ * of the Notifications, and the badge of what waits in a place (PROF-TOOL-025); the words of an approval policy's
+ * entries and of where an approval stands (profile 3.5.4, UI-APPR-010), shared by About, the owner's panel, the card,
+ * the Notifications and their notices.
  */
-import { type ApprovalStatusLine, decidedAtOf, timeLeftOf } from '@ayni.org/ayni-ui-core'
+import {
+  type ApprovalPolicyView,
+  type ApprovalStatusLine,
+  decidedAtOf,
+  type EntryWords,
+  entryWordsOf,
+  type ProgressEntry,
+  type ProgressLine,
+  policyRuleWordsOf,
+  timeLeftOf,
+} from '@ayni.org/ayni-ui-core'
 import { Ban, Bell, Check, Clock, OctagonX } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 type T = (key: string, options?: Record<string, unknown>) => string
+
+/** An entry of a policy in words (UI-CONV-052): the person's name, "<name> (you)", "Any member", a role, a department. */
+export function entryText(words: EntryWords, t: T): string {
+  switch (words.key) {
+    case 'name':
+      return words.name
+    case 'self':
+      return t('policy.entry.you', { name: words.name })
+    case 'anyMember':
+      return t('policy.entry.anyMember')
+    case 'role':
+      return t('policy.entry.role', { role: words.role })
+    case 'department':
+      return t('policy.entry.department', { department: words.department })
+    default:
+      return t('policy.entry.owner')
+  }
+}
+
+/**
+ * Entries in words, joined by ", " (UI-CONV-052), each required one followed by " (required)" where the table marks
+ * them (About and the progress).
+ */
+export function entriesText(entries: readonly (EntryWords & { required?: boolean })[], t: T, marked = true): string {
+  return entries
+    .map((e) => (marked && e.required ? t('policy.entry.required', { entry: entryText(e, t) }) : entryText(e, t)))
+    .join(', ')
+}
+
+/** Entries that name nobody, as the attention line puts them (UI-CONV-067): their words, unmarked. */
+export function attentionText(entries: readonly ProgressEntry[], t: T): string {
+  return entriesText(
+    entries.map((e) => entryWordsOf(e)),
+    t,
+    false
+  )
+}
+
+/** Where an approval stands (UI-APPR-010): "1 of 2 approvals, waiting for Jonas Weber (required)". */
+export function progressText(line: Extract<ProgressLine, { key: 'progress' }>, t: T): string {
+  return line.entries.length
+    ? t('approval.progress', {
+        approvals: line.approvals,
+        threshold: line.threshold,
+        entries: entriesText(line.entries, t),
+      })
+    : t('approval.progressCount', { approvals: line.approvals, threshold: line.threshold })
+}
+
+/**
+ * The rule `approval` in About (UI-CONV-049): "Needs Jonas Weber's approval", "Needs your approval" for that one person
+ * reading it, or "Needs 2 approvals: Jonas Weber (required), Marta Kova".
+ */
+export function approvalRuleText(
+  policy: Pick<ApprovalPolicyView, 'approvers' | 'threshold'>,
+  reader: { name?: string; isOwner?: boolean },
+  t: T
+): string {
+  const words = policyRuleWordsOf(policy, reader)
+  if (words.key === 'needsYou') return t('tools.rule.approvalYou')
+  if (words.key === 'needsName') return t('tools.rule.approval', { name: words.name })
+  return t('tools.rule.approvals', { count: words.count, entries: entriesText(words.entries, t) })
+}
 
 /**
  * The words of an approval's status (UI-CONV-052), on the requester's card and on an item of the Notifications: who
@@ -18,6 +93,10 @@ export function approvalStatusWords(line: ApprovalStatusLine, t: T, locale: stri
       return t('approval.waitingFor', { approver: line.approver })
     case 'waiting':
       return t('approval.waiting')
+    case 'progress':
+      return progressText(line, t)
+    case 'noApprover':
+      return t('approval.noApprover')
     case 'timeLeft':
       return t('tools.timeLeft', { time: timeLeftOf(line.expiresAt, now) })
     case 'mine':
@@ -48,6 +127,8 @@ export function ApprovalStatusIcon({ line }: { line: ApprovalStatusLine }) {
       return line.decision === 'approve' ? <Check {...props} /> : <OctagonX {...props} />
     case 'expired':
       return <Clock {...props} />
+    case 'noApprover':
+      return <OctagonX {...props} />
     case 'withdrawn':
       return <Ban {...props} />
     default:
