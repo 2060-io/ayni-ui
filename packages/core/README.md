@@ -51,6 +51,16 @@ A client calls `readCatchUp` every time a session's stream attaches. Given a `pu
 sends, to keep), the merge also lets go of every message of the period a page covers that the page no longer returns
 (UI-CONV-037): a message deleted or erased while the client was away leaves its cache too.
 
+## Disconnect forgets the person
+
+When the person disconnects from an agent (UI-AGENTS-006) or removes it (UI-AGENTS-005), a device forgets everything
+it read from the agent for them, not only the conversations. `withAgentForgotten(held, agentDid, sessionIds)` gives the
+state with none of it left: the agent's spaces and templates with their counts, its Notifications count, Your accounts,
+whether it gave the person its admin view or spaces to steward, the changes of tools and of accounts it announced, its
+pages that are open (a space, What it keeps, roles, stewardship, a shared conversation, a memory, Your accounts,
+Notifications), and what is held of its conversations (transcripts, replies, prefills, searches, what is being sent).
+`AGENT_PAGES` names the views that close. The sync message `agent-forgotten` has every other tab forget the same.
+
 ## Profile 3.3: spaces, memories, people, deletion within a window
 
 The wire types of AG-UI profile 3.3 are written here (`SpaceInfo`, `SpaceTemplate`, `SpaceMember`, `MemoryInfo`,
