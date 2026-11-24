@@ -25,6 +25,7 @@ import {
   requesterNameOf,
   ruleChoicesFor,
   ruleGroupsOf,
+  sourceNameOf,
   spaceToolsChangeOf,
   spaceToolsOf,
   TOKEN_MAX_LENGTH,
@@ -332,6 +333,13 @@ describe("the owner's rules (UI-CONV-050, agent D98)", () => {
     const now = Date.parse('2026-11-20T10:00:00Z')
     expect(timeLeftOf('2026-11-20T10:04:32Z', now)).toBe('4:32')
     expect(timeLeftOf('2026-11-20T09:00:00Z', now)).toBe('0:00')
+    // from one hour, hours and minutes, counted down every minute (UI-CONV-052): an approval of a day, a minute after
+    // it was asked; an hour before its end; a second later
+    expect(timeLeftOf('2026-11-21T10:00:00Z', now + 60_000)).toBe('23 h 59 min')
+    expect(timeLeftOf('2026-11-20T11:00:00Z', now)).toBe('1 h 00 min')
+    expect(timeLeftOf('2026-11-20T11:00:59Z', now)).toBe('1 h 00 min')
+    expect(timeLeftOf('2026-11-20T11:00:00Z', now + 1000)).toBe('59:59')
+    expect(timeLeftOf('2026-11-22T12:05:00Z', now)).toBe('50 h 05 min')
     expect(changeOutcomeKeyOf('applied')).toBe('saved')
     expect(changeOutcomeKeyOf('declined')).toBe('declined')
     expect(changeOutcomeKeyOf('failed')).toBe('declined')
@@ -381,6 +389,15 @@ describe("the owner's rules (UI-CONV-050, agent D98)", () => {
       reason: 'phoneNeeded',
     })
     expect(toolRefusalOf({ status: 409, code: 'change-pending' }).reason).toBe('changePending')
+    // a space's account not set, and a provider the space does not use for its feature (C7)
+    expect(toolRefusalOf({ status: 409, code: 'space-account-not-set' })).toEqual({
+      at: 'panel',
+      reason: 'spaceAccountNotSet',
+    })
+    expect(toolRefusalOf({ status: 409, code: 'provider-not-used' })).toEqual({
+      at: 'panel',
+      reason: 'providerNotUsed',
+    })
     expect(toolRefusalOf({ status: 404, code: '404' }).reason).toBe('notFound')
   })
 })
@@ -504,5 +521,61 @@ describe('the sources (PROF-TOOL-010, PROF-TOOL-011)', () => {
       { source: 'web', title: 'Web search', account: { kind: 'agent' }, results: 1, lastAt: 'y' },
     ])
     expect(conversationSourcesOf({ sources: [] })).toEqual([])
+  })
+})
+
+describe('a source named by the feature it serves (PROF-TOOL-035, UI-CONV-064)', () => {
+  const CRM = { id: 'crm', title: 'CRM' }
+
+  it('reads "<feature> · <source>", the name once when the two are the same, the title alone with no feature', () => {
+    expect(sourceNameOf({ title: 'Nextcloud', feature: { title: 'Files' } })).toBe('Files · Nextcloud')
+    expect(sourceNameOf({ title: 'Relaticle', feature: CRM })).toBe('CRM · Relaticle')
+    expect(sourceNameOf({ title: 'X', feature: { title: 'Social posting' } })).toBe('Social posting · X')
+    expect(sourceNameOf({ title: 'Web search', feature: { title: 'Web search' } })).toBe('Web search')
+    expect(sourceNameOf({ title: 'Relaticle' })).toBe('Relaticle')
+    expect(sourceNameOf({ title: 'Relaticle', feature: { title: ' ' } })).toBe('Relaticle')
+  })
+
+  it('reads the feature wherever the agent gives a source: a card, a reply, a conversation, a space', () => {
+    const action = toolApprovalOf({
+      action: { title: 'Add a note', source: { id: 'relaticle', title: 'Relaticle', feature: CRM }, fields: [] },
+    })?.action
+    expect(action?.source).toEqual({ id: 'relaticle', title: 'Relaticle', feature: CRM })
+    expect(messageSourcesOf([{ source: 'relaticle', title: 'Relaticle', feature: CRM, account: 'space' }])).toEqual([
+      { source: 'relaticle', title: 'Relaticle', feature: CRM, account: 'space' },
+    ])
+    expect(
+      conversationSourcesOf({
+        sources: [{ source: 'relaticle', title: 'Relaticle', feature: CRM, account: { kind: 'agent' }, results: 1 }],
+      })[0]?.feature
+    ).toEqual(CRM)
+    expect(spaceToolsOf({ tools: [{ ...CRM_OWNER, feature: { ...CRM, profile: null } }] })[0]?.feature).toEqual(CRM)
+    // a feature with no title names none
+    expect(messageSourcesOf([{ source: 'web', title: 'Web search', feature: { id: 'web' } }])[0]).not.toHaveProperty(
+      'feature'
+    )
+  })
+})
+
+describe('the addresses outside the organization on a card (PROF-TOOL-007, agent TOOL-FEAT-013, C6)', () => {
+  it('reads them from the action, and none when it names none', () => {
+    const card = (outsideOrganization?: unknown) =>
+      confirmationOf({
+        kind: 'confirmation',
+        approvalId: 'apr_1',
+        action: {
+          title: 'Invite to the event',
+          source: { id: 'calendar', title: 'Calendar' },
+          fields: [],
+          ...(outsideOrganization === undefined ? {} : { outsideOrganization }),
+        },
+      })?.action
+    expect(card(['p.lee@partner.example', 'm.ito@other.example'])?.outsideOrganization).toEqual([
+      'p.lee@partner.example',
+      'm.ito@other.example',
+    ])
+    expect(card([])).not.toHaveProperty('outsideOrganization')
+    expect(card()).not.toHaveProperty('outsideOrganization')
+    expect(card(['', 3, 'p.lee@partner.example'])?.outsideOrganization).toEqual(['p.lee@partner.example'])
   })
 })

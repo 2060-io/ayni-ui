@@ -10,6 +10,7 @@ import {
   destinationKey,
   drawsApprovalCard,
   isAttachment,
+  isAttachmentWithheld,
   isConfirmation,
   isWithheld,
   lastAttachments,
@@ -619,6 +620,11 @@ function Message({
           >
             <div className={`bubble-wrap ${reactions.length ? 'reacted' : ''}`}>
               <AttachmentView sessionId={sessionId} attachment={m.content as never} mine={mine} />
+              {isAttachmentWithheld(m) ? (
+                // the agent held it back because it carried a credential (agent D113): its message says so under it
+                // (UI-MEDIA-009, UI-SEC-006)
+                <div className="attachment-withheld">{t('conversation.attachmentWithheld')}</div>
+              ) : null}
               <ReactionPill reactions={reactions} me={me} onOwn={canReact ? () => setOpen('quick') : undefined} />
             </div>
             <MessageTools

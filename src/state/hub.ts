@@ -777,7 +777,7 @@ export class Hub {
 
   /**
    * The phone bound `session`: a link completed (UI-SESS-019). What this browser kept of an earlier binding is put
-   * right first. Another Principal's records (the guest the person was, someone else) leave with their transcripts,
+   * right first. Another Principal's records (the visitor the person was, someone else) leave with their transcripts,
    * their tokens unused; every other bound session of the agent is asked whether it still holds, and one the agent
    * refuses is retired. The list is then read through the session the link bound, at once, and read again a little
    * later when that fails.

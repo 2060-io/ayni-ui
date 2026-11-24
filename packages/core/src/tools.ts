@@ -100,10 +100,18 @@ export interface PendingToolChange {
   expiresAt: string
 }
 
+/** The feature a source serves, as the agent gives it with the source (PROF-TOOL-035): its id and its title. */
+export interface FeatureRef {
+  id: string
+  title: string
+}
+
 /** A source a space's template names, in that space (`SpaceTool`, §3.10). */
 export interface SpaceTool {
   source: string
   title: string
+  /** the feature the source serves (PROF-TOOL-033, PROF-TOOL-035), when the agent gives it */
+  feature?: FeatureRef
   description: string
   state: SpaceToolState
   /** the owner's answer only */
@@ -141,12 +149,18 @@ export interface ToolActionField {
 /** The exact action a confirmation or the approval of a tool call shows (PROF-TOOL-007, PROF-TOOL-009). */
 export interface ToolAction {
   title: string
-  source: { id: string; title: string }
+  /** the source, with the feature it serves when the agent gives it (PROF-TOOL-035) */
+  source: { id: string; title: string; feature?: FeatureRef }
   /**
    * the space for `space`; for `personal`, `label` (the account's name at its service) on the card of the person
    * whose account it is, and on no other card (PROF-TOOL-021)
    */
   account: { kind: ToolAccountKind; space?: { id: string; title: string }; label?: string }
+  /**
+   * the addresses outside the organization the call would reach, when the agent took it as `external` for them
+   * (`action.outsideOrganization`, PROF-TOOL-007, agent TOOL-FEAT-013); absent when there is none
+   */
+  outsideOrganization?: string[]
   fields: ToolActionField[]
   /** the message whose turn asked for it was deleted: the fields are gone (INTX-APPR-015) */
   erased: boolean
@@ -172,6 +186,7 @@ export interface ToolConfirmation {
 export interface MessageSource {
   source: string
   title: string
+  feature?: FeatureRef
   account: ToolAccountKind
 }
 
@@ -179,6 +194,7 @@ export interface MessageSource {
 export interface ConversationSource {
   source: string
   title: string
+  feature?: FeatureRef
   account: { kind: ToolAccountKind; space?: { id: string; title: string } }
   results: number
   lastAt: string
@@ -201,6 +217,26 @@ const accountKindOf = (v: unknown): ToolAccountKind => (v === 'agent' || v === '
 const spaceRefOf = (v: unknown): { id: string; title: string } | undefined => {
   const s = obj(v)
   return typeof s.id === 'string' ? { id: s.id, title: str(s.title) } : undefined
+}
+
+/** The feature a source serves (PROF-TOOL-035); none for a value with no title, which names no feature. */
+export function featureRefOf(v: unknown): FeatureRef | undefined {
+  const f = obj(v)
+  return typeof f.title === 'string' && f.title ? { id: str(f.id), title: f.title } : undefined
+}
+const withFeature = (v: unknown): { feature?: FeatureRef } => {
+  const feature = featureRefOf(v)
+  return feature ? { feature } : {}
+}
+
+/**
+ * How a source is named to a person (UI-CONV-064, PROF-TOOL-035, C1): one rule for every source, the title of the
+ * feature it serves, " · " and its own title ("Files · Nextcloud", "CRM · Relaticle", "Social posting · X"), and its
+ * title alone when the two are the same ("Web search") or when the agent gave no feature.
+ */
+export function sourceNameOf(source: { title: string; feature?: { title: string } | null }): string {
+  const feature = source.feature?.title.trim()
+  return feature && feature !== source.title.trim() ? `${feature} · ${source.title}` : source.title
 }
 
 /** The fields of a space's account, in the agent's order; one with no name, or a name said twice, is not shown. */
@@ -230,6 +266,7 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
   return {
     source: t.source,
     title: str(t.title, t.source),
+    ...withFeature(t.feature),
     description: str(t.description),
     state: STATES.includes(t.state as SpaceToolState) ? (t.state as SpaceToolState) : 'ready',
     ...(t.add === 'auto' || t.add === 'owner' ? { add: t.add } : {}),
@@ -324,6 +361,7 @@ export function conversationSourcesOf(body: unknown): ConversationSource[] {
       return {
         source: s.source as string,
         title: str(s.title, s.source as string),
+        ...withFeature(s.feature),
         account: { kind, ...(kind === 'space' && space ? { space } : {}) },
         results: typeof s.results === 'number' && Number.isFinite(s.results) ? s.results : 0,
         lastAt: str(s.lastAt),
@@ -338,6 +376,7 @@ export function messageSourcesOf(value: unknown): MessageSource[] {
     .map((s) => ({
       source: s.source as string,
       title: str(s.title, s.source as string),
+      ...withFeature(s.feature),
       account: accountKindOf(s.account),
     }))
 }
@@ -492,10 +531,18 @@ export function readyToolsOf(tools: readonly SpaceTool[]): SpaceTool[] {
   return tools.filter((t) => t.state === 'ready')
 }
 
-/** The time left before a pending change expires, as `m:ss` (UI-CONV-052); never below `0:00`. */
+/**
+ * The time left before a pending change or an approval expires (UI-CONV-052): `m:ss` under one hour, counted down
+ * every second ("59:59"), and hours and two-digit minutes from one hour, counted down every minute ("23 h 59 min",
+ * "1 h 00 min"); never below `0:00`.
+ */
 export function timeLeftOf(expiresAt: string, now: number): string {
   const ms = Date.parse(expiresAt) - now
   const seconds = Number.isFinite(ms) ? Math.max(0, Math.ceil(ms / 1000)) : 0
+  if (seconds >= 3600) {
+    const minutes = Math.floor(seconds / 60)
+    return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min`
+  }
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
@@ -532,6 +579,8 @@ export function toolRefusalOf(
         | 'alreadyAdded'
         | 'notOwner'
         | 'noSpaceAccount'
+        | 'spaceAccountNotSet'
+        | 'providerNotUsed'
         | 'personalSpace'
         | 'notFound'
         | 'other'
@@ -560,11 +609,15 @@ export function toolRefusalOf(
               ? 'notOwner'
               : code === 'no-space-account'
                 ? 'noSpaceAccount'
-                : code === 'personal-space'
-                  ? 'personalSpace'
-                  : error?.status === 404
-                    ? 'notFound'
-                    : 'other'
+                : code === 'space-account-not-set'
+                  ? 'spaceAccountNotSet'
+                  : code === 'provider-not-used'
+                    ? 'providerNotUsed'
+                    : code === 'personal-space'
+                      ? 'personalSpace'
+                      : error?.status === 404
+                        ? 'notFound'
+                        : 'other'
   return { at: 'panel', reason }
 }
 
@@ -586,14 +639,18 @@ export function toolActionOf(value: unknown): ToolAction | null {
       value: typeof f.value === 'string' ? f.value : f.value === undefined ? '' : JSON.stringify(f.value, null, 2),
       pinned: f.pinned === true,
     }))
+  const outside = Array.isArray(a.outsideOrganization)
+    ? a.outsideOrganization.filter((x): x is string => typeof x === 'string' && x !== '')
+    : []
   return {
     title: a.title,
-    source: { id: str(source.id), title: str(source.title, str(source.id)) },
+    source: { id: str(source.id), title: str(source.title, str(source.id)), ...withFeature(source.feature) },
     account: {
       kind,
       ...(kind === 'space' && space ? { space } : {}),
       ...(kind === 'personal' && typeof account.label === 'string' && account.label ? { label: account.label } : {}),
     },
+    ...(outside.length ? { outsideOrganization: outside } : {}),
     fields: fieldsInOrder(fields),
     erased: a.erased === true,
   }

@@ -283,6 +283,8 @@ export const CONVERSATION_COPY = {
   withheld: 'Not shared with the AI',
   /** the same message's Info */
   withheldInfo: "Only the service's code read this. It was not shared with the AI.",
+  /** under a message one of whose attachments the agent held back for a credential (UI-MEDIA-009, UI-SEC-006) */
+  attachmentWithheld: 'One attachment was held back: it contained a credential.',
 } as const
 
 /**

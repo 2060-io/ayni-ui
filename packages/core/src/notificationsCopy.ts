@@ -3,9 +3,10 @@
  * UI-CONV-052; agent D114), written once for the browser and the Ayni app: the browser's English translation file must
  * say the same (a test compares them, row by row of the table of UI-CONV-052), and the app starts from these
  * (APP-CONV-051, APP-CONV-061). Keys are paths in the translation file; `{{name}}` marks what the screen puts in.
- * `approval.approve` and `approval.reject` are the existing card's words, kept (Reject, not Refuse). Five texts are this
- * client's own, for cases the table does not name: `notifications.more`, `notifications.waiting`,
- * `notifications.ended`, `notifications.notEligible` and `notifications.notSent`.
+ * `approval.approve` and `approval.reject` are the existing card's words, kept (Reject, not Refuse). `notifications.ended`
+ * is the table's words for `409 not-pending` to Decide on your phone, said too when a decision is refused so. Four texts
+ * are this client's own, for cases the table does not name: `notifications.more`, `notifications.waiting`,
+ * `notifications.notEligible` and `notifications.notSent`.
  */
 export const NOTIFICATIONS_COPY = {
   'notifications.title': 'Notifications',
@@ -28,7 +29,7 @@ export const NOTIFICATIONS_COPY = {
   'notifications.phoneUnreachable': '{{agent}} cannot reach the Ayni app on your phone.',
   'notifications.more': 'Show more',
   'notifications.waiting': '{{count}} waiting',
-  'notifications.ended': 'This request has ended.',
+  'notifications.ended': 'This request was already decided or has ended.',
   'notifications.notEligible': 'You can no longer decide this request.',
   'notifications.notSent': 'Your answer was not sent. Try again.',
 } as const

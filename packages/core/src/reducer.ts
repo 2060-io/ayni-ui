@@ -92,11 +92,22 @@ export function isWithheld(m: TranscriptMessage): boolean {
 }
 
 /**
+ * Whether a message is an attachment the agent held back because it carried a credential (agent D113, F11): its
+ * `ayni.attachment` says so (`withheld: "credential"`, live, in the mirror and in history; PROF-HIST-014), or
+ * `ayni.messages.withheld` named it for a credential with no text (PROF-STREAM-011). Its message carries the line "One
+ * attachment was held back: it contained a credential." (UI-MEDIA-009, UI-SEC-006).
+ */
+export function isAttachmentWithheld(m: TranscriptMessage): boolean {
+  return m.role === 'activity' && m.activityType === ACTIVITY.attachment && m.content.withheld === 'credential'
+}
+
+/**
  * The transcript with the person's messages the service's code took marked as never received by the AI (UI-CONV-044,
  * PROF-STREAM-011): a bubble already drawn filled turns into the outline. Only the person's text messages are marked;
  * the messages the service's code wrote stay the agent's. A message held back because it carried a credential
  * (`credential`, agent D109) also takes the text the agent kept, in place of the one this device holds (`texts`, by
- * the id the message is held under).
+ * the id the message is held under). An attachment named for a credential is one the agent held back
+ * (`isAttachmentWithheld`): the event gives no text for it.
  */
 export function withWithheld(
   transcript: Transcript,
@@ -105,15 +116,19 @@ export function withWithheld(
 ): Transcript {
   const withheld = new Set(messageIds)
   const named = (m: TranscriptMessage) =>
-    m.role === 'user' &&
-    withheld.has(m.id) &&
-    (m.modelVisible !== false ||
-      (!!credential && (m.withheld !== 'credential' || credential.texts[m.id] !== undefined)))
+    m.role === 'activity'
+      ? !!credential && m.activityType === ACTIVITY.attachment && withheld.has(m.id) && !isAttachmentWithheld(m)
+      : m.role === 'user' &&
+        withheld.has(m.id) &&
+        (m.modelVisible !== false ||
+          (!!credential && (m.withheld !== 'credential' || credential.texts[m.id] !== undefined)))
   if (!transcript.messages.some(named)) return transcript
   return {
     ...transcript,
     messages: transcript.messages.map((m) => {
-      if (m.role !== 'user' || !named(m)) return m
+      if (!named(m)) return m
+      if (m.role === 'activity') return { ...m, content: { ...m.content, withheld: 'credential' } }
+      if (m.role !== 'user') return m
       if (!credential) return { ...m, modelVisible: false as const }
       const kept = credential.texts[m.id]
       return {

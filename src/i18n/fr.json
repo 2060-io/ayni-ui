@@ -168,6 +168,7 @@
     "contextCached": "Contexte {{used}} / {{max}} · {{cached}} en cache",
     "withheld": "Non partagé avec l'IA",
     "withheldInfo": "Seul le code du service a lu ceci. Cela n'a pas été partagé avec l'IA.",
+    "attachmentWithheld": "Une pièce jointe a été retenue : elle contenait un mot de passe ou une clé.",
     "media": {
       "image": "Photo",
       "voice": "Note vocale",
@@ -219,7 +220,8 @@
       "refused": "{{agent}} n'a pas supprimé le message : il est revenu."
     },
     "spaceLeft": "Vous ne faites plus partie de {{space}} : cette conversation est en lecture seule.",
-    "withheldCredentialInfo": "Ceci ressemblait à un mot de passe ou à une clé. {{agent}} ne l'a pas gardé et ne l'a pas montré à l'IA. Pour connecter un compte, ouvrez Vos comptes."
+    "withheldCredentialInfo": "Ceci ressemblait à un mot de passe ou à une clé. {{agent}} ne l'a pas gardé et ne l'a pas montré à l'IA.",
+    "withheldCredentialAccounts": "Pour connecter un compte, ouvrez Vos comptes."
   },
   "approval": {
     "title": "Approbation",
@@ -265,7 +267,7 @@
     "phoneUnreachable": "{{agent}} ne peut pas joindre l'app Ayni de votre téléphone.",
     "more": "Afficher plus",
     "waiting": "{{count}} en attente",
-    "ended": "Cette demande est terminée.",
+    "ended": "Cette demande a déjà été décidée ou est terminée.",
     "notEligible": "Vous ne pouvez plus décider de cette demande.",
     "notSent": "Votre réponse n'a pas été envoyée. Réessayez."
   },
@@ -875,12 +877,15 @@
     "alreadyAdded": "Cet outil est déjà dans l'espace.",
     "notOwner": "Seul le propriétaire de l'espace change ses outils.",
     "noSpaceAccount": "Cet outil n'utilise aucun compte de l'espace.",
+    "spaceAccountNotSet": "Le compte de cet espace n'est pas encore configuré ; demandez à son propriétaire.",
+    "providerNotUsed": "Ce fournisseur n'est pas utilisé dans cet espace.",
     "personalSpace": "Personnel n'a pas d'outils d'un espace.",
     "notFound": "Cet outil n'est pas proposé dans cet espace.",
     "card": {
       "label": "Confirmation : {{title}}, {{source}}",
       "accountSpace": "Avec le compte de {{space}}",
       "accountAgent": "Avec le compte de {{agent}}",
+      "outsideOrganization": "Hors de votre organisation : {{addresses}}",
       "untrusted": "Cette réponse a lu du contenu venu de l'extérieur de votre organisation : {{sources}}. Vérifiez l'action avant de l'autoriser.",
       "pinned": "Fixé par {{agent}}",
       "allow": "Autoriser",

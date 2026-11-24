@@ -26,6 +26,7 @@ import {
   type SpaceToolAccountField,
   signInUrlAllowed,
   sinceDateOf,
+  sourceNameOf,
   spaceIdFor,
   timeLeftOf,
   usageOfConnection,
@@ -688,8 +689,8 @@ function ConnectCardBody({ agent, card }: { agent: AgentRecord; card: NonNullabl
   }
   const binding = bindingWords(card.binding, t)
   return (
-    <section className="card connect-card" aria-label={card.title} data-state={row?.state ?? 'unknown'}>
-      <h3 className="connect-title">{card.title}</h3>
+    <section className="card connect-card" aria-label={sourceNameOf(card)} data-state={row?.state ?? 'unknown'}>
+      <h3 className="connect-title">{sourceNameOf(card)}</h3>
       {card.description ? <div className="connect-description">{card.description}</div> : null}
       {binding ? <div className="connect-binding">{binding}</div> : null}
       {!known ? null : connected ? (

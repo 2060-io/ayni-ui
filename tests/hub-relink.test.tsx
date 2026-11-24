@@ -9,7 +9,7 @@
  * The hub read the list (and the spaces with it), and opened new sessions, through the first record of the agent that
  * said `bound`, in the order the store keeps them, not through the session the link had just bound. A record of an
  * earlier binding came first: a session the agent closed while this browser was away, one it superseded, one of the
- * guest the person was before. Its token was refused (or listed another Principal's conversations), the failure was
+ * visitor the person was before. Its token was refused (or listed another Principal's conversations), the failure was
  * swallowed, and the record stayed, so every reading after it failed the same way.
  */
 import { CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
@@ -39,14 +39,14 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-type Who = 'fabrice' | 'guest'
+type Who = 'fabrice' | 'visitor'
 const DISPLAY = {
   fabrice: {
     displayName: 'Fabrice Rochette',
     photo: null,
     backingIdentity: { kind: 'persona' as const, name: 'Fabrice Rochette' },
   },
-  guest: { displayName: 'guest-2b7c', photo: null, backingIdentity: null },
+  visitor: { displayName: 'visitor-2b7c', photo: null, backingIdentity: null },
 }
 
 /** The person's spaces: Personal, "Verana Social" (Communication, active today) and "Verana" (Project). */
@@ -82,7 +82,7 @@ const SPACES = {
       { id: 'project', title: 'Project', kind: 'team', membership: 'list' },
     ],
   },
-  guest: { spaces: [{ ...PERSONAL, id: 'spc_guest_personal', owner: { name: 'guest-2b7c' } }], templates: [] },
+  visitor: { spaces: [{ ...PERSONAL, id: 'spc_visitor_personal', owner: { name: 'visitor-2b7c' } }], templates: [] },
 }
 
 const conversation = (id: string, title: string, at: string, extra: Record<string, unknown> = {}) => ({
@@ -118,7 +118,9 @@ function fakeAgent() {
     sessions: new Map<string, AgentSession>(),
     conversations: {
       fabrice: [...FIVE],
-      guest: [conversation('conv_guest', 'Guest chat', '2026-11-17T08:00:00.000Z', { spaceId: 'spc_guest_personal' })],
+      visitor: [
+        conversation('conv_visitor', 'Visitor chat', '2026-11-17T08:00:00.000Z', { spaceId: 'spc_visitor_personal' }),
+      ],
     } as Record<Who, ReturnType<typeof conversation>[]>,
     /** every request with the session its token names */
     requests: [] as { method: string; path: string; by?: string }[],
@@ -520,38 +522,40 @@ describe('a link lists the conversations and the spaces of the person it links (
     expect(usedSince('ses_h1K4yb5CVJ8y5VJ', mark)).toHaveLength(0)
   })
 
-  it("a guest Principal's records left from before an identified relink are dropped, their tokens unused", async () => {
+  it("a visitor Principal's records left from before an identified relink are dropped, their tokens unused", async () => {
     const agent = fakeAgent()
-    // the browser was linked while the person was a guest: a session still open as the guest, and a closed one
-    agent.state.sessions.set('ses_9gst', { who: 'guest', state: 'bound', conversationId: 'conv_guest' })
-    const guestBound = record('ses_9gst', {
-      conversationId: 'conv_guest',
-      title: 'Guest chat',
-      principal: DISPLAY.guest,
+    // the browser was linked while the person was a visitor: a session still open as the visitor, and a closed one
+    agent.state.sessions.set('ses_9gst', { who: 'visitor', state: 'bound', conversationId: 'conv_visitor' })
+    const visitorBound = record('ses_9gst', {
+      conversationId: 'conv_visitor',
+      title: 'Visitor chat',
+      principal: DISPLAY.visitor,
     })
-    const guestClosed = record('ses_8gst', {
-      conversationId: 'conv_guest_old',
+    const visitorClosed = record('ses_8gst', {
+      conversationId: 'conv_visitor_old',
       title: 'Before the badge',
-      principal: DISPLAY.guest,
+      principal: DISPLAY.visitor,
       state: 'closed',
       sessionToken: null,
     })
-    const { hub, store, rows, linked, spaces, usedSince } = await tab(agent, [guestBound, guestClosed], {
+    const { hub, store, rows, linked, spaces, usedSince } = await tab(agent, [visitorBound, visitorClosed], {
       transcripts: ['ses_9gst', 'ses_8gst'],
     })
     agent.phoneConfirms()
     await vi.waitFor(() => expect(titles(rows())).toEqual(FIVE_TITLES), { timeout: 3000 })
     expect(linked()).toMatchObject({ sessionId: LINK, title: 'Obtain badge with email', principal: DISPLAY.fabrice })
-    // the identified person's spaces, not the guest's Personal alone
+    // the identified person's spaces, not the visitor's Personal alone
     await vi.waitFor(() => expect(spaces()).toEqual(THE_SPACES))
-    // nothing of the guest stays: neither the records nor what they held
-    expect(hub.getSnapshot().sessions.filter((s) => s.principal?.displayName === DISPLAY.guest.displayName)).toEqual([])
+    // nothing of the visitor stays: neither the records nor what they held
+    expect(hub.getSnapshot().sessions.filter((s) => s.principal?.displayName === DISPLAY.visitor.displayName)).toEqual(
+      []
+    )
     expect(await store.getSession('ses_9gst')).toBeUndefined()
     expect(await store.getSession('ses_8gst')).toBeUndefined()
     expect(await store.getTranscript('ses_9gst')).toBeUndefined()
     expect(await store.getTranscript('ses_8gst')).toBeUndefined()
     expect(hub.getSnapshot().transcripts.ses_9gst).toBeUndefined()
-    // and the guest's token is never used again
+    // and the visitor's token is never used again
     expect(usedSince('ses_9gst')).toHaveLength(0)
     await hub.refresh(AGENT)
     await hub.loadSpaces(AGENT)

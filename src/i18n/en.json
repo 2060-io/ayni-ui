@@ -168,6 +168,7 @@
     "contextCached": "Context {{used}} / {{max}} · {{cached}} cached",
     "withheld": "Not shared with the AI",
     "withheldInfo": "Only the service's code read this. It was not shared with the AI.",
+    "attachmentWithheld": "One attachment was held back: it contained a credential.",
     "media": {
       "image": "Photo",
       "voice": "Voice note",
@@ -219,7 +220,8 @@
       "refused": "{{agent}} did not delete the message: it is back."
     },
     "spaceLeft": "You are no longer in {{space}}: this conversation is read-only.",
-    "withheldCredentialInfo": "This looked like a password or a key. {{agent}} did not keep it and did not show it to the AI. To connect an account, open Your accounts."
+    "withheldCredentialInfo": "This looked like a password or a key. {{agent}} did not keep it and did not show it to the AI.",
+    "withheldCredentialAccounts": "To connect an account, open Your accounts."
   },
   "approval": {
     "title": "Approval",
@@ -265,7 +267,7 @@
     "phoneUnreachable": "{{agent}} cannot reach the Ayni app on your phone.",
     "more": "Show more",
     "waiting": "{{count}} waiting",
-    "ended": "This request has ended.",
+    "ended": "This request was already decided or has ended.",
     "notEligible": "You can no longer decide this request.",
     "notSent": "Your answer was not sent. Try again."
   },
@@ -863,12 +865,15 @@
     "alreadyAdded": "This tool is already in the space.",
     "notOwner": "Only the owner of the space changes its tools.",
     "noSpaceAccount": "This tool uses no account of the space.",
+    "spaceAccountNotSet": "This space's account isn't set up yet; ask its owner.",
+    "providerNotUsed": "This provider isn't used in this space.",
     "personalSpace": "Personal has no tools of a space.",
     "notFound": "This tool is not offered in this space.",
     "card": {
       "label": "Confirmation: {{title}}, {{source}}",
       "accountSpace": "With the account of {{space}}",
       "accountAgent": "With {{agent}}'s account",
+      "outsideOrganization": "Outside your organization: {{addresses}}",
       "untrusted": "This reply read content from outside your organization: {{sources}}. Check the action before you allow it.",
       "pinned": "Set by {{agent}}",
       "allow": "Allow",

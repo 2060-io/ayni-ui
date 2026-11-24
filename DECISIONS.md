@@ -803,5 +803,43 @@
       linked, and of a conversation's, with its icon by its lucide name; every name of the table drawn; the layout in
       the stylesheet. `tests/spacesConversation.test.tsx`: Request access with its icon, the agent's item without.
       Each fails without the change.
-48. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+48. **The owner's answers of 2026-11-23: words and display** (2026-11-23, Fabrice reviewing the clean spec, ayni-spec
+    #123: C1, C6, C7, F11, F12, F13, D13; UI-CONV-016, 044, 045, 047, 048, 052, 058, 064, UI-APPR-008, UI-MEDIA-009,
+    UI-SEC-006). Core 0.9.0.
+    - **A source named by its feature.** One rule for every source, wherever one is named: the confirmation and
+      approval cards and the items of the Notifications, a reply's Info, the dialog before sharing, a Connect card, the
+      owner's Tools segment and About. "<feature> · <source>" ("Files · Nextcloud", "CRM · Relaticle", "Social posting ·
+      X"), the title once when the feature's and the source's are the same ("Web search"), as Fabrice asked, and the
+      title alone while the agent gives no `feature` (it does not yet: PROF-TOOL-035 is the agent's to build).
+      `sourceNameOf` in the core.
+    - **The addresses outside the organization.** A card whose action carries `outsideOrganization` reads "Outside your
+      organization: <address>, <address>" after the account line, before the untrusted notice and the fields. The agent
+      does not send it yet (agent TOOL-FEAT-013).
+    - **The time left** is `m:ss` under one hour and "<h> h <mm> min" from one hour ("23 h 59 min left"), on the items of
+      the Notifications and on a change of a space's tools.
+    - **Three refusals.** `409 space-account-not-set` "This space's account isn't set up yet; ask its owner." and
+      `409 provider-not-used` "This provider isn't used in this space.", under the control that sent the request (the
+      agent sends neither yet; the list's search that would hear the first is not built); `409 not-pending` to Decide on
+      your phone "This request was already decided or has ended.", the list then read again, the same words for a
+      decision refused so.
+    - **Your accounts named only where they exist.** The Info of a message held back for a credential ends with "To
+      connect an account, open Your accounts." only for an agent that declares `features.connections`.
+    - **An attachment held back.** An `ayni.attachment` that says `withheld: "credential"`, or that
+      `ayni.messages.withheld` names for a credential with no text, carries under it "One attachment was held back: it
+      contained a credential."; the words of its message are drawn as any other. Drawing the attachment itself apart
+      (UI-MEDIA-009) stays to do, and the agent does not hold attachments back yet (agent TOOL-ACCESS-018).
+    - **Reduced motion.** The thinking dots went on bouncing under reduced motion: the page-wide rule (`*`) does not
+      outweigh the rule that sets their bounce. A rule for the dots under reduced motion, after it, stops them: the
+      indicator stands still with its words "Thinking…". The page-wide rule is beaten the same way by the spinner of
+      `.spin`, left as it is.
+    - **Visitor.** No word of the browser called a person admitted without authenticating a guest; a comment of the hub
+      and the relink tests now say visitor. "Guest" stays for a member of a space from another organization.
+    - **Already as the spec says** (checked against bbc324c): the bare `https://` link, the credential card's line, "you
+      own it", Stop allowing's and Share's failures, "Add to <space>", "All tools", the empty Tools, the rows of UI-CONV-058
+      added as built, the app links of UI-LINK-001, the CSP of UI-SEC-001, the design from the core (UI-THEME-002).
+    - **Tests.** `packages/core/tests/tools.test.ts` (names, the outside addresses, the time left, the refusals),
+      `packages/core/tests/reducer.test.ts` (an attachment held back), `tests/confirmationCard.test.tsx`,
+      `tests/toolSources.test.tsx`, `tests/spaceTools.test.tsx`, `tests/notifications.test.tsx`,
+      `tests/personalAccounts.test.tsx`, `tests/conversationDesign.test.ts`. Each fails without the change.
+49. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

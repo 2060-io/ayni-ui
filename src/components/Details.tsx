@@ -48,11 +48,15 @@ export function MessageInfo() {
         </h3>
         {isWithheld(m) ? (
           // the service's code took it: the AI never received it (UI-CONV-044, D95); one held back because it carried
-          // a password or a key says so (agent D109)
+          // a password or a key says so (agent D109), and points to Your accounts only where the agent has them
+          // (UI-CONV-058, UI-SEC-006)
           <p className="withheld-note">
             <Lock size={14} aria-hidden="true" className="withheld-lock" />
             {m.role === 'user' && m.withheld === 'credential'
-              ? t('conversation.withheldCredentialInfo', { agent: agent?.name ?? '' })
+              ? [
+                  t('conversation.withheldCredentialInfo', { agent: agent?.name ?? '' }),
+                  ...(agent && hub.takesConnections(agent.did) ? [t('conversation.withheldCredentialAccounts')] : []),
+                ].join(' ')
               : t('conversation.withheldInfo')}
           </p>
         ) : null}

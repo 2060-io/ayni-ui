@@ -357,6 +357,55 @@ describe('deciding in the Notifications (UI-APPR-002, UI-APPR-008, PROF-TOOL-026
     )
   })
 
+  it('"Decide on your phone" on a request decided or ended meanwhile says so, and reads the list again (C7)', async () => {
+    let ended = false
+    const decided = postApproval({
+      status: 'APPROVED',
+      canDecide: false,
+      decisions: [{ by: { displayName: 'Marta Kovač' }, decision: 'approve', at: at(0) }],
+      closedAt: at(0),
+    })
+    const { el, agent } = await jonas([
+      [
+        /^GET \/spaces\/spc_comms\/notifications\?/,
+        () => page([item(ended ? decided : postApproval())], ended ? 0 : 1)(),
+      ],
+      [
+        'POST /approvals/apr_1/resend',
+        () => {
+          ended = true
+          return json({ error: 'not-pending' }, 409)
+        },
+      ],
+    ])
+    await click(row(el, 'Communication'))
+    await click(tabOf(el, /^Notifications/))
+    await until(() => items(el).length === 1)
+    const reads = () =>
+      agent.calls.filter((c) => c.method === 'GET' && c.url.includes('/spaces/spc_comms/notifications'))
+    const before = reads().length
+    await click(byText(items(el)[0] as HTMLElement, 'button', 'Decide on your phone'))
+    await until(
+      () =>
+        el.querySelector('.notification .tool-error')?.textContent === 'This request was already decided or has ended.'
+    )
+    // the list says how it stands now: the outcome, and no control
+    await until(() => reads().length > before)
+    await until(() => /^Approved by Marta Kovač/.test(statusOf(items(el)[0]) ?? ''))
+    expect(byText(items(el)[0] as HTMLElement, 'button', 'Decide on your phone')).toBeUndefined()
+  })
+
+  it('writes the time left in hours and minutes from one hour (UI-CONV-052)', async () => {
+    // an approval of a day, a minute after it was asked
+    const { el } = await jonas([
+      [/^GET \/spaces\/spc_comms\/notifications\?/, page([item(postApproval({ expiresAt: at(-(24 * 60 - 1)) }))], 1)],
+    ])
+    await click(row(el, 'Communication'))
+    await click(tabOf(el, /^Notifications/))
+    await until(() => items(el).length === 1)
+    expect(statusOf(items(el)[0])).toBe('23 h 59 min left')
+  })
+
   it('offers Decide on your phone at once when the agent answers that the decision is made there', async () => {
     const { el } = await jonas([
       [/^POST \/s\d\/runs$/, () => sse({ type: 'RUN_ERROR', code: 'decide-on-phone', message: 'attested' })],
