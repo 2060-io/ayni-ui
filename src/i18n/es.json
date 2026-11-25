@@ -45,7 +45,6 @@
     "closed": "Cerradas",
     "noConversations": "Aún no hay conversaciones.",
     "options": "Opciones del agente",
-    "linkAgain": "Vincular de nuevo",
     "endAll": "Terminar todas las conversaciones",
     "remove": "Quitar agente",
     "trustCard": "Tarjeta de confianza",
@@ -55,8 +54,6 @@
     "noMatch": "Ninguna conversación coincide",
     "matches": "{{count}} coincidencias",
     "matches_one": "{{count}} coincidencia",
-    "devices": "Dispositivos vinculados",
-    "disconnect": "Desconectar de este agente",
     "archive": "Archivar",
     "unarchive": "Desarchivar",
     "archived": "Archivadas",
@@ -68,14 +65,26 @@
       "persona": "Persona",
       "unverified": "Sin verificar"
     },
-    "showArchived": "Mostrar conversaciones archivadas",
-    "showActive": "Mostrar conversaciones activas",
     "terms": "Términos",
     "privacy": "Privacidad",
+    "keeps": "Lo que {{agent}} guarda sobre ti",
+    "inSpace": "En {{space}}"
+  },
+  "agentMenu": {
+    "notifications": "Notificaciones",
+    "devices": "Dispositivos vinculados",
+    "archived": "Mostrar conversaciones archivadas",
+    "active": "Mostrar conversaciones activas",
     "newSpace": "Nuevo espacio",
     "keeps": "Lo que {{agent}} guarda sobre ti",
+    "accounts": "Tus cuentas",
+    "steward": "Espacios a tu cargo",
     "roles": "Roles",
-    "inSpace": "En {{space}}"
+    "showAdmin": "Mostrar Admin",
+    "hideAdmin": "Ocultar Admin",
+    "disconnect": "Desconectar",
+    "reconnect": "Volver a conectar",
+    "remove": "Quitar"
   },
   "trust": {
     "title": "Tarjeta de confianza",

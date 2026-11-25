@@ -45,7 +45,6 @@
     "closed": "Fermées",
     "noConversations": "Pas encore de conversation.",
     "options": "Options de l'agent",
-    "linkAgain": "Lier à nouveau",
     "endAll": "Terminer toutes les conversations",
     "remove": "Retirer l'agent",
     "trustCard": "Carte de confiance",
@@ -55,8 +54,6 @@
     "noMatch": "Aucune conversation ne correspond",
     "matches": "{{count}} résultats",
     "matches_one": "{{count}} résultat",
-    "devices": "Appareils liés",
-    "disconnect": "Se déconnecter de cet agent",
     "archive": "Archiver",
     "unarchive": "Désarchiver",
     "archived": "Archivées",
@@ -68,14 +65,26 @@
       "persona": "Personne",
       "unverified": "Non vérifié"
     },
-    "showArchived": "Afficher les conversations archivées",
-    "showActive": "Afficher les conversations actives",
     "terms": "Conditions",
     "privacy": "Confidentialité",
+    "keeps": "Ce que {{agent}} garde sur vous",
+    "inSpace": "Dans {{space}}"
+  },
+  "agentMenu": {
+    "notifications": "Notifications",
+    "devices": "Appareils liés",
+    "archived": "Afficher les conversations archivées",
+    "active": "Afficher les conversations actives",
     "newSpace": "Nouvel espace",
     "keeps": "Ce que {{agent}} garde sur vous",
+    "accounts": "Vos comptes",
+    "steward": "Espaces dont vous êtes responsable",
     "roles": "Rôles",
-    "inSpace": "Dans {{space}}"
+    "showAdmin": "Afficher Admin",
+    "hideAdmin": "Masquer Admin",
+    "disconnect": "Déconnecter",
+    "reconnect": "Reconnecter",
+    "remove": "Retirer"
   },
   "trust": {
     "title": "Carte de confiance",
