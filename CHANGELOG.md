@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.25.1](https://github.com/2060-io/ayni-ui/compare/v0.25.0...v0.25.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **column:** the agent's menu lists the phone's entries in the phone's order and words, Remove only while not linked (UI-AGENTS-009) ([76a2ddc](https://github.com/2060-io/ayni-ui/commit/76a2ddc266ac3ffd989a0d75cdeb678952a34e23))
+* **column:** the agent's menu lists the phone's entries in the phone's order and words, Remove only while not linked (UI-AGENTS-009) ([8cac1e6](https://github.com/2060-io/ayni-ui/commit/8cac1e6d9c6c0b36573c6d654cc25409c7a2d3eb))
+
 ## [0.25.0](https://github.com/2060-io/ayni-ui/compare/v0.24.0...v0.25.0) (2026-11-24)
 
 
