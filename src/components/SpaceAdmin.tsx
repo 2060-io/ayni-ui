@@ -5,8 +5,10 @@
  */
 import {
   type AgentRecord,
+  activityFolderOf,
   type DirectoryPerson,
   handoverCandidatesOf,
+  isFolderActivity,
   lawfulBasisKeyOf,
   looksLikeEmail,
   memberAccessLineOf,
@@ -857,13 +859,16 @@ function activityKey(a: SpaceActivityItem): string {
  * Activity (UI-CONV-041, UI-CONV-051): newest first; who did what, never the value of a field nor a token. A change of
  * provider reads "<by> changed the provider of <feature> from <former> to <tool>": the line names the former provider
  * by its id only (`tool.formerSource`, profile §3.7), its title is the feature's `providers`', read from the space's
- * tools when the page holds such a line.
+ * tools when the page holds such a line. The lines of a managed folder (profile package 3.5.9) name the agent, the
+ * folder and, for `access-failed`, the member; a line carries no name of the folder, which is the one of its feature in
+ * the space's tools, else the space's title, after which the agent names the folder it makes (agent D149).
  */
 export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
   const { t, i18n } = useTranslation()
   const [items, setItems] = useState<SpaceActivityItem[] | null>(null)
-  const providersWanted = !!items?.some((a) => a.kind === 'provider-changed') && hub.takesTools(agent.did)
+  const providersWanted =
+    !!items?.some((a) => a.kind === 'provider-changed' || isFolderActivity(a.kind)) && hub.takesTools(agent.did)
   const { tools } = useSpaceTools(agent, space, providersWanted)
   /** The title of a provider the line names by its id: among its feature's providers first, else any feature's. */
   const providerTitle = (a: SpaceActivityItem): string => {
@@ -905,6 +910,8 @@ export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: S
                   feature: a.feature?.title ?? someone,
                   former: providerTitle(a) || someone,
                   reason: a.reason ?? '',
+                  agent: agent.name,
+                  folder: isFolderActivity(a.kind) ? activityFolderOf(a, tools, spaceTitle(space, t)) : '',
                 })}
               </span>
             </li>

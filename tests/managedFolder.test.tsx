@@ -960,3 +960,56 @@ describe("each member's access to the managed folder, and the people added outsi
     expect(agent.find('GET', '/spaces/spc_alpha').length).toBeGreaterThanOrEqual(2)
   })
 })
+
+// ---------------------------------------------------------------------------------------------- Activity
+
+describe('the activity of the managed folder (UI-CONV-051, PROF-TOOL-043)', () => {
+  const lines = (tool: Record<string, unknown>) =>
+    [
+      { kind: 'manager-needed' },
+      { kind: 'access-failed', member: { name: 'Piet de Vries' }, reason: 'not-allowed' },
+      { kind: 'folder-released', by: { name: 'Jonas Weber' } },
+      { kind: 'folder-renamed', by: { name: 'Jonas Weber' } },
+      { kind: 'folder-created', by: { name: 'Jonas Weber' } },
+    ].map((a, i) => ({
+      id: `act_${i}`,
+      at: `2026-11-25T10:0${5 - i}:00Z`,
+      tool: { source: 'drive', title: 'Google Drive' },
+      feature: { id: 'files', title: 'Files' },
+      ...a,
+      ...tool,
+    }))
+  const texts = (el: HTMLElement) =>
+    [...el.querySelectorAll('.activity-list li span:last-child')].map((x) => x.textContent)
+
+  it('names the agent, the folder and the member, the folder as the space tools name it now', async () => {
+    const { el, agent } = await alpha(
+      [
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [folderOf({ title: 'Alpha files' })] })],
+        [/^GET \/spaces\/spc_alpha\/activity/, () => json({ activity: lines({}), nextBefore: null })],
+      ],
+      { segment: 'activity' }
+    )
+    await until(() => texts(el)[0]?.includes('Alpha files'))
+    expect(texts(el)).toEqual([
+      'Fleet support can no longer manage the folder Alpha files',
+      'Piet de Vries has no access to the folder Alpha files yet',
+      'Fleet support stopped managing the folder Alpha files',
+      'Jonas Weber renamed the folder to Alpha files',
+      'Fleet support made the folder Alpha files at Google Drive',
+    ])
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(1)
+  })
+
+  it("names the folder by the space's title once the space's tools hold none", async () => {
+    const { el } = await alpha(
+      [
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [OFFERED] })],
+        [/^GET \/spaces\/spc_alpha\/activity/, () => json({ activity: lines({}).slice(2, 3), nextBefore: null })],
+      ],
+      { segment: 'activity' }
+    )
+    await until(() => texts(el).length === 1)
+    expect(texts(el)).toEqual(['Fleet support stopped managing the folder Project Alpha'])
+  })
+})
