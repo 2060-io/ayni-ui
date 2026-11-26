@@ -573,6 +573,27 @@ describe("the managed folder on the owner's row and in the panel (UI-CONV-070, U
     expect(el.querySelectorAll('.settings-save')).toHaveLength(1)
   })
 
+  it('keeps a stream of the agent open while the folder is made, for the change of its state (PROF-TOOL-041)', async () => {
+    const { hub, el } = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })]])
+    await until(() => el.querySelector('.tool-row'))
+    expect(hub.getSnapshot().leaders.s1).toBeUndefined()
+    teardown()
+    let tools = [folderOf({ state: 'creating' }, { state: 'setup' })]
+    const making = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools })]])
+    await until(() => making.el.querySelector('.tool-row'))
+    await until(() => making.hub.getSnapshot().leaders.s1 !== undefined)
+    // made: the agent says so, and the row follows
+    tools = [MANAGED]
+    await toolsChanged(making.hub, {
+      spaceId: ALPHA.id,
+      feature: 'files',
+      source: 'drive',
+      state: 'ready',
+      outcome: 'applied',
+    })
+    await until(() => rowState(making.el) === 'Ready')
+  })
+
   it('says "Making the folder at <provider>…" in place of the state while it is made, with no Rename', async () => {
     const creating = folderOf(
       { state: 'creating', access: { inPlace: 0, pending: 0, failed: 0 } },
@@ -721,6 +742,11 @@ describe("the managed folder on the owner's row and in the panel (UI-CONV-070, U
         json({ error: 'source-unavailable', message: 'Google Drive did not rename the folder' }, 502),
         '.tool-folder > .tool-error',
         'Google Drive did not rename the folder',
+      ],
+      [
+        json({ error: 'bad-request', field: 'folder', message: 'folder takes a title or check' }, 400),
+        '.tool-folder > .tool-error',
+        'folder takes a title or check',
       ],
     ]
     for (const [answer, where, words] of cases) {

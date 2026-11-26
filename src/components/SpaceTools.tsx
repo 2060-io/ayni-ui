@@ -55,6 +55,7 @@ import {
   loosens,
   missingPartsOf,
   otherProvidersOf,
+  ownerFolderOf,
   type PendingToolChange,
   type PolicyForm,
   type PolicyRefusal,
@@ -153,8 +154,9 @@ export function ToolsSegment({
   const { tools, error, reload, setTool } = useSpaceTools(agent, space, true)
   // the feature whose panel is open; undefined until the feature of `source` is known, null for the list
   const [open, setOpen] = useState<string | null | undefined>(source ? undefined : null)
-  // while a change shown here waits for the phone, a stream stays open for its outcome (UI-CONV-050, PROF-TOOL-006)
-  const waiting = !!tools?.some((x) => x.pending)
+  // while a change shown here waits for the phone, a stream stays open for its outcome (UI-CONV-050, PROF-TOOL-006); and
+  // while the agent makes a managed folder, for the change of its state (PROF-TOOL-041)
+  const waiting = !!tools?.some((x) => x.pending || ownerFolderOf(x)?.state === 'creating')
   useEffect(() => (waiting ? hub.holdStream(agent.did) : undefined), [waiting, agent.did, hub])
   const openId = open === undefined ? tools?.find((x) => x.source === source)?.feature.id : open
   const tool = tools?.find((x) => x.feature.id === openId)
