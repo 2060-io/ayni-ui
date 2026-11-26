@@ -156,6 +156,7 @@ export const SPACE_ACTIVITY_KINDS: readonly SpaceActivityKind[] = [
   'tool-added',
   'tool-changed',
   'tool-removed',
+  'provider-changed',
   'account-set',
   'account-cleared',
 ]
@@ -165,8 +166,13 @@ export interface SpaceActivityItem {
   at: string
   kind: SpaceActivityKind
   member?: { name: string }
-  /** the source a change of the space's tools concerns (PROF-TOOL-006) */
-  tool?: { source: string; title: string }
+  /**
+   * the source a change of the space's tools concerns (PROF-TOOL-006); a `provider-changed` names the new provider and,
+   * as `formerSource`, the one it replaced, by its id only: its title is the feature's `providers`' (§3.7)
+   */
+  tool?: { source: string; title: string; formerSource?: string }
+  /** the feature it concerns (package 3.5.8, PROF-TOOL-006) */
+  feature?: { id: string; title: string }
   by?: { name: string }
   /** an `owner-changed`: how (profile 3.5.4), and a steward's reason (PROF-SPACE-009) */
   how?: OwnerChange
@@ -344,6 +350,17 @@ export function spaceDetailOf(body: unknown): SpaceDetail | null {
   return { ...space, members }
 }
 
+/** The source a line of activity names: its id, its title and, for a change of provider, the former one's id. */
+function toolRefOf(value: unknown): { source: string; title: string; formerSource?: string } | undefined {
+  const t = obj(value)
+  if (typeof t.source !== 'string') return undefined
+  return {
+    source: t.source,
+    title: str(t.title, t.source),
+    ...(typeof t.formerSource === 'string' && t.formerSource ? { formerSource: t.formerSource } : {}),
+  }
+}
+
 /** `GET {sessions}/spaces/{id}/activity` (PROF-SPACE-006): unknown kinds are left out. */
 export function spaceActivityOf(body: unknown): SpaceActivityPage {
   const b = obj(body)
@@ -355,8 +372,9 @@ export function spaceActivityOf(body: unknown): SpaceActivityPage {
         at: a.at as string,
         kind: a.kind as SpaceActivityKind,
         ...(obj(a.member).name ? { member: { name: str(obj(a.member).name) } } : {}),
-        ...(typeof obj(a.tool).source === 'string'
-          ? { tool: { source: str(obj(a.tool).source), title: str(obj(a.tool).title, str(obj(a.tool).source)) } }
+        ...(toolRefOf(a.tool) ? { tool: toolRefOf(a.tool) } : {}),
+        ...(typeof obj(a.feature).id === 'string'
+          ? { feature: { id: str(obj(a.feature).id), title: str(obj(a.feature).title, str(obj(a.feature).id)) } }
           : {}),
         ...(obj(a.by).name ? { by: { name: str(obj(a.by).name) } } : {}),
         ...(a.how === 'handover' || a.how === 'succession' || a.how === 'steward' ? { how: a.how } : {}),

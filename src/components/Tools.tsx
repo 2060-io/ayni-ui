@@ -3,7 +3,8 @@
  * call (UI-CONV-045, UI-CONV-046), the exact action on the requester's card of the approval of one and on its item of
  * the Notifications (UI-APPR-006, agent D114), the sources a reply used in
  * its Info (UI-CONV-047), the sources shown before a conversation is shared (UI-CONV-048), and the tools a space's
- * members read in About (UI-CONV-031, UI-CONV-049). The cards are the transcript's card (`.card`).
+ * members read in About, by feature, each with the line of its provider (UI-CONV-031, UI-CONV-049, UI-CONV-065). The
+ * cards are the transcript's card (`.card`).
  */
 import {
   type AgentRecord,
@@ -18,6 +19,7 @@ import {
   confirmationOutcomeOf,
   looksLikeJson,
   type MessageSource,
+  providerLineOf,
   readyToolsOf,
   requesterNameOf,
   ruleGroupsOf,
@@ -25,6 +27,7 @@ import {
   type SpaceTool,
   sourceNameOf,
   sourcesOf,
+  type ToolAccountKind,
   type ToolAction,
   type ToolRuleGroup,
   type TranscriptMessage,
@@ -457,6 +460,33 @@ function groupWords(
   return `${rule}: ${titles.join(', ')}`
 }
 
+/**
+ * Whose account a provider's calls use, in the words of UI-CONV-049: "Uses the space's account", "Uses <agent>'s
+ * account", "Each person uses their own account"; nothing for `none`.
+ */
+export function accountWords(kind: ToolAccountKind, agentName: string, t: Tr): string {
+  if (kind === 'space') return t('tools.account.space')
+  if (kind === 'agent') return t('tools.account.agent', { agent: agentName })
+  if (kind === 'personal') return t('tools.account.personal')
+  return ''
+}
+
+/**
+ * The line of a feature's provider (UI-CONV-065, UI-CONV-060, UI-CONV-052), on its row of Tools and in About: "Nextcloud
+ * · Folders: /Projects/Alpha · Uses the space's account", what it is bound to and whose account left out when there is
+ * none; "Choose a provider" for a feature with none.
+ */
+export function providerLineWords(tool: SpaceTool, agentName: string, t: Tr): string {
+  const line = providerLineOf(tool)
+  if (!line) return t('tools.chooseProvider')
+  return [
+    line.provider,
+    ...line.bindings.map((b) => t('tools.boundTo', { label: b.label, value: b.value })),
+    ...(line.list ? [t('tools.boundTo', { label: line.list.label, value: line.list.values.join(', ') })] : []),
+    ...(line.account ? [accountWords(line.account, agentName, t)] : []),
+  ].join(' · ')
+}
+
 /** The tools of a space as its members read them, live: re-read when a change of them is announced. */
 export function useSpaceTools(
   agent: AgentRecord,
@@ -498,14 +528,17 @@ export function useSpaceTools(
     tools: wanted ? tools : null,
     error,
     reload: () => setVersion((v) => v + 1),
-    setTool: (tool) => setTools((list) => (list ?? []).map((x) => (x.source === tool.source ? tool : x))),
+    // one item per feature (PROF-TOOL-033): an answer replaces its feature's, whichever provider it names
+    setTool: (tool) => setTools((list) => (list ?? []).map((x) => (x.feature.id === tool.feature.id ? tool : x))),
   }
 }
 
 /**
- * The tools a space's members read in About (UI-CONV-031, UI-CONV-049): its `ready` sources, each with its title,
- * description, whose account it uses and what its tools ask before they act, grouped by rule; a tool `off` is not
- * shown. Against an agent that serves tools only, and when the space has a ready one.
+ * The tools a space's members read in About (UI-CONV-031, UI-CONV-049, UI-CONV-065): its `ready` features, in the
+ * template's order, each with its title, the line of its provider (its title, what it is bound to with the line of its
+ * list, whose account it uses), the provider's description, the reader's own account of a provider of each person's
+ * account, and what its tools ask before they act, grouped by rule; a tool `off` is not shown. Against an agent that
+ * serves tools only, and when the space has a ready one.
  */
 export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
@@ -524,33 +557,23 @@ export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceI
         {ready.map((tool) => {
           const groups = ruleGroupsOf(tool)
           return (
-            <li key={tool.source} className="about-tool">
-              <span className="about-tool-title">{sourceNameOf(tool)}</span>
+            <li key={tool.feature.id} className="about-tool">
+              <span className="about-tool-title">{tool.feature.title}</span>
+              <span className="about-tool-provider">{providerLineWords(tool, agent.name, t)}</span>
               {tool.description ? <span className="about-tool-description">{tool.description}</span> : null}
-              {tool.account.kind === 'personal' ? (
-                <>
-                  <span className="about-tool-account">{t('tools.account.personal')}</span>
-                  {/* the reader's own account of it, for this space; Connect opens Your accounts there (UI-CONV-049) */}
-                  <span className="about-tool-yours">
-                    {tool.account.connected ? t('tools.yourAccount.connected') : t('tools.yourAccount.notConnected')}
-                    {!tool.account.connected && hub.takesConnections(agent.did) ? (
-                      <button
-                        type="button"
-                        className="link about-tool-connect"
-                        onClick={() =>
-                          hub.openAccounts(agent.did, { source: accountSourceOf(tool), spaceId: space.id })
-                        }
-                      >
-                        {t('accounts.connect')}
-                      </button>
-                    ) : null}
-                  </span>
-                </>
-              ) : tool.account.kind !== 'none' ? (
-                <span className="about-tool-account">
-                  {tool.account.kind === 'space'
-                    ? t('tools.account.space')
-                    : t('tools.account.agent', { agent: agent.name })}
+              {tool.account?.kind === 'personal' ? (
+                // the reader's own account of it, for this space; Connect opens Your accounts there (UI-CONV-049)
+                <span className="about-tool-yours">
+                  {tool.account.connected ? t('tools.yourAccount.connected') : t('tools.yourAccount.notConnected')}
+                  {!tool.account.connected && hub.takesConnections(agent.did) ? (
+                    <button
+                      type="button"
+                      className="link about-tool-connect"
+                      onClick={() => hub.openAccounts(agent.did, { source: accountSourceOf(tool), spaceId: space.id })}
+                    >
+                      {t('accounts.connect')}
+                    </button>
+                  ) : null}
                 </span>
               ) : null}
               {groups.length ? (

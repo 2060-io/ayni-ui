@@ -732,7 +732,8 @@
       "successor-set": "{{by}} nombró sucesor a {{member}}",
       "successor-cleared": "{{member}} ya no es el sucesor",
       "ownerSuccession": "{{member}} pasó a ser propietario como sucesor",
-      "ownerSteward": "{{by}}, como responsable, nombró propietario a {{member}}: {{reason}}"
+      "ownerSteward": "{{by}}, como responsable, nombró propietario a {{member}}: {{reason}}",
+      "provider-changed": "{{by}} cambió el proveedor de {{feature}} de {{former}} a {{tool}}"
     },
     "create": {
       "title": "Nuevo espacio",
@@ -976,7 +977,31 @@
     "accountPersonal": "Cada persona conecta su propia cuenta, en Tus cuentas.",
     "useValue": "Usar {{value}}",
     "connectToChoose": "Conecta tu cuenta para elegir",
-    "notYourAccount": "Elige una de tus propias cuentas de {{source}}."
+    "notYourAccount": "Elige una de tus propias cuentas de {{source}}.",
+    "featureHasProvider": "{{feature}} ya tiene un proveedor en este espacio. Cámbialo en su lugar.",
+    "notConformant": "{{provider}} no ofrece {{feature}} como espera {{agent}}. Elige otro proveedor.",
+    "notPortable": "Cada miembro vería este lugar de forma distinta. Elige otro, o un proveedor que use la cuenta del espacio.",
+    "chooseProvider": "Elige un proveedor",
+    "chooseProviderFor": "Elige un proveedor para {{feature}}",
+    "suggested": "Sugerido",
+    "changeProvider": "Cambiar de proveedor",
+    "changeQuestion": "¿Usar {{next}} para {{feature}} en {{space}}, en lugar de {{former}}?",
+    "changeStops": "{{agent}} deja de usar {{former}} en este espacio.",
+    "changeNothingCopied": "No se copia nada de {{former}} a {{next}}.",
+    "changeReadStays": "Lo que las conversaciones anteriores leyeron de {{former}} se queda en ellas.",
+    "change": "Cambiar",
+    "boundTo": "{{label}}: {{value}}",
+    "list": {
+      "onlyThese": "Solo estos",
+      "anyWarning": "Las llamadas de cada miembro usan su propia cuenta, pero lo que {{agent}} lee con ella va a las conversaciones de este espacio, que los demás miembros leen una vez compartidas.",
+      "search": "Busca en tu cuenta para añadir",
+      "inList": "En la lista",
+      "remove": "Quitar",
+      "tooMany": "Una lista tiene como máximo {{max}} entradas.",
+      "repeated": "Esto ya está en la lista.",
+      "anyNotAllowed": "{{agent}} no permite esta opción en este espacio.",
+      "unavailable": "No se puede buscar en {{source}} ahora. Inténtalo más tarde."
+    }
   },
   "accounts": {
     "menu": "Tus cuentas",
@@ -988,6 +1013,7 @@
       "none": "No se usa ahora"
     },
     "binding": "{{label}}: {{value}}",
+    "features": "Para {{features}}",
     "state": {
       "notConnected": "No conectada",
       "connected": "Conectada como {{label}} · desde el {{date}}",
@@ -1019,7 +1045,7 @@
     "changed": "Esta cuenta cambió. Abre Tus cuentas de nuevo.",
     "disconnectConfirm": "¿Desconectar {{source}}? {{agent}} borra su acceso a tu cuenta.",
     "card": {
-      "connect": "Conecta tu cuenta de {{source}} para que {{agent}} pueda usarla con tus derechos."
+      "connect": "Conecta tu cuenta de {{account}} para usar {{feature}}."
     },
     "empty": "{{agent}} no te ofrece ninguna cuenta propia que conectar.",
     "noTab": "El navegador no abrió una pestaña nueva. Permite las ventanas emergentes en esta página e inténtalo de nuevo."

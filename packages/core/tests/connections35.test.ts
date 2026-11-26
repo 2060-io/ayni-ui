@@ -132,6 +132,34 @@ describe('Your accounts as the agent lists them (PROF-TOOL-014)', () => {
     expect(connectionsOf({})).toEqual([])
   })
 
+  it('reads the features each account serves, each once (package 3.5.8, PROF-TOOL-035, UI-CONV-064)', () => {
+    const [cloud] = connectionsOf({
+      connections: [
+        {
+          source: 'cloud',
+          title: 'Cloud of the organization',
+          method: 'oauth',
+          state: 'connected',
+          features: [
+            { id: 'files', title: 'Files' },
+            { id: 'calendar', title: 'Calendar' },
+            { id: 'files', title: 'Files' },
+            { id: 'nameless' },
+            'junk',
+          ],
+        },
+      ],
+    })
+    expect(cloud?.features).toEqual([
+      { id: 'files', title: 'Files' },
+      { id: 'calendar', title: 'Calendar' },
+    ])
+    expect(connectionsOf({ connections: [{ source: 'x', title: 'X' }] })[0]?.features).toEqual([])
+    expect(CONNECTIONS_COPY['accounts.features']).toBe('For {{features}}')
+    // the Connect card names the account and the feature of the card (UI-CONV-058)
+    expect(CONNECTIONS_COPY['accounts.card.connect']).toBe('Connect your {{account}} account to use {{feature}}.')
+  })
+
   it('reads loosely: a row with no source is left out, an unknown state is not connected, a reason only to reconnect', () => {
     const list = connectionsOf({
       connections: [
@@ -370,6 +398,7 @@ describe('the endpoints of §3.11 as the client calls them (PROF-TOOL-014..017)'
 describe('`personal` in the shapes of 3.4 (PROF-TOOL-021)', () => {
   it("reads a space's tool of each person's own account, and a binding chosen from the owner's", () => {
     const tool = spaceToolOf({
+      feature: { id: 'crm', title: 'CRM', profile: null },
       source: 'relaticle',
       title: 'Relaticle CRM',
       state: 'setup',
@@ -395,7 +424,7 @@ describe('`personal` in the shapes of 3.4 (PROF-TOOL-021)', () => {
     })
     expect(tool?.bindings[1]).toMatchObject({ valueLabel: 'Europe' })
     expect(tool?.bindings[1]?.fromAccount).toBeUndefined()
-    expect(spaceToolOf({ source: 'x', account: { kind: 'personal' } })?.account).toEqual({
+    expect(spaceToolOf({ feature: { id: 'social' }, source: 'x', account: { kind: 'personal' } })?.account).toEqual({
       kind: 'personal',
       connected: false,
     })
@@ -403,6 +432,7 @@ describe('`personal` in the shapes of 3.4 (PROF-TOOL-021)', () => {
 
   it("names the row of Your accounts a tool that uses another source's account is under (ayni-spec #110)", () => {
     const project = spaceToolOf({
+      feature: { id: 'code', title: 'Code and issues', profile: null },
       source: 'github-project',
       title: 'GitHub repository',
       account: { kind: 'personal', connected: false, source: 'github' },
@@ -411,7 +441,9 @@ describe('`personal` in the shapes of 3.4 (PROF-TOOL-021)', () => {
     expect(accountSourceOf(project as never)).toBe('github')
     expect(accountSourceOf({ source: 'relaticle', account: { kind: 'personal', connected: true } })).toBe('relaticle')
     // only a personal account names one
-    expect(spaceToolOf({ source: 'web', account: { kind: 'agent', source: 'other' } })?.account).toEqual({
+    expect(
+      spaceToolOf({ feature: { id: 'search' }, source: 'web', account: { kind: 'agent', source: 'other' } })?.account
+    ).toEqual({
       kind: 'agent',
     })
     expect(accountSourceOf({ source: 'web', account: { kind: 'agent' } })).toBe('web')

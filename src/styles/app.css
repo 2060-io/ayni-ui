@@ -3530,7 +3530,8 @@ mark.hit.current {
 .about-tool-title {
   font-weight: 600;
 }
-.about-tool-account {
+/* the line of a feature's provider: its title, what it is bound to, whose account (UI-CONV-065) */
+.about-tool-provider {
   font-size: 13px;
   color: var(--muted);
 }
@@ -3617,6 +3618,11 @@ mark.hit.current {
 .account-description,
 .account-binding,
 .account-used {
+  font-size: 13px;
+  color: var(--muted);
+}
+/* the features an account serves, under its description (UI-CONV-064) */
+.account-features {
   font-size: 13px;
   color: var(--muted);
 }
@@ -3708,6 +3714,132 @@ mark.hit.current {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* the providers a feature's template allows, to choose one (UI-CONV-065, UI-CONV-066) */
+.tool-providers {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.tool-providers legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+.tool-provider-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+}
+.tool-provider-option:has(input:checked) {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+.tool-provider-option > input[type="radio"] {
+  margin-top: 3px;
+}
+.tool-provider-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tool-provider-title {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 600;
+}
+/* the list of a provider, a feature's location, in Settings of the tool (UI-CONV-059) */
+.tool-list-editor {
+  border: 0;
+  margin: 0 0 10px;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.tool-list-editor legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+.tool-list-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tool-list-entries,
+.tool-list-choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tool-list-entry,
+.tool-list-choice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.tool-list-entry-label,
+.tool-list-choice-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tool-list-entry .field-error {
+  flex-basis: 100%;
+}
+.tool-list-search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Change provider and its question (UI-CONV-066) */
+.tool-change-provider {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tool-confirm p {
+  margin: 0 0 6px;
+}
+.tool-confirm .tool-confirm-question {
+  font-weight: 600;
+}
+/* a provider that does not offer its feature as its contract says, in place of its state (UI-CONV-065) */
+.tool-not-conformant {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: normal;
+}
+.tool-not-conformant-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warning);
 }
 
 /* the reader's own account of a space's tool, in About (UI-CONV-049) */

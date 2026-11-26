@@ -374,7 +374,8 @@ export function stateWords(c: Connection, agentName: string, locale: string, t: 
 }
 
 /**
- * One account (UI-CONV-053): its title, description, binding, where it serves and its state, with its controls; a
+ * One account (UI-CONV-053): its title, description, the features it serves (UI-CONV-064), binding, where it serves
+ * and its state, with its controls; a
  * screen reader reads it as its title, its binding, its state and its controls. Connect and Reconnect of an account
  * of fields open its fields in the row (UI-CONV-055); Disconnect asks in the page (UI-CONV-056).
  */
@@ -501,6 +502,12 @@ function AccountRow({
         <div className="account-text">
           <h3 className="account-title">{c.title}</h3>
           {c.description ? <span className="account-description">{c.description}</span> : null}
+          {/* the features the account serves, under its description: "For Files, Calendar" (UI-CONV-064) */}
+          {c.features.length ? (
+            <span className="account-features">
+              {t('accounts.features', { features: c.features.map((f) => f.title).join(', ') })}
+            </span>
+          ) : null}
           {binding ? <span className="account-binding">{binding}</span> : null}
           <span className="account-used">{usedInWords(c, t)}</span>
           <span className="account-state">
@@ -720,7 +727,8 @@ function ConnectCardBody({ agent, card }: { agent: AgentRecord; card: NonNullabl
                       names
                     )
                   : t('accounts.state.changed', names)
-                : t('accounts.card.connect', names)}
+                : // the account, by the card's title, and the feature of the card (UI-CONV-057, UI-CONV-058)
+                  t('accounts.card.connect', { account: card.title, feature: card.feature?.title ?? card.title })}
             </span>
           </div>
           {signIn.attempt ? null : (

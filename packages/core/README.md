@@ -224,5 +224,38 @@ a person by name, `GET {sessions}/admin/audit/people?q=&reason=`, which the agen
 
 The English wording is `ADMIN_COPY`, keyed by its path in the translation files.
 
+## Package 3.5.8: a space's tools by feature, each with one provider (agent D120 to D124)
+
+A space's tools are the features its template names (Files, Calendar, CRM), each with one provider chosen among those
+the template allows: `GET {sessions}/spaces/{id}/tools` answers one item per feature, never one per source. Not
+additive: an item with no `feature`, and a `ayni.space.tools.changed` with no `feature`, are not read.
+
+- `SpaceTool` is a feature: `feature` (`SpaceFeature`: `id`, `title`, `profile`, `null` for a category), `providers`
+  (`SpaceToolProvider[]`, the owner's, empty to a member), `source`, `title` and `description` of the provider in use
+  (`source` and `title` `null` while none is chosen, also while the choice of a first one waits for the phone),
+  `conformant` and `capabilities` for a feature with a contract, and `account` (`null` with no provider), `bindings`
+  and `tools` (empty with none) and `list` (`SpaceToolList`, a feature's location, `null` with none).
+- `SpaceToolsChange` carries `feature`, `source` (`null` when the feature has none) and, for a change of provider,
+  `formerSource`; `concernsFeature` says whether it ends the change of a feature that waits.
+- `ProfileClient.addSpaceTool(token, spaceId, AddSpaceToolInput)` takes `replaces` (the change of provider) and `list`;
+  `patchSpaceTool(token, spaceId, source, SpaceToolPatchInput)` takes `list`; `spaceToolChoices(token, spaceId, source,
+  text)` reads `…/list/choices?text=` (`ListChoice[]`), refusing a blank text before it goes.
+- `SpaceActivityItem` carries `feature` and the kind `provider-changed`, whose `tool.formerSource` names the former
+  provider by its id (its title is the feature's `providers`', §3.7); a `Connection` of Your accounts carries
+  `features`.
+
+| Surface | Functions |
+| --- | --- |
+| A feature's row and About (UI-CONV-050, UI-CONV-031, UI-CONV-065, UI-CONV-060) | `providerLineOf` (`ProviderLine`: the provider, what it is bound to, the line of its list, whose account; `null`: "Choose a provider"), `listLineOf`, `toolRowStateOf` (`notConformant`), `isConformant`, `missingOf` and `missingPartsOf` (the list's label while it holds no entry), `readyToolsOf` |
+| Add (UI-CONV-065) | `defaultProviderOf` ("Suggested", selected), `choosesProvider` (several: "Choose a provider for <feature>" first), `canAdd` |
+| Change provider (UI-CONV-066) | `canChangeProvider`, `otherProvidersOf`, `providerChangeOf` (the titles of its question), `providerChangeInputOf` (`{ source, replaces }`) |
+| The list of a location (UI-CONV-059) | `ListForm`, `listFormOf`, `withListEntry` (the entries it covers leave), `withoutListEntry`, `choiceInList` ("In the list"), `entryCovers`, `listIsFull`, `listChanged`, `listInputOf`; the search: `choicesTextOf`, `listChoicesOf`, `choicesRefusalOf`, `CHOICES_PAUSE_MS`, `CHOICES_TEXT_MAX`, `LIST_CHOICES_MAX` |
+| The refusals (UI-CONV-052) | `toolRefusalOf`: `entry` (`list.entries.<i>`: `badBinding`, `repeatedEntry`, `notPortable`), `entries` (`tooManyEntries`), `any` (`anyNotAllowed`), the panel's `featureHasProvider` |
+
+The English words are in `TOOLS_COPY` (the feature with no provider, the providers, Change provider and its question,
+a provider that does not offer its feature, the list and its search, `provider-changed`) and `CONNECTIONS_COPY`
+(`accounts.features`, "For Files, Calendar"; the Connect card's "Connect your <account> account to use <feature>.").
+The managed folder of a team space (agent D145 to D150, PROF-TOOL-040 to 043) is not read yet.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

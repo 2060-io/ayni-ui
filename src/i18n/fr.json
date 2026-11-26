@@ -732,7 +732,8 @@
       "successor-set": "{{by}} a nommé {{member}} successeur",
       "successor-cleared": "{{member}} n'est plus le successeur",
       "ownerSuccession": "{{member}} est devenu propriétaire en tant que successeur",
-      "ownerSteward": "{{by}}, en tant que responsable, a nommé {{member}} propriétaire : {{reason}}"
+      "ownerSteward": "{{by}}, en tant que responsable, a nommé {{member}} propriétaire : {{reason}}",
+      "provider-changed": "{{by}} a changé le fournisseur de {{feature}}, de {{former}} à {{tool}}"
     },
     "create": {
       "title": "Nouvel espace",
@@ -976,7 +977,31 @@
     "accountPersonal": "Chaque personne connecte son propre compte, dans Vos comptes.",
     "useValue": "Utiliser {{value}}",
     "connectToChoose": "Connectez votre compte pour choisir",
-    "notYourAccount": "Choisissez l'un de vos propres comptes {{source}}."
+    "notYourAccount": "Choisissez l'un de vos propres comptes {{source}}.",
+    "featureHasProvider": "{{feature}} a déjà un fournisseur dans cet espace. Changez-le plutôt.",
+    "notConformant": "{{provider}} n'offre pas {{feature}} comme {{agent}} l'attend. Choisissez un autre fournisseur.",
+    "notPortable": "Chaque membre verrait cet emplacement différemment. Choisissez-en un autre, ou un fournisseur qui utilise le compte de l'espace.",
+    "chooseProvider": "Choisissez un fournisseur",
+    "chooseProviderFor": "Choisissez un fournisseur pour {{feature}}",
+    "suggested": "Suggéré",
+    "changeProvider": "Changer de fournisseur",
+    "changeQuestion": "Utiliser {{next}} pour {{feature}} dans {{space}}, à la place de {{former}} ?",
+    "changeStops": "{{agent}} cesse d'utiliser {{former}} dans cet espace.",
+    "changeNothingCopied": "Rien n'est copié de {{former}} vers {{next}}.",
+    "changeReadStays": "Ce que les conversations précédentes ont lu dans {{former}} y reste.",
+    "change": "Changer",
+    "boundTo": "{{label}} : {{value}}",
+    "list": {
+      "onlyThese": "Seulement ceux-ci",
+      "anyWarning": "Les appels de chaque membre utilisent son propre compte, mais ce que {{agent}} lit avec va dans les conversations de cet espace, que les autres membres lisent une fois qu'elles sont partagées.",
+      "search": "Cherchez dans votre compte pour ajouter",
+      "inList": "Dans la liste",
+      "remove": "Retirer",
+      "tooMany": "Une liste contient au plus {{max}} entrées.",
+      "repeated": "Ceci est déjà dans la liste.",
+      "anyNotAllowed": "{{agent}} n'autorise pas ce choix dans cet espace.",
+      "unavailable": "Impossible de chercher dans {{source}} pour l'instant. Réessayez plus tard."
+    }
   },
   "accounts": {
     "menu": "Vos comptes",
@@ -988,6 +1013,7 @@
       "none": "Pas utilisé pour l'instant"
     },
     "binding": "{{label}} : {{value}}",
+    "features": "Pour {{features}}",
     "state": {
       "notConnected": "Non connecté",
       "connected": "Connecté en tant que {{label}} · depuis le {{date}}",
@@ -1019,7 +1045,7 @@
     "changed": "Ce compte a changé. Ouvrez Vos comptes à nouveau.",
     "disconnectConfirm": "Déconnecter {{source}} ? {{agent}} supprime son accès à votre compte.",
     "card": {
-      "connect": "Connectez votre compte {{source}} pour que {{agent}} puisse l'utiliser avec vos droits."
+      "connect": "Connectez votre compte {{account}} pour utiliser {{feature}}."
     },
     "empty": "{{agent}} ne vous propose aucun compte personnel à connecter.",
     "noTab": "Le navigateur n'a pas ouvert de nouvel onglet. Autorisez les fenêtres pop-up pour cette page et réessayez."

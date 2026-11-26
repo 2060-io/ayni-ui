@@ -4,7 +4,9 @@
  * English translation file must say the same (a test compares them, row by row of the table of UI-CONV-058), and the
  * app starts from these (APP-CONV-058). Keys are paths in the translation file; `{{name}}` marks what the screen puts
  * in. The Info of a message held back for a credential is `conversation.withheldCredentialInfo`, followed, for an
- * agent that declares `features.connections`, by `conversation.withheldCredentialAccounts` (UI-SEC-006).
+ * agent that declares `features.connections`, by `conversation.withheldCredentialAccounts` (UI-SEC-006). With features
+ * (package 3.5.8, UI-CONV-064): `accounts.features`, the features an account serves, "For Files, Calendar"; and the
+ * Connect card names the account and its feature, "Connect your Google account to use Calendar." (UI-CONV-057).
  */
 export const CONNECTIONS_COPY = {
   'accounts.menu': 'Your accounts',
@@ -14,6 +16,7 @@ export const CONNECTIONS_COPY = {
   'accounts.usedIn.places': 'Used in {{places}}',
   'accounts.usedIn.none': 'Not used now',
   'accounts.binding': '{{label}}: {{value}}',
+  'accounts.features': 'For {{features}}',
   'accounts.state.notConnected': 'Not connected',
   'accounts.state.connected': 'Connected as {{label}} · since {{date}}',
   'accounts.state.connectedNoLabel': 'Connected · since {{date}}',
@@ -42,7 +45,7 @@ export const CONNECTIONS_COPY = {
   'accounts.notOffered': 'This account is not offered to you.',
   'accounts.changed': 'This account has changed. Open Your accounts again.',
   'accounts.disconnectConfirm': 'Disconnect {{source}}? {{agent}} deletes its access to your account.',
-  'accounts.card.connect': 'Connect your {{source}} account so that {{agent}} can use it with your rights.',
+  'accounts.card.connect': 'Connect your {{account}} account to use {{feature}}.',
   'accounts.empty': '{{agent}} offers you no account of your own to connect.',
   'accounts.noTab': 'The browser did not open a new tab. Allow pop-ups for this page and try again.',
   'tools.card.accountYours': 'With your account {{label}}',

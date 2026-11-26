@@ -375,6 +375,36 @@ describe('the members of a space (PROF-SPACE-003, UI-CONV-040)', () => {
     expect(spaceActivityOf({ activity: [] }).nextBefore).toBeNull()
   })
 
+  it('reads a change of provider with its feature, the former provider by its id (package 3.5.8, PROF-TOOL-006, §3.7)', () => {
+    const page = spaceActivityOf({
+      activity: [
+        {
+          at: '2026-11-25T10:00:00Z',
+          kind: 'provider-changed',
+          by: { name: 'Jonas Weber' },
+          tool: { source: 'nextcloud', title: 'Nextcloud', formerSource: 'drive' },
+          feature: { id: 'files', title: 'Files' },
+        },
+        {
+          at: '2026-11-24T10:00:00Z',
+          kind: 'tool-added',
+          by: { name: 'Jonas Weber' },
+          tool: { source: 'drive', title: 'Google Drive' },
+          feature: { id: 'files', title: 'Files' },
+        },
+      ],
+    })
+    expect(page.activity[0]).toEqual({
+      at: '2026-11-25T10:00:00Z',
+      kind: 'provider-changed',
+      by: { name: 'Jonas Weber' },
+      tool: { source: 'nextcloud', title: 'Nextcloud', formerSource: 'drive' },
+      feature: { id: 'files', title: 'Files' },
+    })
+    expect(page.activity[1]?.tool).toEqual({ source: 'drive', title: 'Google Drive' })
+    expect(page.activity[1]?.feature).toEqual({ id: 'files', title: 'Files' })
+  })
+
   it('reads the conversations shared with a space (PROF-SPACE-007)', () => {
     expect(
       sharedConversationsOf({

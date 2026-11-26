@@ -5,13 +5,13 @@
  */
 import { type AyniAction, CUSTOM_EVENT } from '@ayni.org/ayni-agui-profile'
 import {
+  type AddSpaceToolInput,
   type AdminAccess,
   type AdminPage,
   type AdminRequestState,
   type AgentRecord,
   type AgUiEvent,
   type AppLinkDestination,
-  type ApprovalPolicyInput,
   type ApprovalStatus,
   adminChangedOf,
   adminPageOpen,
@@ -42,6 +42,7 @@ import {
   hasIssuedCredential,
   IndexedDbStore,
   isAppLink,
+  type ListChoice,
   mergeHistory,
   type NotificationsChange,
   type NotificationsPage,
@@ -66,12 +67,12 @@ import {
   type Spaces,
   type SpaceTool,
   type SpaceToolAnswer,
+  type SpaceToolPatchInput,
   type SpaceToolsChange,
   type StewardedSpace,
   type SyncBus,
   type SyncMessage,
   spaceToolsChangeOf,
-  type ToolRule,
   type Transcript,
   type TranscriptMessage,
   taken,
@@ -2795,32 +2796,35 @@ export class Hub {
     return () => clearInterval(timer)
   }
 
-  /** The tools of a space: every source to its owner, the `ready` ones to a member (PROF-TOOL-001). */
+  /** The tools of a space, one item per feature: every one to its owner, the `ready` ones to a member (PROF-TOOL-001). */
   public spaceTools(agentDid: string, spaceId: string): Promise<SpaceTool[]> {
     return this.withAgent(agentDid, (client, token) => client.spaceTools(token, spaceId))
   }
 
-  /** The owner adds a source, or switches an `off` one back on; it waits for the owner's phone (PROF-TOOL-002). */
-  public addSpaceTool(
-    agentDid: string,
-    spaceId: string,
-    input: { source: string; bindings?: Record<string, string>; calls?: Record<string, ToolRule> }
-  ): Promise<SpaceToolAnswer> {
+  /**
+   * The owner chooses the provider of a feature, or switches an `off` one back on, or, with `replaces`, changes the
+   * provider in use; it waits for the owner's phone (PROF-TOOL-002, PROF-TOOL-034).
+   */
+  public addSpaceTool(agentDid: string, spaceId: string, input: AddSpaceToolInput): Promise<SpaceToolAnswer> {
     return this.withAgent(agentDid, (client, token) => client.addSpaceTool(token, spaceId, input))
   }
 
-  /** The owner changes bindings and rules: at once when it only narrows, else on the phone (PROF-TOOL-003). */
+  /** The owner changes bindings, the list and rules: at once when it only narrows, else on the phone (PROF-TOOL-003). */
   public patchSpaceTool(
     agentDid: string,
     spaceId: string,
     source: string,
-    patch: {
-      bindings?: Record<string, string>
-      calls?: Record<string, ToolRule>
-      approvals?: Record<string, ApprovalPolicyInput>
-    }
+    patch: SpaceToolPatchInput
   ): Promise<SpaceToolAnswer> {
     return this.withAgent(agentDid, (client, token) => client.patchSpaceTool(token, spaceId, source, patch))
+  }
+
+  /**
+   * The owner's search of a provider's list (PROF-TOOL-023, UI-CONV-059): the choices read with the account the owner's
+   * own calls would use in the space, at most fifty. Nothing of it is kept.
+   */
+  public spaceToolChoices(agentDid: string, spaceId: string, source: string, text: string): Promise<ListChoice[]> {
+    return this.withAgent(agentDid, (client, token) => client.spaceToolChoices(token, spaceId, source, text))
   }
 
   /**
@@ -2859,7 +2863,9 @@ export class Hub {
       !!last &&
       last.agentDid === agentDid &&
       last.change.spaceId === change.spaceId &&
+      last.change.feature === change.feature &&
       last.change.source === change.source &&
+      last.change.formerSource === change.formerSource &&
       last.change.changeId === change.changeId &&
       last.change.outcome === change.outcome
     if (same) return

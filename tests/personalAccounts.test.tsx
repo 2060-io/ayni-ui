@@ -156,6 +156,8 @@ describe('the Connect card (UI-CONV-057, PROF-TOOL-020)', () => {
   const GITHUB_CARD = {
     source: 'github',
     title: 'GitHub',
+    // every source a client is given carries the feature it serves (package 3.5.8, PROF-TOOL-035)
+    feature: { id: 'code', title: 'Code and issues' },
     description: 'Code, issues and pull requests in GitHub',
     method: 'oauth',
     why: 'connect',
@@ -191,12 +193,11 @@ describe('the Connect card (UI-CONV-057, PROF-TOOL-020)', () => {
     // after the reply it belongs to
     const reply = byText(el, '.msg .body', 'I need your GitHub account for that.') as HTMLElement
     expect(reply.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(c.getAttribute('aria-label')).toBe('GitHub')
-    expect(c.querySelector('.connect-title')?.textContent).toBe('GitHub')
+    expect(c.getAttribute('aria-label')).toBe('Code and issues · GitHub')
+    expect(c.querySelector('.connect-title')?.textContent).toBe('Code and issues · GitHub')
     expect(c.querySelector('.connect-description')?.textContent).toBe('Code, issues and pull requests in GitHub')
-    expect(c.querySelector('.connect-state')?.textContent).toBe(
-      'Connect your GitHub account so that Fleet support can use it with your rights.'
-    )
+    // the account, by the card's title, and the card's feature (UI-CONV-057, UI-CONV-058)
+    expect(c.querySelector('.connect-state')?.textContent).toBe('Connect your GitHub account to use Code and issues.')
     // it never holds a field
     expect(c.querySelector('input, textarea')).toBeNull()
     await click(byText(c, 'button', 'Connect'))
@@ -676,6 +677,9 @@ const SALES_MEMBER: SpaceInfo = space({
 const SALES_OWNER: SpaceInfo = { ...SALES_MEMBER, role: 'owner' }
 const TOOLS_PATH = '/spaces/spc_sales/tools'
 const crm = (over: Record<string, unknown> = {}) => ({
+  // one item per feature, with its provider (package 3.5.8, PROF-TOOL-033)
+  feature: { id: 'crm', title: 'CRM', profile: null },
+  providers: [{ source: 'relaticle', title: 'Relaticle CRM', account: { kind: 'personal' }, default: true }],
   source: 'relaticle',
   title: 'Relaticle CRM',
   description: "The companies, people, notes and tasks of the space's workspace",
@@ -752,7 +756,10 @@ describe("a space's tool of each person's own account (UI-CONV-049, UI-CONV-050)
     )
     await until(() => el.querySelector('.about-tool'))
     const tool = el.querySelector('.about-tool') as HTMLElement
-    expect(tool.querySelector('.about-tool-account')?.textContent).toBe('Each person uses their own account')
+    // whose account, in the line of its provider (UI-CONV-065)
+    expect(tool.querySelector('.about-tool-provider')?.textContent).toBe(
+      'Relaticle CRM · Each person uses their own account'
+    )
     expect(tool.querySelector('.about-tool-yours')?.textContent).toBe('Your account: not connectedConnect')
     await click(byText(tool, 'button', 'Connect'))
     expect(hub.getSnapshot().view).toBe('accounts')
@@ -773,6 +780,7 @@ describe("a space's tool of each person's own account (UI-CONV-049, UI-CONV-050)
   it("opens the row of the source whose account a tool uses, as the space's tools name it (ayni-spec #110)", async () => {
     // GitHub repository uses the person's GitHub account: Your accounts lists it under GitHub
     const project = {
+      feature: { id: 'code', title: 'Code and issues', profile: null },
       source: 'github-project',
       title: 'GitHub repository',
       description: "The issues of the project's repository",
@@ -1058,7 +1066,8 @@ describe("the words of each person's own accounts (UI-CONV-058)", () => {
       'Disconnected. {{source}} may still list {{agent}} in your settings there: you can remove it.',
     ],
     ['accounts.outcome.disconnectedRevoked', 'Disconnected'],
-    ['accounts.card.connect', 'Connect your {{source}} account so that {{agent}} can use it with your rights.'],
+    ['accounts.card.connect', 'Connect your {{account}} account to use {{feature}}.'],
+    ['accounts.features', 'For {{features}}'],
     ['tools.card.accountYours', 'With your account {{label}}'],
     ['tools.card.accountOwn', 'With your own account'],
     ['tools.card.accountRequester', "With {{requester}}'s own account"],
@@ -1160,6 +1169,7 @@ describe('the new surfaces in both themes: light, dark by choice and dark by sys
     // the colours the new rules paint with
     expect(rule('.account-title').color).toBe('var(--text)')
     expect(rule('.account-description,\n.account-binding,\n.account-used').color).toBe('var(--muted)')
+    expect(rule('.account-features').color).toBe('var(--muted)')
     expect(rule('.account-state').color).toBe('var(--text)')
     expect(rule('.account-reconnect-icon').color).toBe('var(--warning)')
     expect(rule('.account-row').background).toBe('var(--bg)')

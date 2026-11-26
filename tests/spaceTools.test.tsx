@@ -1,12 +1,13 @@
 /**
- * The tools of a space (profile 3.4 §3.10; agent D97, D98): the owner's Tools segment with each state of a source and
- * its panel (UI-CONV-050), a change that waits for the owner's phone and its outcomes on `ayni.space.tools.changed`,
- * each refusal where it belongs; the account typed in one masked field per value the agent declares, never kept or
- * shown back; what members read in About
- * (UI-CONV-031, UI-CONV-049); the activity of tools (UI-CONV-051); and nothing of it against a 3.3 agent.
+ * The tools of a space (profile 3.5.8 §3.10; agent D97, D98, D120, D122): the owner's Tools segment, one row per feature
+ * with the line of its provider and its state (UI-CONV-050, UI-CONV-065), Add among one or several providers, the
+ * panel of a provider, a change that waits for the owner's phone and its outcomes on `ayni.space.tools.changed`, each
+ * refusal where it belongs; the account typed in one masked field per value the agent declares, never kept or shown
+ * back; what members read in About, by feature (UI-CONV-031, UI-CONV-049); the activity of tools (UI-CONV-051); and
+ * nothing of it against a 3.3 agent.
  */
 import type { SpaceInfo } from '@ayni.org/ayni-ui-core'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { SpacePage } from '../src/components/SpacePage.js'
 import type { Hub } from '../src/state/hub.js'
 import {
@@ -19,6 +20,7 @@ import {
   PERSONAL,
   record,
   render,
+  SESSIONS,
   SPACES,
   setup,
   space,
@@ -40,7 +42,18 @@ const SALES: SpaceInfo = space({
 const TOOLS_PATH = '/spaces/spc_sales/tools'
 const TOKEN = '7|AbCdEfGhIjKlMnOpQrStUvWxYz0123'
 
+/** The CRM of Sales EU: one item per feature, with the providers its template allows (PROF-TOOL-033). */
+const CRM_FEATURE = { id: 'crm', title: 'CRM', profile: null }
+const CRM_PROVIDER = {
+  source: 'relaticle',
+  title: 'Relaticle CRM',
+  description: "The sales team's accounts, contacts and notes",
+  account: { kind: 'space' },
+  default: true,
+}
 const crm = (over: Record<string, unknown> = {}) => ({
+  feature: CRM_FEATURE,
+  providers: [CRM_PROVIDER],
   source: 'relaticle',
   title: 'Relaticle CRM',
   description: "The sales team's accounts, contacts and notes",
@@ -88,17 +101,108 @@ const READY = crm({
     { name: 'region', label: 'Region', value: 'eu-1', setBy: 'pack' },
   ],
 })
+/** The CRM with no provider: removed from a space whose template adds it, `off` (PROF-TOOL-005, PROF-TOOL-033). */
+const CRM_OFF = {
+  feature: CRM_FEATURE,
+  providers: [CRM_PROVIDER],
+  source: null,
+  title: null,
+  state: 'off',
+  add: 'auto',
+  guests: false,
+  pending: null,
+}
+/** Web search, offered and not added: no provider chosen yet, so nothing of one (PROF-TOOL-033). */
 const WEB = {
-  source: 'web',
-  title: 'Web search',
-  description: 'Searches the web',
+  feature: { id: 'search', title: 'Web search', profile: null },
+  providers: [
+    { source: 'web', title: 'Web search', description: 'Searches the web', account: { kind: 'agent' }, default: true },
+  ],
+  source: null,
+  title: null,
   state: 'available',
   add: 'owner',
   guests: true,
+  pending: null,
+}
+/** Web search with its provider in use. */
+const WEB_READY = {
+  ...WEB,
+  source: 'web',
+  title: 'Web search',
+  description: 'Searches the web',
+  state: 'ready',
   account: { kind: 'agent' },
   bindings: [],
   tools: [{ name: 'search', title: 'Search the web', effect: 'read', rule: 'none', packRule: 'none', stepUp: null }],
+}
+/** Files of Sales EU, a feature with a contract and two providers (agent D120, D123; profile §3.10). */
+const FILES_FEATURE = { id: 'files', title: 'Files', profile: { id: 'org.ayni/files', version: '1.0' } }
+const NEXTCLOUD = {
+  source: 'nextcloud',
+  title: 'Nextcloud',
+  description: "A folder of the organization's Nextcloud, with an account of the space",
+  account: { kind: 'space' },
+  default: true,
+}
+const DRIVE = {
+  source: 'drive',
+  title: 'Google Drive',
+  description: 'The files each person can open in their drive',
+  account: { kind: 'personal' },
+  default: false,
+}
+const FILES = {
+  feature: FILES_FEATURE,
+  providers: [NEXTCLOUD, DRIVE],
+  source: null,
+  title: null,
+  state: 'available',
+  add: 'owner',
+  guests: false,
   pending: null,
+}
+const FOLDERS = {
+  label: 'Folders',
+  any: false,
+  entries: [{ values: { root: '48213' }, label: '/Projects/Alpha' }],
+  anyAllowed: false,
+  anyLabel: 'Any folder you can reach',
+  choices: true,
+  typed: false,
+  maxEntries: 10,
+}
+const FILES_READY = {
+  ...FILES,
+  source: 'nextcloud',
+  title: 'Nextcloud',
+  description: NEXTCLOUD.description,
+  state: 'ready',
+  conformant: true,
+  capabilities: ['search', 'folders'],
+  account: {
+    kind: 'space',
+    fields: [
+      { name: 'username', label: 'User name' },
+      { name: 'password', label: 'App password' },
+    ],
+    set: true,
+    setAt: '2026-11-22T09:10:00Z',
+    setBy: { name: 'Jonas Weber' },
+  },
+  bindings: [],
+  list: FOLDERS,
+  tools: [
+    { name: 'files_read', title: 'Read a file', effect: 'read', rule: 'none', packRule: 'none', stepUp: null },
+    {
+      name: 'files_replace',
+      title: "Replace a file's content",
+      effect: 'write',
+      rule: 'confirm',
+      packRule: 'confirm',
+      stepUp: null,
+    },
+  ],
 }
 const pending = (tool: Record<string, unknown>, code = '48 21') => ({
   ...tool,
@@ -136,7 +240,8 @@ async function announce(hub: Hub, value: Record<string, unknown>) {
 const rowTexts = (el: HTMLElement) =>
   [...el.querySelectorAll('.tool-row')].map((r) => ({
     title: r.querySelector('.space-name')?.textContent,
-    state: r.querySelector('.tag, .state-tag')?.textContent,
+    provider: r.querySelector('.tool-provider-line')?.textContent,
+    state: r.querySelector('.tag, .state-tag, .tool-not-conformant')?.textContent?.trim(),
     add: !!byText(r, 'button', 'Add'),
   }))
 const open = async (el: HTMLElement, title: string) =>
@@ -181,7 +286,8 @@ describe('the segments of a space (UI-CONV-031, PROF-DESC-009)', () => {
 })
 
 describe("the owner's Tools segment (UI-CONV-050)", () => {
-  it('lists every source of the template with its state in words, and Add for those not in the space', async () => {
+  it("lists every feature of the template in its order: its title, its provider's line, its state, Add for one with none", async () => {
+    const social = { id: 'social', title: 'Social posting', profile: null }
     const { el } = await ownersTools([
       [
         `GET ${TOOLS_PATH}`,
@@ -190,42 +296,69 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
             tools: [
               crm(),
               WEB,
-              { ...WEB, source: 'x', title: 'X', state: 'off', add: 'auto' },
-              { ...READY, source: 'github', title: 'GitHub' },
-              pending({ ...READY, source: 'slack', title: 'Slack' }),
+              {
+                ...WEB,
+                feature: social,
+                providers: [{ source: 'x', title: 'Post on X', account: { kind: 'space' }, default: true }],
+                state: 'off',
+                add: 'auto',
+              },
+              {
+                ...READY,
+                feature: { id: 'code', title: 'Code and issues', profile: null },
+                source: 'github',
+                title: 'GitHub',
+              },
+              pending({
+                ...READY,
+                feature: { id: 'chat', title: 'Chat', profile: null },
+                source: 'slack',
+                title: 'Slack',
+              }),
             ],
           }),
       ],
     ])
     await until(() => el.querySelectorAll('.tool-row').length === 5)
     expect(rowTexts(el)).toEqual([
-      { title: 'Relaticle CRM', state: 'Needs setup: Workspace, account', add: false },
-      { title: 'Web search', state: 'Not added', add: true },
-      { title: 'X', state: 'Off', add: true },
-      { title: 'GitHub', state: 'Ready', add: false },
-      { title: 'Slack', state: 'Waiting for your phone', add: false },
+      {
+        title: 'CRM',
+        provider: "Relaticle CRM · Region: eu-1 · Uses the space's account",
+        state: 'Needs setup: Workspace, account',
+        add: false,
+      },
+      { title: 'Web search', provider: 'Choose a provider', state: 'Not added', add: true },
+      { title: 'Social posting', provider: 'Choose a provider', state: 'Off', add: true },
+      {
+        title: 'Code and issues',
+        provider: "GitHub · Workspace: sales-eu · Region: eu-1 · Uses the space's account",
+        state: 'Ready',
+        add: false,
+      },
+      {
+        title: 'Chat',
+        provider: "Slack · Workspace: sales-eu · Region: eu-1 · Uses the space's account",
+        state: 'Waiting for your phone',
+        add: false,
+      },
     ])
   })
 
-  it('names each source by its feature, "<feature> · <source>", on its row and atop its panel (UI-CONV-064)', async () => {
+  it('names the feature on its row and "<feature> · <provider>" atop its panel, the title once when both are the same (UI-CONV-064, UI-CONV-065)', async () => {
     const { el } = await ownersTools([
-      [
-        `GET ${TOOLS_PATH}`,
-        () =>
-          json({
-            tools: [
-              { ...READY, title: 'Relaticle', feature: { id: 'crm', title: 'CRM', profile: null } },
-              { ...WEB, feature: { id: 'web', title: 'Web search', profile: null } },
-            ],
-          }),
-      ],
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [{ ...READY, title: 'Relaticle' }, WEB_READY] })],
     ])
     await until(() => el.querySelectorAll('.tool-row').length === 2)
-    // the name once when the feature's title and the source's are the same
-    expect(rowTexts(el).map((r) => r.title)).toEqual(['CRM · Relaticle', 'Web search'])
-    await open(el, 'CRM · Relaticle')
+    expect(rowTexts(el).map((r) => [r.title, r.provider])).toEqual([
+      ['CRM', "Relaticle · Workspace: sales-eu · Region: eu-1 · Uses the space's account"],
+      ['Web search', "Web search · Uses Fleet support's account"],
+    ])
+    await open(el, 'Relaticle')
     await until(() => el.querySelector('.tool-panel-title'))
     expect(el.querySelector('.tool-panel-title')?.textContent).toBe('CRM · Relaticle')
+    await click(byText(el, 'button', 'All tools'))
+    await open(el, 'Web search')
+    expect(el.querySelector('.tool-panel-title')?.textContent).toBe('Web search')
   })
 
   it("opens a source's panel: its settings, its account, what each tool asks, who can use it, Remove", async () => {
@@ -310,6 +443,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     const reads = agent.find('GET', TOOLS_PATH).length
     await announce(hub, {
       spaceId: SALES.id,
+      feature: 'crm',
       source: 'relaticle',
       state: 'ready',
       changeId: 'chg_1',
@@ -336,6 +470,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     await until(() => el.querySelector('.tool-pending'))
     await announce(hub, {
       spaceId: SALES.id,
+      feature: 'crm',
       source: 'relaticle',
       state: 'ready',
       changeId: 'chg_1',
@@ -350,6 +485,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     expect(el.querySelector('.tool-pending')).toBeTruthy()
     await announce(hub, {
       spaceId: SALES.id,
+      feature: 'crm',
       source: 'relaticle',
       state: 'ready',
       changeId: 'chg_1',
@@ -381,6 +517,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     await open(el, 'Relaticle CRM')
     await announce(hub, {
       spaceId: SALES.id,
+      feature: 'crm',
       source: 'relaticle',
       state: 'ready',
       changeId: 'chg_1',
@@ -571,7 +708,7 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
         `DELETE ${TOOLS_PATH}/relaticle/account`,
         () => json({ tool: { ...READY, state: 'setup', account: { ...READY.account, set: false } } }),
       ],
-      [`DELETE ${TOOLS_PATH}/relaticle`, () => json({ tool: { ...READY, state: 'off', pending: null } })],
+      [`DELETE ${TOOLS_PATH}/relaticle`, () => json({ tool: CRM_OFF })],
     ])
     await until(() => el.querySelector('.tool-row'))
     await open(el, 'Relaticle CRM')
@@ -591,34 +728,57 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     )
     await click(byText(el, '.tool-confirm button', 'Remove from Sales EU'))
     await until(() => agent.find('DELETE', `${TOOLS_PATH}/relaticle`).length === 1)
-    // back to the list, the source off
+    // back to the list, the feature off, with no provider
     await until(() => rowTexts(el)[0]?.state === 'Off')
+    expect(rowTexts(el)[0]?.provider).toBe('Choose a provider')
   })
 
-  it('shows no account before a source with a space account is added; its Save of the settings is Add', async () => {
-    const offered = crm({ state: 'available', add: 'owner' })
-    const { el, agent } = await ownersTools([
-      [`GET ${TOOLS_PATH}`, () => json({ tools: [offered] })],
-      [`POST ${TOOLS_PATH}`, () => json({ tool: pending({ ...offered, state: 'setup' }) }, 202)],
+  it("opens the panel of a feature's one provider at once: no account field before it is added, and Add (UI-CONV-065)", async () => {
+    const offered = { ...CRM_OFF, state: 'available', add: 'owner' }
+    let tools: unknown[] = [offered]
+    const { el, hub, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(offered) }, 202)],
     ])
     await until(() => el.querySelector('.tool-row'))
-    await open(el, 'Relaticle CRM')
+    await click(byText(el, '.tool-row button', 'Add'))
+    // one provider: its panel, no choice to make
+    expect(el.querySelector('.tool-providers')).toBeNull()
+    expect(el.querySelector('.tool-panel-title')?.textContent).toBe('CRM · Relaticle CRM')
+    expect(el.querySelector('.tool-panel-description')?.textContent).toBe(
+      "The sales team's accounts, contacts and notes"
+    )
+    // a space's account only once the provider is added; its settings are not known before it is in use
+    expect([...el.querySelectorAll('.tool-section h4')].map((h) => h.textContent)).toEqual(['Who can use it'])
+    expect(tokenField(el)).toBeNull()
+    await click(byText(el, 'button', 'Add to Sales EU'))
+    await until(() => el.querySelector('.tool-pending'))
+    // the choice of the provider, and nothing else, waits for the phone (PROF-TOOL-002)
+    expect(agent.find('POST', TOOLS_PATH)[0].body).toEqual({ source: 'relaticle' })
+    expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 48 21/)
+    expect(byText(el, 'button', 'Add to Sales EU')).toBeUndefined()
+    // confirmed: the feature has its provider, setup; the panel is its provider's, with its settings
+    tools = [crm()]
+    await announce(hub, {
+      spaceId: SALES.id,
+      feature: 'crm',
+      source: 'relaticle',
+      state: 'setup',
+      changeId: 'chg_1',
+      outcome: 'applied',
+    })
+    await until(() => el.querySelector('.tool-change-outcome')?.textContent === 'Saved')
+    await until(() => !!byText(el, 'label.field', /^Workspace/))
+    expect(el.querySelector('.tool-panel .state-tag')?.textContent).toBe('Needs setup: Workspace, account')
     expect([...el.querySelectorAll('.tool-section h4')].map((h) => h.textContent)).toEqual([
       'Settings of the tool',
+      'Account',
       'What each tool asks',
       'Who can use it',
     ])
-    expect(tokenField(el)).toBeNull()
-    await type(byText(el, 'label.field', /^Workspace/)?.querySelector('input'), 'sales-eu')
-    await click(byText(el, 'button', 'Add to Sales EU'))
-    await until(() => el.querySelector('.tool-section[aria-label="What each tool asks"] .tool-pending'))
-    expect(agent.find('POST', TOOLS_PATH)[0].body).toEqual({ source: 'relaticle', bindings: { workspace: 'sales-eu' } })
-    // the Add became the code; the value being confirmed stays in its field
-    expect(byText(el, 'button', 'Add to Sales EU')).toBeUndefined()
-    expect(byText(el, 'label.field', /^Workspace/)?.querySelector('input')?.value).toBe('sales-eu')
   })
 
-  it('adds a source the template offers, with its rules, and waits for the phone', async () => {
+  it("adds a feature of one provider with the agent's account, and waits for the phone", async () => {
     const { el, agent } = await ownersTools([
       [`GET ${TOOLS_PATH}`, () => json({ tools: [WEB] })],
       [`POST ${TOOLS_PATH}`, () => json({ tool: pending(WEB, '17 03') }, 202)],
@@ -629,17 +789,571 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     expect(byText(el, '.tool-section .rule-line', "Uses Fleet support's account")).toBeTruthy()
     // an `agent` account has no field
     expect(tokenField(el)).toBeNull()
-    await type(el.querySelector('.tool-rule-row select'), 'confirm')
-    expect(agent.find('PATCH', `${TOOLS_PATH}/web`)).toHaveLength(0)
     await click(byText(el, 'button', 'Add to Sales EU'))
     await until(() => el.querySelector('.tool-pending'))
-    expect(agent.find('POST', TOOLS_PATH)[0].body).toEqual({ source: 'web', calls: { search: 'confirm' } })
+    expect(agent.find('POST', TOOLS_PATH)[0].body).toEqual({ source: 'web' })
     expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 17 03/)
+    // back to the list: the row waits too
+    await click(byText(el, 'button', 'All tools'))
+    expect(rowTexts(el)[0]?.state).toBe('Waiting for your phone')
   })
 
   it('says why the list could not be read', async () => {
     const { el } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ error: 'boom', message: 'agent down' }, 500)]])
     await until(() => el.querySelector('.banner.warning'))
+  })
+})
+
+/** The providers a feature's Add shows, as the owner reads them: title, the Suggested mark, description, account. */
+const providerTexts = (el: HTMLElement) =>
+  [...el.querySelectorAll<HTMLLabelElement>('.tool-provider-option')].map((o) => ({
+    title: o.querySelector('.tool-provider-title')?.childNodes[0]?.textContent,
+    suggested: !!o.querySelector('.tool-suggested'),
+    checked: !!o.querySelector('input')?.checked,
+    lines: [...o.querySelectorAll('.tool-provider-text > .muted')].map((x) => x.textContent),
+  }))
+
+describe('Add among the providers of a feature (UI-CONV-065, PROF-TOOL-002, PROF-TOOL-033)', () => {
+  it('shows several under "Choose a provider for <feature>", the default Suggested and selected, then the one picked', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(FILES, '31 07') }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    expect(rowTexts(el)).toEqual([{ title: 'Files', provider: 'Choose a provider', state: 'Not added', add: true }])
+    await click(byText(el, '.tool-row button', 'Add'))
+    expect(el.querySelector('.tool-panel-title')?.textContent).toBe('Files')
+    expect(el.querySelector('.tool-providers legend')?.textContent).toBe('Choose a provider for Files')
+    // in the agent's order, each with its title, its description and whose account it uses
+    expect(providerTexts(el)).toEqual([
+      {
+        title: 'Nextcloud',
+        suggested: true,
+        checked: true,
+        lines: [NEXTCLOUD.description, "Uses the space's account"],
+      },
+      {
+        title: 'Google Drive',
+        suggested: false,
+        checked: false,
+        lines: [DRIVE.description, 'Each person uses their own account'],
+      },
+    ])
+    expect(el.querySelector('.tool-suggested')?.textContent).toBe('Suggested')
+    // the default: a space's account, none to set before it is added
+    expect(el.querySelector('.tool-section[aria-label="Account"]')).toBeNull()
+    await click(el.querySelectorAll<HTMLInputElement>('.tool-provider-option input')[1])
+    // the one picked: each person's own account
+    expect(el.querySelector('.tool-section[aria-label="Account"] .rule-line')?.textContent).toBe(
+      'Each person connects their own account, in Your accounts.'
+    )
+    await click(byText(el, 'button', 'Add to Sales EU'))
+    await until(() => el.querySelector('.tool-pending'))
+    expect(agent.find('POST', TOOLS_PATH)[0].body).toEqual({ source: 'drive' })
+    expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 31 07/)
+    // while it waits, no other provider can be picked
+    expect(el.querySelector('.tool-providers')).toBeNull()
+  })
+
+  it("ends the wait on the change of the feature, whichever provider it names, and opens the new provider's panel", async () => {
+    let tools: unknown[] = [FILES]
+    const { el, hub } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(FILES) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(el, 'button', 'Add to Sales EU'))
+    await until(() => el.querySelector('.tool-pending'))
+    // a change of another feature, or one that names no feature, ends nothing
+    await announce(hub, {
+      spaceId: SALES.id,
+      feature: 'crm',
+      source: 'relaticle',
+      state: 'ready',
+      changeId: 'chg_1',
+      outcome: 'applied',
+    })
+    await announce(hub, {
+      spaceId: SALES.id,
+      source: 'nextcloud',
+      state: 'setup',
+      changeId: 'chg_1',
+      outcome: 'applied',
+    })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(el.querySelector('.tool-pending')).toBeTruthy()
+    tools = [
+      {
+        ...FILES_READY,
+        state: 'setup',
+        account: { ...FILES_READY.account, set: false },
+        list: { ...FOLDERS, entries: [] },
+      },
+    ]
+    await announce(hub, {
+      spaceId: SALES.id,
+      feature: 'files',
+      source: 'nextcloud',
+      state: 'setup',
+      changeId: 'chg_1',
+      outcome: 'applied',
+    })
+    await until(() => el.querySelector('.tool-change-outcome')?.textContent === 'Saved')
+    await until(() => el.querySelector('.tool-panel-title')?.textContent === 'Files · Nextcloud')
+    // the needs-setup line names the list with no entry, then the account (UI-CONV-052)
+    expect(el.querySelector('.tool-panel .state-tag')?.textContent).toBe('Needs setup: Folders, account')
+    await click(byText(el, 'button', 'All tools'))
+    expect(rowTexts(el)[0]).toMatchObject({
+      provider: "Nextcloud · Uses the space's account",
+      state: 'Needs setup: Folders, account',
+    })
+  })
+
+  it('withdraws a first choice found waiting, which names no provider, by a provider of its feature (PROF-TOOL-005)', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [pending(FILES)] })],
+      [`DELETE ${TOOLS_PATH}/nextcloud/pending`, () => new Response(null, { status: 204 })],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    expect(rowTexts(el)[0]).toMatchObject({
+      provider: 'Choose a provider',
+      state: 'Waiting for your phone',
+      add: false,
+    })
+    await open(el, 'Files')
+    expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 48 21/)
+    expect(el.querySelector('.tool-providers')).toBeNull()
+    await click(byText(el, '.tool-pending button', 'Withdraw'))
+    await until(() => agent.find('DELETE', `${TOOLS_PATH}/nextcloud/pending`).length === 1)
+    await until(() => el.querySelector('.tool-change-outcome')?.textContent === 'Withdrawn. Nothing changed.')
+  })
+
+  it('says a provider that does not offer its feature, in place of its state and atop its panel, with no tool', async () => {
+    const { el } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [{ ...FILES_READY, conformant: false, tools: [] }] })],
+    ])
+    const words = 'Nextcloud does not offer Files as Fleet support expects. Choose another provider.'
+    await until(() => el.querySelector('.tool-row'))
+    expect(rowTexts(el)[0]?.state).toBe(words)
+    expect(el.querySelector('.tool-row .tag, .tool-row .state-tag')).toBeNull()
+    await open(el, 'Files')
+    expect(el.querySelector('.tool-panel-head .tool-not-conformant')?.textContent?.trim()).toBe(words)
+    expect(el.querySelector('.tool-section[aria-label="What each tool asks"]')).toBeNull()
+    // conformant, or not connected yet: the state as ever
+    teardown()
+    const fresh = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [{ ...FILES_READY, conformant: undefined }] })],
+    ])
+    await until(() => fresh.el.querySelector('.tool-row'))
+    expect(rowTexts(fresh.el)[0]?.state).toBe('Ready')
+  })
+
+  it('says that a feature already has a provider, in the words of UI-CONV-052', async () => {
+    const { el } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES] })],
+      [`POST ${TOOLS_PATH}`, () => json({ error: 'feature-has-provider' }, 409)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(el, 'button', 'Add to Sales EU'))
+    await until(() => el.querySelector('.tool-error'))
+    expect(el.querySelector('.tool-error')?.textContent).toBe(
+      'Files already has a provider in this space. Change it instead.'
+    )
+  })
+})
+
+/** Files once Google Drive replaced Nextcloud: nothing of the former provider, `setup` (PROF-TOOL-034). */
+const FILES_DRIVE = {
+  ...FILES,
+  source: 'drive',
+  title: 'Google Drive',
+  description: DRIVE.description,
+  state: 'setup',
+  capabilities: [],
+  account: { kind: 'personal', connected: false },
+  bindings: [],
+  list: { ...FOLDERS, entries: [] },
+  tools: FILES_READY.tools,
+}
+
+describe('Change provider (UI-CONV-066, PROF-TOOL-034)', () => {
+  const question = (el: HTMLElement) =>
+    [...(el.querySelector('.tool-change-provider .tool-confirm')?.querySelectorAll('p') ?? [])].map(
+      (p) => p.textContent
+    )
+
+  it('shows the other providers, asks in the page, and sends the change with `replaces`; Cancel changes nothing', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(FILES_READY) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(el, 'button', 'Change provider'))
+    // the others, as Add shows them: Nextcloud, in use, is not among them
+    expect(el.querySelector('.tool-change-provider legend')?.textContent).toBe('Choose a provider for Files')
+    expect(providerTexts(el)).toEqual([
+      {
+        title: 'Google Drive',
+        suggested: false,
+        checked: false,
+        lines: [DRIVE.description, 'Each person uses their own account'],
+      },
+    ])
+    expect(question(el)).toEqual([])
+    await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+    expect(question(el)).toEqual([
+      'Use Google Drive for Files in Sales EU, in place of Nextcloud?',
+      'Fleet support stops using Nextcloud in this space.',
+      'Nothing is copied from Nextcloud to Google Drive.',
+      'What earlier conversations read from Nextcloud stays in them.',
+    ])
+    expect([...el.querySelectorAll('.tool-change-provider .tool-confirm button')].map((b) => b.textContent)).toEqual([
+      'Cancel',
+      'Change',
+    ])
+    // Cancel changes nothing
+    await click(byText(el, '.tool-change-provider .tool-confirm button', 'Cancel'))
+    expect(el.querySelector('.tool-change-provider .tool-confirm')).toBeNull()
+    expect(el.querySelector('.tool-change-provider .tool-providers')).toBeNull()
+    expect(agent.find('POST', TOOLS_PATH)).toHaveLength(0)
+    await click(byText(el, 'button', 'Change provider'))
+    await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+    await click(byText(el, '.tool-change-provider .tool-confirm button', 'Change'))
+    await until(() => agent.find('POST', TOOLS_PATH).length === 1)
+    expect(agent.find('POST', TOOLS_PATH)[0].body).toEqual({ source: 'drive', replaces: 'nextcloud' })
+    // the control becomes the code, with the time left and Withdraw
+    await until(() => el.querySelector('.tool-change-provider .tool-pending'))
+    expect(el.querySelector('.tool-change-provider .tool-pending-text')?.textContent).toMatch(
+      /^Confirm on your phone · Code 48 21 [45]:\d\d left$/
+    )
+    expect(byText(el, '.tool-change-provider button', 'Change provider')).toBeUndefined()
+    expect(byText(el, '.tool-change-provider .tool-pending button', 'Withdraw')).toBeTruthy()
+  })
+
+  it("keeps the provider in use on the row and the panel until the change applies, then the new one's panel", async () => {
+    let tools: unknown[] = [FILES_READY]
+    const { el, hub, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(FILES_READY) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(el, 'button', 'Change provider'))
+    await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+    await click(byText(el, '.tool-change-provider .tool-confirm button', 'Change'))
+    await until(() => el.querySelector('.tool-change-provider .tool-pending'))
+    // meanwhile Nextcloud is the provider, and no other granting change is offered
+    expect(el.querySelector('.tool-panel-title')?.textContent).toBe('Files · Nextcloud')
+    tools = [pending(FILES_READY)]
+    await click(byText(el, 'button', 'All tools'))
+    expect(rowTexts(el)[0]).toEqual({
+      title: 'Files',
+      provider: "Nextcloud · Folders: /Projects/Alpha · Uses the space's account",
+      state: 'Waiting for your phone',
+      add: false,
+    })
+    await open(el, 'Files')
+    expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 48 21/)
+    // confirmed: the event names the new provider and the former one
+    tools = [FILES_DRIVE]
+    const reads = agent.find('GET', TOOLS_PATH).length
+    await announce(hub, {
+      spaceId: SALES.id,
+      feature: 'files',
+      source: 'drive',
+      formerSource: 'nextcloud',
+      state: 'setup',
+      changeId: 'chg_1',
+      outcome: 'applied',
+    })
+    await until(() => agent.find('GET', TOOLS_PATH).length > reads)
+    await until(() => el.querySelector('.tool-panel-title')?.textContent === 'Files · Google Drive')
+    expect(el.querySelector('.tool-change-outcome')?.textContent).toBe('Saved')
+    expect(el.querySelector('.tool-panel .state-tag')?.textContent).toBe('Needs setup: Folders')
+    expect(el.querySelector('.tool-section[aria-label="Account"] .rule-line')?.textContent).toBe(
+      'Each person connects their own account, in Your accounts.'
+    )
+    // Nextcloud is now the other provider
+    await click(byText(el, 'button', 'Change provider'))
+    expect(providerTexts(el).map((p) => [p.title, p.suggested])).toEqual([['Nextcloud', true]])
+  })
+
+  it('withdraws a change of provider by the provider in use', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(FILES_READY) }, 202)],
+      [`DELETE ${TOOLS_PATH}/nextcloud/pending`, () => new Response(null, { status: 204 })],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(el, 'button', 'Change provider'))
+    await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+    await click(byText(el, '.tool-change-provider .tool-confirm button', 'Change'))
+    await until(() => el.querySelector('.tool-change-provider .tool-pending'))
+    await click(byText(el, '.tool-change-provider .tool-pending button', 'Withdraw'))
+    await until(() => agent.find('DELETE', `${TOOLS_PATH}/nextcloud/pending`).length === 1)
+    await until(
+      () =>
+        el.querySelector('.tool-change-provider .tool-change-outcome')?.textContent === 'Withdrawn. Nothing changed.'
+    )
+    expect(byText(el, '.tool-change-provider button', 'Change provider')).toBeTruthy()
+  })
+
+  it('says why a change was refused under its control, and reads the tools again when the provider in use changed', async () => {
+    let answer = () => json({ error: 'change-pending' }, 409)
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      [`POST ${TOOLS_PATH}`, () => answer()],
+    ])
+    const change = async () => {
+      await click(byText(el, 'button', 'Change provider'))
+      await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+      await click(byText(el, '.tool-change-provider .tool-confirm button', 'Change'))
+    }
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await change()
+    await until(() => el.querySelector('.tool-change-provider .tool-error'))
+    expect(el.querySelector('.tool-change-provider .tool-error')?.textContent).toBe(
+      'A change of this tool is already waiting for your phone.'
+    )
+    answer = () => json({ error: 'bad-request', field: 'replaces', message: 'replaces names the provider in use' }, 400)
+    const reads = agent.find('GET', TOOLS_PATH).length
+    await change()
+    await until(() => agent.find('GET', TOOLS_PATH).length > reads)
+  })
+
+  it('is not offered for a feature with one provider, nor before a provider is in use', async () => {
+    const { el } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ tools: [READY, FILES] })]])
+    await until(() => el.querySelectorAll('.tool-row').length === 2)
+    await open(el, 'CRM')
+    expect(byText(el, 'button', 'Change provider')).toBeUndefined()
+    await click(byText(el, 'button', 'All tools'))
+    await open(el, 'Files')
+    expect(byText(el, 'button', 'Change provider')).toBeUndefined()
+  })
+})
+
+describe('the list of a location and its search (UI-CONV-059, UI-CONV-066, PROF-TOOL-022, PROF-TOOL-023)', () => {
+  const CHOICES = `${TOOLS_PATH}/nextcloud/list/choices`
+  const choicesRoute: [RegExp, (call: Call) => Response] = [
+    /^GET \/spaces\/spc_sales\/tools\/nextcloud\/list\/choices\?text=/,
+    () =>
+      json({
+        choices: [
+          { values: { root: '48213' }, label: '/Projects/Alpha' },
+          { values: { root: '48214' }, label: '/Projects/Beta' },
+        ],
+      }),
+  ]
+  const editor = (el: HTMLElement) => el.querySelector<HTMLElement>('.tool-list-editor') as HTMLElement
+  const entries = (el: HTMLElement) =>
+    [...el.querySelectorAll('.tool-list-entry .tool-list-entry-label')].map((x) => x.textContent)
+  const choices = (el: HTMLElement) =>
+    [...el.querySelectorAll('.tool-list-choice')].map((c) => [
+      c.querySelector('.tool-list-choice-label')?.textContent,
+      c.querySelector('button')?.textContent ?? c.querySelector('.muted')?.textContent,
+    ])
+  const search = (el: HTMLElement) => el.querySelector<HTMLInputElement>('.tool-list-search input')
+  const searches = (agent: { calls: Call[] }) => agent.calls.filter((c) => c.url.startsWith(`${SESSIONS}${CHOICES}`))
+
+  it('lists the entries, searches the account once the typing pauses, adds a choice and sends the list whole', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      choicesRoute,
+      [`PATCH ${TOOLS_PATH}/nextcloud`, () => json({ tool: pending(FILES_READY, '31 07') }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    // in Settings of the tool, titled by its label; no choice of any where the template allows none
+    expect(
+      el.querySelector('.tool-section[aria-label="Settings of the tool"] .tool-list-editor legend')?.textContent
+    ).toBe('Folders')
+    expect(entries(el)).toEqual(['/Projects/Alpha'])
+    expect(byText(editor(el), 'button', 'Remove')).toBeTruthy()
+    expect(editor(el).textContent).not.toContain('Only these')
+    await click(byText(editor(el), 'button', 'Add'))
+    expect(search(el)?.placeholder).toBe('Search your account to add')
+    await type(search(el), '/Proj')
+    // asked once the typing pauses, not at each letter
+    expect(searches(agent)).toHaveLength(0)
+    await until(() => searches(agent).length === 1, 3000)
+    expect(searches(agent)[0]?.url).toBe(`${SESSIONS}${CHOICES}?text=%2FProj`)
+    await until(() => choices(el).length === 2)
+    expect(choices(el)).toEqual([
+      ['/Projects/Alpha', 'In the list'],
+      ['/Projects/Beta', 'Add'],
+    ])
+    // a location is never typed: what was typed is not offered as an entry (`typed: false`)
+    expect(editor(el).textContent).not.toContain('Add /Proj')
+    await click(byText(el.querySelector('.tool-list-choices') as HTMLElement, 'button', 'Add'))
+    expect(entries(el)).toEqual(['/Projects/Alpha', '/Projects/Beta'])
+    expect(choices(el)).toEqual([
+      ['/Projects/Alpha', 'In the list'],
+      ['/Projects/Beta', 'In the list'],
+    ])
+    // a change of the panel until the Save of the settings, which sends the whole list and waits for the phone
+    expect(agent.find('PATCH', `${TOOLS_PATH}/nextcloud`)).toHaveLength(0)
+    await click(el.querySelector('.settings-save'))
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/nextcloud`).length === 1)
+    expect(agent.find('PATCH', `${TOOLS_PATH}/nextcloud`)[0].body).toEqual({
+      list: { entries: [{ root: '48213' }, { root: '48214' }] },
+    })
+    await until(() => el.querySelector('.tool-pending'))
+    expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 31 07/)
+    // what waits for the phone stays in the list meanwhile
+    expect(entries(el)).toEqual(['/Projects/Alpha', '/Projects/Beta'])
+  })
+
+  it('removes an entry and saves at once a list that only narrows: Saved', async () => {
+    const narrowed = { ...FILES_READY, state: 'setup', list: { ...FOLDERS, entries: [] } }
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      [`PATCH ${TOOLS_PATH}/nextcloud`, () => json({ tool: narrowed }, 200)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(editor(el), 'button', 'Remove'))
+    expect(entries(el)).toEqual([])
+    await click(el.querySelector('.settings-save'))
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/nextcloud`).length === 1)
+    expect(agent.find('PATCH', `${TOOLS_PATH}/nextcloud`)[0].body).toEqual({ list: { entries: [] } })
+    await until(() => el.querySelector('.tool-change-outcome')?.textContent === 'Saved')
+    expect(el.querySelector('.tool-pending')).toBeNull()
+    expect(el.querySelector('.tool-panel .state-tag')?.textContent).toBe('Needs setup: Folders')
+  })
+
+  it('offers "Only these" or any where the template allows it, with the amber warning under any', async () => {
+    const anyList = { ...FILES_READY, list: { ...FOLDERS, anyAllowed: true } }
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [anyList] })],
+      [`PATCH ${TOOLS_PATH}/nextcloud`, () => json({ error: 'any-not-allowed', field: 'list.any' }, 422)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    const modes = [...editor(el).querySelectorAll<HTMLLabelElement>('.tool-list-modes label')]
+    expect(modes.map((m) => [m.textContent, m.querySelector('input')?.checked])).toEqual([
+      ['Only these', true],
+      ['Any folder you can reach', false],
+    ])
+    expect(el.querySelector('.tool-list-any-warning')).toBeNull()
+    await click(modes[1]?.querySelector('input'))
+    expect(el.querySelector('.tool-list-any-warning')?.textContent).toBe(
+      "Each member's calls use their own account, but what Fleet support reads with it goes into this space's conversations, which the other members read once they are shared."
+    )
+    // any holds no entries
+    expect(entries(el)).toEqual([])
+    await click(el.querySelector('.settings-save'))
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/nextcloud`).length === 1)
+    expect(agent.find('PATCH', `${TOOLS_PATH}/nextcloud`)[0].body).toEqual({ list: { any: true } })
+    // refused at the choice
+    await until(() => el.querySelector('.tool-list-modes .field-error'))
+    expect(el.querySelector('.tool-list-modes .field-error')?.textContent?.trim()).toBe(
+      'Fleet support does not allow this choice in this space.'
+    )
+  })
+
+  it('shows a refusal at the entry it names, and under Add for too many; Add stops at `maxEntries`', async () => {
+    let answer = () => json({ error: 'not-portable', field: 'list.entries.1.root' }, 422)
+    const two = {
+      ...FILES_READY,
+      list: {
+        ...FOLDERS,
+        maxEntries: 2,
+        entries: [...FOLDERS.entries, { values: { root: '48214' }, label: '/Projects/Beta' }],
+      },
+    }
+    const { el } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [two] })],
+      [`PATCH ${TOOLS_PATH}/nextcloud`, () => answer()],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    // at its most entries: Add disabled, with the words of 422 too-many-entries
+    expect(byText(editor(el), 'button', 'Add')?.hasAttribute('disabled')).toBe(true)
+    expect(editor(el).textContent).toContain('A list holds at most 2 entries.')
+    // a change to send: the entries in another order
+    await click(byText(editor(el), 'button', 'Remove'))
+    const save = async () => {
+      await click(el.querySelector('.settings-save'))
+      await until(() => el.querySelector('.tool-list-editor .field-error'))
+    }
+    answer = () => json({ error: 'not-portable', field: 'list.entries.0.root' }, 422)
+    await save()
+    const rows = () => [...el.querySelectorAll('.tool-list-entry')]
+    expect(rows()[0]?.querySelector('.field-error')?.textContent?.trim()).toBe(
+      "Each member would see this place differently. Choose another one, or a provider that uses the space's account."
+    )
+    answer = () => json({ error: 'repeated-entry', field: 'list.entries.0' }, 422)
+    await save()
+    expect(rows()[0]?.querySelector('.field-error')?.textContent?.trim()).toBe('This is already in the list.')
+    answer = () => json({ error: 'too-many-entries', field: 'list.entries' }, 422)
+    await click(el.querySelector('.settings-save'))
+    await until(() => editor(el).querySelector(':scope > .field-error'))
+    expect(editor(el).querySelector(':scope > .field-error')?.textContent?.trim()).toBe(
+      'A list holds at most 2 entries.'
+    )
+  })
+
+  it("says why the search answered nothing: the owner's account to connect, the space's not set, the provider unreachable", async () => {
+    let answer = () => json({ error: 'not-connected' }, 409)
+    const opened = { opener: window as unknown, location: { replace: vi.fn() }, close: vi.fn() }
+    vi.spyOn(window, 'open').mockImplementation((() => opened) as never)
+    const drive = { ...FILES_DRIVE, state: 'ready', list: FOLDERS }
+    const { el, agent } = await ownersTools(
+      [
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [drive] })],
+        [/^GET \/spaces\/spc_sales\/tools\/drive\/list\/choices\?/, () => answer()],
+        [
+          'POST /connections/drive/authorize',
+          () =>
+            json(
+              {
+                attemptId: 'att_9',
+                authorizationUrl: 'https://accounts.google.com/o/oauth2/auth?x',
+                expiresAt: new Date(Date.now() + 600_000).toISOString(),
+              },
+              202
+            ),
+        ],
+        ['GET /connections', () => json({ connections: [] })],
+      ],
+      { features: { tools: true, connections: true } }
+    )
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(editor(el), 'button', 'Add'))
+    await type(search(el), 'Proj')
+    await until(() => editor(el).textContent?.includes('Connect your account to choose'), 3000)
+    // Connect starts the sign-in of Your accounts for the space (UI-CONV-054)
+    await click(byText(editor(el), 'button', 'Connect'))
+    await until(() => agent.find('POST', '/connections/drive/authorize').length === 1)
+    expect(agent.find('POST', '/connections/drive/authorize')[0]?.body).toEqual({ spaceId: 'spc_sales' })
+    answer = () => json({ error: 'space-account-not-set' }, 409)
+    await type(search(el), 'Proje')
+    await until(() => el.querySelector('.tool-list-search .tool-error')?.textContent?.includes('ask its owner'), 3000)
+    expect(el.querySelector('.tool-list-search .tool-error')?.textContent).toBe(
+      "This space's account isn't set up yet; ask its owner."
+    )
+    // no control with these words
+    expect(el.querySelector('.tool-list-search .tool-error button')).toBeNull()
+    answer = () => json({ error: 'source-unavailable' }, 502)
+    await type(search(el), 'Projec')
+    await until(
+      () => el.querySelector('.tool-list-search .tool-error')?.textContent?.includes('cannot be searched'),
+      3000
+    )
+    expect(el.querySelector('.tool-list-search .tool-error')?.textContent).toBe(
+      'Google Drive cannot be searched now. Try again later.'
+    )
+    // a blank text asks nothing
+    const asked = agent.calls.filter((c) => c.url.includes('/list/choices')).length
+    await type(search(el), '   ')
+    await new Promise((r) => setTimeout(r, 600))
+    expect(agent.calls.filter((c) => c.url.includes('/list/choices')).length).toBe(asked)
   })
 })
 
@@ -657,6 +1371,8 @@ const X_VALUES = {
   access_token_secret: 'XtSeCrEtXtSeCrEtXtSeCrEt9',
 }
 const X = {
+  feature: { id: 'social', title: 'Social posting', profile: null },
+  providers: [{ source: 'x', title: 'X', account: { kind: 'space' }, default: true }],
   source: 'x',
   title: 'X',
   description: 'Posts of the team',
@@ -897,6 +1613,7 @@ describe('one field per key of a space account (UI-CONV-050, PROF-TOOL-004)', ()
   it('shows a single token as one field', async () => {
     const single = {
       ...X,
+      feature: { id: 'code', title: 'Code and issues', profile: null },
       source: 'github',
       title: 'GitHub',
       account: { kind: 'space', fields: [{ name: 'token', label: 'API token' }], set: false },
@@ -918,7 +1635,7 @@ describe('one field per key of a space account (UI-CONV-050, PROF-TOOL-004)', ()
 })
 
 describe('the tools a member reads in About (UI-CONV-031, UI-CONV-049)', () => {
-  it('lists the ready sources: title, description, whose account, and what their tools ask, by rule', async () => {
+  it("lists the ready features: title, the provider's line, its description, and what their tools ask, by rule", async () => {
     const memberSales = { ...SALES, role: 'member' as const }
     const agent = fakeAgent([
       [
@@ -927,6 +1644,7 @@ describe('the tools a member reads in About (UI-CONV-031, UI-CONV-049)', () => {
           json({
             tools: [
               {
+                feature: CRM_FEATURE,
                 source: 'relaticle',
                 title: 'Relaticle CRM',
                 description: "The sales team's accounts, contacts and notes",
@@ -961,11 +1679,14 @@ describe('the tools a member reads in About (UI-CONV-031, UI-CONV-049)', () => {
       'About',
     ])
     expect(el.querySelector('.about-tools .section-label')?.textContent).toBe('Tools Fleet support uses in this space')
-    expect(el.querySelector('.about-tool-title')?.textContent).toBe('Relaticle CRM')
+    // the feature, then the line of its provider (UI-CONV-031, UI-CONV-065)
+    expect(el.querySelector('.about-tool-title')?.textContent).toBe('CRM')
+    expect(el.querySelector('.about-tool-provider')?.textContent).toBe(
+      "Relaticle CRM · Workspace: sales-eu · Uses the space's account"
+    )
     expect(el.querySelector('.about-tool-description')?.textContent).toBe(
       "The sales team's accounts, contacts and notes"
     )
-    expect(el.querySelector('.about-tool-account')?.textContent).toBe("Uses the space's account")
     expect(el.querySelector('.about-tool-rules')?.textContent).toBe(
       "Runs without asking: Get company, List companies · Asks you first: Add a note · Needs Jonas Weber's approval: Delete note, then a check on your phone"
     )
@@ -973,19 +1694,45 @@ describe('the tools a member reads in About (UI-CONV-031, UI-CONV-049)', () => {
     expect(agent.find('GET', TOOLS_PATH)).toHaveLength(1)
   })
 
-  it('names a source by its feature, "<feature> · <source>" (UI-CONV-064)', async () => {
+  it("reads each ready feature in the template's order, its provider's line with the line of its list (UI-CONV-060, UI-CONV-065)", async () => {
     const { el } = await ownersTools(
       [
         [
           `GET ${TOOLS_PATH}`,
           () =>
-            json({ tools: [{ ...READY, title: 'Relaticle', feature: { id: 'crm', title: 'CRM', profile: null } }] }),
+            json({
+              tools: [
+                FILES_READY,
+                { ...READY, title: 'Relaticle' },
+                {
+                  ...FILES_READY,
+                  feature: { ...FILES_FEATURE, id: 'archive', title: 'Archive' },
+                  list: { ...FOLDERS, any: true },
+                },
+                // no provider, or not ready: not in About
+                WEB,
+                crm({ feature: { id: 'notes', title: 'Notes', profile: null } }),
+              ],
+            }),
         ],
       ],
       { segment: 'about' }
     )
-    await until(() => el.querySelector('.about-tool-title'))
-    expect(el.querySelector('.about-tool-title')?.textContent).toBe('CRM · Relaticle')
+    await until(() => el.querySelectorAll('.about-tool').length === 3)
+    expect(
+      [...el.querySelectorAll('.about-tool')].map((x) => [
+        x.querySelector('.about-tool-title')?.textContent,
+        x.querySelector('.about-tool-provider')?.textContent,
+      ])
+    ).toEqual([
+      ['Files', "Nextcloud · Folders: /Projects/Alpha · Uses the space's account"],
+      ['CRM', "Relaticle · Workspace: sales-eu · Region: eu-1 · Uses the space's account"],
+      ['Archive', "Nextcloud · Folders: Any folder you can reach · Uses the space's account"],
+    ])
+    expect(el.querySelector('.about-tool-description')?.textContent).toBe(NEXTCLOUD.description)
+    expect(el.querySelector('.about-tool-rules')?.textContent).toBe(
+      "Runs without asking: Read a file · Asks you first: Replace a file's content"
+    )
   })
 
   it('tells the owner "Needs your approval", and names each step-up after its own tool', async () => {
@@ -1066,12 +1813,21 @@ describe('the tools a member reads in About (UI-CONV-031, UI-CONV-049)', () => {
 
 describe('the activity of tools (UI-CONV-051)', () => {
   it('names each change of the tools', async () => {
-    fakeAgent([
+    const agent = fakeAgent([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_DRIVE] })],
       [
         /^GET \/spaces\/spc_sales\/activity/,
         () =>
           json({
             activity: [
+              // the former provider by its id, its title the feature's providers' (profile §3.7, PROF-TOOL-006)
+              {
+                at: '2026-11-20T10:06:00Z',
+                kind: 'provider-changed',
+                by: { name: 'Jonas Weber' },
+                tool: { source: 'drive', title: 'Google Drive', formerSource: 'nextcloud' },
+                feature: { id: 'files', title: 'Files' },
+              },
               {
                 at: '2026-11-20T10:05:00Z',
                 kind: 'account-set',
@@ -1115,13 +1871,51 @@ describe('the activity of tools (UI-CONV-051)', () => {
       snapshot: { view: 'space', spaceFor: { agentDid: AGENT, spaceId: SALES.id, segment: 'activity' } },
     })
     const el = await render(hub, <SpacePage />)
-    await until(() => el.querySelectorAll('.activity-list li').length === 5)
+    await until(() => el.querySelectorAll('.activity-list li').length === 6)
+    await until(() => el.querySelector('.activity-list li span:last-child')?.textContent?.includes('from Nextcloud'))
     expect([...el.querySelectorAll('.activity-list li span:last-child')].map((s) => s.textContent)).toEqual([
+      'Jonas Weber changed the provider of Files from Nextcloud to Google Drive',
       'Jonas Weber set the account of Relaticle CRM',
       'Jonas Weber added Web search',
       'Jonas Weber changed the settings of Relaticle CRM',
       'Jonas Weber removed the account of Relaticle CRM',
       'Jonas Weber removed Web search',
     ])
+    // the tools are read for the title of the former provider, once
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(1)
+  })
+
+  it('reads no tools for an activity with no change of provider', async () => {
+    const agent = fakeAgent([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_DRIVE] })],
+      [
+        /^GET \/spaces\/spc_sales\/activity/,
+        () =>
+          json({
+            activity: [
+              {
+                at: '2026-11-20T10:04:00Z',
+                kind: 'tool-added',
+                by: { name: 'Jonas Weber' },
+                tool: { source: 'nextcloud', title: 'Nextcloud' },
+                feature: { id: 'files', title: 'Files' },
+              },
+            ],
+            nextBefore: null,
+          }),
+      ],
+    ])
+    const hub = await tab({
+      sessions: [record({ sessionId: 's1' })],
+      spaces: { spaces: [PERSONAL, SALES], templates: [] },
+      features: { tools: true },
+      profileVersion: '3.4',
+      snapshot: { view: 'space', spaceFor: { agentDid: AGENT, spaceId: SALES.id, segment: 'activity' } },
+    })
+    const el = await render(hub, <SpacePage />)
+    await until(() => el.querySelectorAll('.activity-list li').length === 1)
+    expect(el.querySelector('.activity-list li span:last-child')?.textContent).toBe('Jonas Weber added Nextcloud')
+    await new Promise((r) => setTimeout(r, 30))
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(0)
   })
 })

@@ -50,6 +50,11 @@ export interface Connection {
   attempt: { id: string; expiresAt: string } | null
   /** whether Disconnect also ends the agent's access at the service */
   revokesAtSource: boolean
+  /**
+   * the features the sources that use the account serve, each once (package 3.5.8, PROF-TOOL-035): Your accounts reads
+   * "For Files, Calendar" under the description (UI-CONV-064)
+   */
+  features: FeatureRef[]
 }
 
 /** A sign-in started (`202` of `authorize`, PROF-TOOL-015). */
@@ -196,7 +201,21 @@ export function connectionOf(value: unknown): Connection | null {
         ? { id: attempt.id, expiresAt: attempt.expiresAt }
         : null,
     revokesAtSource: c.revokesAtSource === true,
+    features: featuresOf(c.features),
   }
+}
+
+/** The features of an account, each once, in the agent's order; one with no title is left out. */
+function featuresOf(value: unknown): FeatureRef[] {
+  const seen = new Set<string>()
+  const out: FeatureRef[] = []
+  for (const f of Array.isArray(value) ? value : []) {
+    const feature = featureRefOf(f)
+    if (!feature || seen.has(feature.id || feature.title)) continue
+    seen.add(feature.id || feature.title)
+    out.push(feature)
+  }
+  return out
 }
 
 /** `GET {sessions}/connections` (PROF-TOOL-014): the person's accounts, in the agent's order. */
