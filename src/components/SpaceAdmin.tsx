@@ -30,6 +30,7 @@ import { useHub, useSnapshot } from '../state/useHub.js'
 import { Avatar } from './Avatar.js'
 import { Dialog } from './Dialog.js'
 import { languageName, membersLong, organizationNameOf, spaceTitle, useSpaceDetail } from './SpaceParts.js'
+import { useSpaceTools } from './Tools.js'
 
 /** The sentence of a refusal of the agent, for an addition, an invitation, a removal or a change. */
 function useRefusal(agent: AgentRecord) {
@@ -819,11 +820,26 @@ function activityKey(a: SpaceActivityItem): string {
   return `spaces.activity.${a.kind}`
 }
 
-/** Activity (UI-CONV-041, UI-CONV-051): newest first; who did what, never the value of a field nor a token. */
+/**
+ * Activity (UI-CONV-041, UI-CONV-051): newest first; who did what, never the value of a field nor a token. A change of
+ * provider reads "<by> changed the provider of <feature> from <former> to <tool>": the line names the former provider
+ * by its id only (`tool.formerSource`, profile §3.7), its title is the feature's `providers`', read from the space's
+ * tools when the page holds such a line.
+ */
 export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
   const { t, i18n } = useTranslation()
   const [items, setItems] = useState<SpaceActivityItem[] | null>(null)
+  const providersWanted = !!items?.some((a) => a.kind === 'provider-changed') && hub.takesTools(agent.did)
+  const { tools } = useSpaceTools(agent, space, providersWanted)
+  /** The title of a provider the line names by its id: among its feature's providers first, else any feature's. */
+  const providerTitle = (a: SpaceActivityItem): string => {
+    const source = a.tool?.formerSource
+    if (!source) return ''
+    const ofFeature = tools?.find((x) => x.feature.id === a.feature?.id)?.providers ?? []
+    const any = tools?.flatMap((x) => x.providers) ?? []
+    return [...ofFeature, ...any].find((p) => p.source === source)?.title ?? source
+  }
   const [next, setNext] = useState<string | null>(null)
   const [error, setError] = useState('')
   const load = (before?: string) =>
@@ -853,6 +869,8 @@ export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: S
                   by: a.by?.name ?? someone,
                   member: a.member?.name ?? someone,
                   tool: a.tool?.title ?? someone,
+                  feature: a.feature?.title ?? someone,
+                  former: providerTitle(a) || someone,
                   reason: a.reason ?? '',
                 })}
               </span>

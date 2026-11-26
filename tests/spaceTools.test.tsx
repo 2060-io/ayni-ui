@@ -1813,12 +1813,21 @@ describe('the tools a member reads in About (UI-CONV-031, UI-CONV-049)', () => {
 
 describe('the activity of tools (UI-CONV-051)', () => {
   it('names each change of the tools', async () => {
-    fakeAgent([
+    const agent = fakeAgent([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_DRIVE] })],
       [
         /^GET \/spaces\/spc_sales\/activity/,
         () =>
           json({
             activity: [
+              // the former provider by its id, its title the feature's providers' (profile §3.7, PROF-TOOL-006)
+              {
+                at: '2026-11-20T10:06:00Z',
+                kind: 'provider-changed',
+                by: { name: 'Jonas Weber' },
+                tool: { source: 'drive', title: 'Google Drive', formerSource: 'nextcloud' },
+                feature: { id: 'files', title: 'Files' },
+              },
               {
                 at: '2026-11-20T10:05:00Z',
                 kind: 'account-set',
@@ -1862,13 +1871,51 @@ describe('the activity of tools (UI-CONV-051)', () => {
       snapshot: { view: 'space', spaceFor: { agentDid: AGENT, spaceId: SALES.id, segment: 'activity' } },
     })
     const el = await render(hub, <SpacePage />)
-    await until(() => el.querySelectorAll('.activity-list li').length === 5)
+    await until(() => el.querySelectorAll('.activity-list li').length === 6)
+    await until(() => el.querySelector('.activity-list li span:last-child')?.textContent?.includes('from Nextcloud'))
     expect([...el.querySelectorAll('.activity-list li span:last-child')].map((s) => s.textContent)).toEqual([
+      'Jonas Weber changed the provider of Files from Nextcloud to Google Drive',
       'Jonas Weber set the account of Relaticle CRM',
       'Jonas Weber added Web search',
       'Jonas Weber changed the settings of Relaticle CRM',
       'Jonas Weber removed the account of Relaticle CRM',
       'Jonas Weber removed Web search',
     ])
+    // the tools are read for the title of the former provider, once
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(1)
+  })
+
+  it('reads no tools for an activity with no change of provider', async () => {
+    const agent = fakeAgent([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_DRIVE] })],
+      [
+        /^GET \/spaces\/spc_sales\/activity/,
+        () =>
+          json({
+            activity: [
+              {
+                at: '2026-11-20T10:04:00Z',
+                kind: 'tool-added',
+                by: { name: 'Jonas Weber' },
+                tool: { source: 'nextcloud', title: 'Nextcloud' },
+                feature: { id: 'files', title: 'Files' },
+              },
+            ],
+            nextBefore: null,
+          }),
+      ],
+    ])
+    const hub = await tab({
+      sessions: [record({ sessionId: 's1' })],
+      spaces: { spaces: [PERSONAL, SALES], templates: [] },
+      features: { tools: true },
+      profileVersion: '3.4',
+      snapshot: { view: 'space', spaceFor: { agentDid: AGENT, spaceId: SALES.id, segment: 'activity' } },
+    })
+    const el = await render(hub, <SpacePage />)
+    await until(() => el.querySelectorAll('.activity-list li').length === 1)
+    expect(el.querySelector('.activity-list li span:last-child')?.textContent).toBe('Jonas Weber added Nextcloud')
+    await new Promise((r) => setTimeout(r, 30))
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(0)
   })
 })
