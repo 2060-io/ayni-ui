@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.26.0](https://github.com/2060-io/ayni-ui/compare/v0.25.1...v0.26.0) (2026-11-26)
+
+
+### Features
+
+* **accounts:** an account that several sources use, each source allowed, in part or not (UI-CONV-061, 063) ([1118ccf](https://github.com/2060-io/ayni-ui/commit/1118ccfde075b41fe3ece5cc59ad7dffe5e73975))
+* **accounts:** the agent's key service: the outcome unavailable, 503 keys-unavailable and a Disconnect answered revokedAtSource false, in the words of UI-CONV-063 (UI-CONV-056, UI-CONV-061, UI-CONV-063, PROF-TOOL-032) ([9187bea](https://github.com/2060-io/ayni-ui/commit/9187bea0b43b5571f3f58cf740c69f65922e29e2))
+* **accounts:** the Connect card that asks to allow one more source of an account, why allow, reads "Allow &lt;feature&gt; on your &lt;account&gt; account." with Allow, for the source of allow (UI-CONV-057, UI-CONV-061, UI-CONV-063, PROF-TOOL-020, PROF-TOOL-029) ([16512c5](https://github.com/2060-io/ayni-ui/commit/16512c5517e5a9af7f9613aca4245cc03d991a48))
+* **accounts:** the features each account serves in Your accounts, and the Connect card's "Connect your &lt;account&gt; account to use &lt;feature&gt;." (UI-CONV-053, UI-CONV-057, UI-CONV-058, UI-CONV-064) ([a795e47](https://github.com/2060-io/ayni-ui/commit/a795e476f5db04f7c4eb5478203711bedbf286e9))
+* **accounts:** the sources of an account under its row, each allowed, allowed in part or not allowed, with Allow and Allow more for that source alone (UI-CONV-061, UI-CONV-063, UI-CONV-053, UI-CONV-054, UI-CONV-056, PROF-TOOL-028, PROF-TOOL-029) ([83ec81b](https://github.com/2060-io/ayni-ui/commit/83ec81b438454ffa818f27555830ab7777317d19))
+* **activity:** a change of provider reads "&lt;by&gt; changed the provider of &lt;feature&gt; from &lt;former&gt; to &lt;tool&gt;" (UI-CONV-051) ([fa8c9ad](https://github.com/2060-io/ayni-ui/commit/fa8c9ad5783918298b813317e09a4f74c073102f))
+* **activity:** the managed folder in Activity: made, renamed, no longer managed, a member without access, a manager needed (UI-CONV-051, PROF-TOOL-043) ([bebbb31](https://github.com/2060-io/ayni-ui/commit/bebbb314bc50cd36ce82826344413a1258e24d7c))
+* **core:** a space's tools by feature, each with one provider: Add among the providers, the change of provider, the location and its choices (PROF-TOOL-001, 002, 003, 006, 022, 023, 033 to 035; core 0.16.0) ([368aab2](https://github.com/2060-io/ayni-ui/commit/368aab25f18dcf62c700dec4203e58e98bab5ab1))
+* **core:** a team space's managed folder: the modes of Files, the folder's state and controls, a member's access, the item folder-access and the activity of the folder (PROF-SPACE-003, PROF-TOOL-040 to 043; core 0.17.0) ([3862f24](https://github.com/2060-io/ayni-ui/commit/3862f247c4082bc23210e2ed1b0b1aed9f88a829))
+* **core:** an account that several sources use: its access, each source allowed, allowed in part or not allowed, the sign-in for one source, the Connect card's why allow, the key service (PROF-TOOL-017, PROF-TOOL-020, PROF-TOOL-028, PROF-TOOL-029, PROF-TOOL-032; core 0.18.0) ([46db1ce](https://github.com/2060-io/ayni-ui/commit/46db1ce09bd3396dbe1b2f5daa11682d69a28fde))
+* **i18n:** the words of a team space's managed folder in the four languages (UI-CONV-051, UI-CONV-052, UI-CONV-069 to 071) ([f94a2df](https://github.com/2060-io/ayni-ui/commit/f94a2df1aa3375bec5eef2a770cc6069452c5ac1))
+* **i18n:** the words of an account that several sources use in the four languages (UI-CONV-063) ([4dafaa6](https://github.com/2060-io/ayni-ui/commit/4dafaa61f4e8499702df511960e7836f7d15ed86))
+* **i18n:** the words of features and providers in the four languages (UI-CONV-051, UI-CONV-052, UI-CONV-059, UI-CONV-065, UI-CONV-066) ([6a66d5c](https://github.com/2060-io/ayni-ui/commit/6a66d5c4d381aea5480ae396329e7232aff4d51d))
+* **notifications:** a member whose access to the managed folder failed, to the space's owner, with Try again (UI-CONV-071, PROF-TOOL-042, PROF-TOOL-043) ([62dc13c](https://github.com/2060-io/ayni-ui/commit/62dc13cb979a0dd5ed34fec3babc3cd6366891b9))
+* **spaces:** each member's access to the managed folder in Members, and the people added outside the agent (UI-CONV-070, PROF-SPACE-003, PROF-TOOL-041) ([8de024d](https://github.com/2060-io/ayni-ui/commit/8de024d5264f0d4c330e65a6ae31071ebc89b4ab))
+* **tools:** a space's tools by feature, each with one provider (UI-CONV-050, 064, 065, 066) ([8994454](https://github.com/2060-io/ayni-ui/commit/89944543d9fd34c212e061739d05187cc3a60850))
+* **tools:** Add and Change provider of Files show the two modes, the managed one first and selected, and send the one chosen (UI-CONV-069, PROF-TOOL-040) ([f72156a](https://github.com/2060-io/ayni-ui/commit/f72156a78429d89fd8d462a6bfdfa386a273e0b9))
+* **tools:** Change provider, asked in the page and confirmed on the phone, the provider in use staying until then (UI-CONV-066, UI-CONV-052) ([ef80919](https://github.com/2060-io/ayni-ui/commit/ef80919cb4d6b3c665c9c79e3954e2d14c4980f6))
+* **tools:** the list of a feature's location in Settings of the tool, its entries picked from a search of the owner's account (UI-CONV-059, UI-CONV-060, UI-CONV-066) ([9fed93e](https://github.com/2060-io/ayni-ui/commit/9fed93e25c7fd4cdd050957796eac7e44f188ca3))
+* **tools:** the managed folder of a team space (UI-CONV-069, 070, 071) ([20a455a](https://github.com/2060-io/ayni-ui/commit/20a455a7f69db8d3a39aff52a19521f1ba1b2bb7))
+* **tools:** the managed folder on the row of Files, in its panel and in About: its line, its state with its control, the members without access, Rename folder, a member's own access (UI-CONV-070, PROF-TOOL-041, PROF-TOOL-043) ([f2f765d](https://github.com/2060-io/ayni-ui/commit/f2f765d53488fa8961d7f293ea95146906c73349))
+* **tools:** the owner's Tools keep a stream of the agent open while it makes the managed folder, so that its row follows (UI-CONV-070, PROF-TOOL-041) ([e1dbbcf](https://github.com/2060-io/ayni-ui/commit/e1dbbcf3208464b8793ce8a03f5c4361c3468f19))
+* **tools:** the owner's Tools segment and About by feature, each with the line of its provider; Add among one or several providers (UI-CONV-031, UI-CONV-050, UI-CONV-052, UI-CONV-065) ([668819d](https://github.com/2060-io/ayni-ui/commit/668819d74caf24f09ac80d0158044ba638c42d45))
+* **tools:** the question of removing Files, or of changing its provider, says that the managed folder stays at the provider with its members and its files (UI-CONV-052, agent TOOL-FEAT-032) ([c49306e](https://github.com/2060-io/ayni-ui/commit/c49306e37dc853034643180c8c159fa03b5d5d50))
+
+
+### Bug Fixes
+
+* **core:** the address of a managed folder is read only when it is an https one (UI-CONV-070) ([ba7a5ad](https://github.com/2060-io/ayni-ui/commit/ba7a5ad7f58a727376c0cb4765b9464799a327ed))
+* **tools:** a managed folder's Allow signs in for the provider in the space, not for every source of its account, its outcome heard on the account's row (UI-CONV-070, UI-CONV-061, PROF-TOOL-029) ([e607fca](https://github.com/2060-io/ayni-ui/commit/e607fca460fbc24f723bbd7b09142bbbedf52e06))
+
 ## [0.25.1](https://github.com/2060-io/ayni-ui/compare/v0.25.0...v0.25.1) (2026-11-25)
 
 
