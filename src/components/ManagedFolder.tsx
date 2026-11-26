@@ -15,6 +15,7 @@ import {
   type FolderLine,
   folderCheckOf,
   folderLineOf,
+  folderReleaseOf,
   folderRenameOf,
   folderStatusOf,
   folderTitleOf,
@@ -385,4 +386,21 @@ export function FolderSection({
       ) : null}
     </div>
   )
+}
+
+/**
+ * The line that removing Files, or changing its provider, adds to its question while the agent manages its folder
+ * (UI-CONV-052, agent TOOL-FEAT-032): "<agent> stops managing the <kind of folder> <folder>. It stays at <provider>
+ * with its members and its files." The agent releases the folder at the `DELETE` and says nothing of it: the page says
+ * it before it sends. Empty for Files whose folder the agent does not manage.
+ */
+export function folderReleaseWords(tool: SpaceTool, agentName: string, t: T): string {
+  const release = folderReleaseOf(tool)
+  if (!release) return ''
+  return t('tools.folder.release', {
+    agent: agentName,
+    kind: t(`tools.folder.kind.${release.kind}`),
+    folder: release.folder,
+    provider: release.provider,
+  })
 }

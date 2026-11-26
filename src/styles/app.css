@@ -3827,6 +3827,11 @@ mark.hit.current {
 .tool-confirm .tool-confirm-question {
   font-weight: 600;
 }
+/* the folder the agent stops managing, added to the question of a removal or a change of provider (UI-CONV-052) */
+.tool-confirm .tool-confirm-release {
+  display: block;
+  margin: 6px 0;
+}
 /* a provider that does not offer its feature as its contract says, in place of its state (UI-CONV-065) */
 .tool-not-conformant {
   display: inline-flex;

@@ -1013,3 +1013,79 @@ describe('the activity of the managed folder (UI-CONV-051, PROF-TOOL-043)', () =
     expect(texts(el)).toEqual(['Fleet support stopped managing the folder Project Alpha'])
   })
 })
+
+// ---------------------------------------------------------------------------------------------- the release
+
+describe('the words before removing Files, or changing its provider, with a managed folder (UI-CONV-052, TOOL-FEAT-032)', () => {
+  const release = (el: HTMLElement) => el.querySelector('.tool-confirm .tool-confirm-release')?.textContent
+
+  it('says in the question of Remove that the folder stays, before the DELETE, which says nothing of it', async () => {
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })],
+      [`DELETE ${TOOLS_PATH}/drive`, () => json({ tool: { ...OFFERED } })],
+    ])
+    await openFiles(el)
+    await click(byText(el, 'button', 'Remove from Project Alpha'))
+    expect(el.querySelector('.tool-confirm')?.textContent).toContain(
+      'Remove Google Drive from Project Alpha? Its account and settings are deleted.'
+    )
+    expect(release(el)).toBe(
+      'Fleet support stops managing the shared drive Project Alpha. It stays at Google Drive with its members and its files.'
+    )
+    expect(agent.find('DELETE', `${TOOLS_PATH}/drive`)).toHaveLength(0)
+    // Cancel sends nothing
+    await click(byText(el, '.tool-confirm button', 'Cancel'))
+    expect(el.querySelector('.tool-confirm')).toBeNull()
+    expect(agent.find('DELETE', `${TOOLS_PATH}/drive`)).toHaveLength(0)
+    await click(byText(el, 'button', 'Remove from Project Alpha'))
+    await click(byText(el, '.tool-confirm button', 'Remove from Project Alpha'))
+    await until(() => agent.find('DELETE', `${TOOLS_PATH}/drive`).length === 1)
+  })
+
+  it('names a team folder for a folder of the managing account, and adds nothing in the existing mode', async () => {
+    const nextcloud = folderOf(
+      { managedWith: 'manager', webUrl: undefined },
+      { source: 'cloud-team', title: 'Nextcloud', description: CLOUD.description }
+    )
+    const { el } = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [nextcloud] })]])
+    await openFiles(el)
+    await click(byText(el, 'button', 'Remove from Project Alpha'))
+    expect(release(el)).toBe(
+      'Fleet support stops managing the team folder Project Alpha. It stays at Nextcloud with its members and its files.'
+    )
+    teardown()
+    const existing = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [EXISTING] })]])
+    await openFiles(existing.el)
+    await click(byText(existing.el, 'button', 'Remove from Project Alpha'))
+    expect(existing.el.querySelector('.tool-confirm')).toBeTruthy()
+    expect(release(existing.el)).toBeUndefined()
+  })
+
+  it('adds the line to the question of a change of provider, before it is sent', async () => {
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: waitingFor(MANAGED, 'Use WebDAV for Files in Project Alpha') }, 202)],
+    ])
+    await openFiles(el)
+    await click(byText(el, 'button', 'Change provider'))
+    await click(providerInput(el, 'WebDAV'))
+    const question = [...(el.querySelector('.tool-change-provider .tool-confirm')?.querySelectorAll('p') ?? [])].map(
+      (p) => p.textContent
+    )
+    expect(question).toEqual([
+      'Use WebDAV for Files in Project Alpha, in place of Google Drive?',
+      'Fleet support stops using Google Drive in this space.',
+      'Nothing is copied from Google Drive to WebDAV.',
+      'What earlier conversations read from Google Drive stays in them.',
+      'Fleet support stops managing the shared drive Project Alpha. It stays at Google Drive with its members and its files.',
+    ])
+    expect(agent.find('POST', TOOLS_PATH)).toHaveLength(0)
+    await click(byText(el, '.tool-change-provider button', 'Change'))
+    await until(() => agent.find('POST', TOOLS_PATH).length === 1)
+    expect(agent.find('POST', TOOLS_PATH)[0]?.body).toEqual({
+      source: 'webdav',
+      replaces: 'drive',
+      location: 'existing',
+    })
+  })
+})

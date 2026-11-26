@@ -88,7 +88,7 @@ import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { AccountNoticeLine, bindingWords, SignInWaiting, useNow, useSignIn } from './Accounts.js'
 import { AttentionLine, PolicyEditor, policyRefusalText } from './ApprovalPolicy.js'
-import { FolderLines, FolderOpen, FolderSection, LocationChoice } from './ManagedFolder.js'
+import { FolderLines, FolderOpen, FolderSection, folderReleaseWords, LocationChoice } from './ManagedFolder.js'
 import { organizationNameOf, spaceTitle } from './SpaceParts.js'
 import { accountWords, providerLineWords, useSpaceTools } from './Tools.js'
 
@@ -1433,6 +1433,10 @@ function FeaturePanel({
       {confirming === 'remove' ? (
         <div className="box tool-confirm" role="alertdialog" aria-label={t('tools.remove', { space: title })}>
           <span>{t('tools.removeConfirm', { tool: tool.title ?? source, space: title })}</span>
+          {/* the folder the agent stops managing, said before the DELETE, which releases it at once (TOOL-FEAT-032) */}
+          {folderReleaseWords(tool, agent.name, t) ? (
+            <span className="tool-confirm-release">{folderReleaseWords(tool, agent.name, t)}</span>
+          ) : null}
           <div className="tool-actions">
             <button type="button" className="btn" onClick={() => setConfirming(null)}>
               {t('app.cancel')}
@@ -1546,6 +1550,10 @@ function ChangeProvider({
               <p>{t('tools.changeStops', { agent: agent.name, former: change.former })}</p>
               <p>{t('tools.changeNothingCopied', { former: change.former, next: change.next })}</p>
               <p>{t('tools.changeReadStays', { former: change.former })}</p>
+              {/* the folder the agent stops managing, added to the question (UI-CONV-052, TOOL-FEAT-032) */}
+              {folderReleaseWords(tool, agent.name, t) ? (
+                <p className="tool-confirm-release">{folderReleaseWords(tool, agent.name, t)}</p>
+              ) : null}
               <div className="tool-actions">
                 {cancel}
                 <button type="button" className="btn primary" disabled={disabled} onClick={onChange}>
