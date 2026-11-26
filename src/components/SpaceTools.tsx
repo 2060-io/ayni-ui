@@ -1,7 +1,9 @@
 /**
- * The owner's Tools segment of a space (UI-CONV-050, UI-CONV-049, UI-CONV-052; profile 3.4 §3.10; agent D97, D98):
- * every source the space's template names, with its state in words, and for each a panel with its settings, its
- * account, what each of its tools asks, who can use it, and Remove. The settings (bindings and rules) and the account
+ * The owner's Tools segment of a space (UI-CONV-050, UI-CONV-049, UI-CONV-052, UI-CONV-065; profile 3.5.8 §3.10; agent
+ * D97, D98, D120, D122): every feature the space's template names, in its order, each with the line of its provider
+ * and its state in words; Add chooses the provider, among several under "Choose a provider for <feature>", the
+ * template's default "Suggested" and selected, or at once when there is one. The panel of a provider in use has its
+ * settings, its account, what each of its tools asks, who can use it, and Remove. The settings (bindings and rules) and the account
  * are saved by two Saves. A change that grants something waits for the owner's phone: its Save becomes the code and
  * the time left, a stream stays open so that `ayni.space.tools.changed` reaches this page, and it can be withdrawn; a
  * change that only narrows applies at once, also while another waits. A space's account is typed in one masked field
@@ -20,9 +22,13 @@ import {
   bindingValueFits,
   canAdd,
   changeOutcomeKeyOf,
+  choosesProvider,
+  concernsFeature,
+  defaultProviderOf,
   isAdded,
+  isConformant,
   loosens,
-  missingOf,
+  missingPartsOf,
   type PendingToolChange,
   type PolicyForm,
   type PolicyRefusal,
@@ -36,6 +42,7 @@ import {
   type SpaceToolAccountField,
   type SpaceToolAnswer,
   type SpaceToolBinding,
+  type SpaceToolProvider,
   sourceNameOf,
   type ToolRule,
   timeLeftOf,
@@ -43,14 +50,14 @@ import {
   toolRowStateOf,
   toolsNeedingAttention,
 } from '@ayni.org/ayni-ui-core'
-import { ArrowLeft, ChevronRight, CircleAlert, Smartphone } from 'lucide-react'
+import { ArrowLeft, ChevronRight, CircleAlert, Smartphone, TriangleAlert } from 'lucide-react'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { AccountNoticeLine, bindingWords, SignInWaiting, useNow, useSignIn } from './Accounts.js'
 import { AttentionLine, PolicyEditor, policyRefusalText } from './ApprovalPolicy.js'
 import { organizationNameOf, spaceTitle } from './SpaceParts.js'
-import { useSpaceTools } from './Tools.js'
+import { accountWords, providerLineWords, useSpaceTools } from './Tools.js'
 
 type T = (key: string, options?: Record<string, unknown>) => string
 
@@ -61,14 +68,37 @@ type T = (key: string, options?: Record<string, unknown>) => string
  */
 type From = 'settings' | 'account' | 'remove' | 'loaded'
 
-/** A row's state in words (UI-CONV-050, UI-CONV-052): "Needs setup: Workspace, account". */
+/** A row's state in words (UI-CONV-050, UI-CONV-052): "Needs setup: Folders, account". */
 function stateWords(tool: SpaceTool, t: T): string {
   const state = toolRowStateOf(tool)
   const words = t(`tools.state.${state}`)
   if (state !== 'needsSetup') return words
-  const missing = missingOf(tool)
-  const parts = [...missing.bindings, ...(missing.account ? [t('tools.missingAccount')] : [])]
+  const missing = missingPartsOf(tool)
+  const parts = [...missing.labels, ...(missing.account ? [t('tools.missingAccount')] : [])]
   return parts.length ? `${words}: ${parts.join(', ')}` : words
+}
+
+/**
+ * The words of a provider that does not offer its feature as its contract says (UI-CONV-065, UI-CONV-052), on its row
+ * in place of its state and atop its panel: "Google Drive does not offer Files as Fleet support expects. Choose
+ * another provider."
+ */
+function NotConformant({ agent, tool }: { agent: AgentRecord; tool: SpaceTool }) {
+  const { t } = useTranslation()
+  return (
+    <span className="tool-not-conformant" role="note">
+      <TriangleAlert size={13} aria-hidden="true" className="tool-not-conformant-icon" />{' '}
+      {t('tools.notConformant', { provider: tool.title ?? '', feature: tool.feature.title, agent: agent.name })}
+    </span>
+  )
+}
+
+/** The state of a feature in words, or, for a provider that does not offer its feature, why (UI-CONV-065). */
+function StateLine({ agent, tool }: { agent: AgentRecord; tool: SpaceTool }) {
+  const { t } = useTranslation()
+  const state = toolRowStateOf(tool)
+  if (state === 'notConformant') return <NotConformant agent={agent} tool={tool} />
+  return <span className={state === 'ready' ? 'tag' : 'state-tag'}>{stateWords(tool, t)}</span>
 }
 
 export function ToolsSegment({
@@ -78,21 +108,23 @@ export function ToolsSegment({
 }: {
   agent: AgentRecord
   space: SpaceInfo
-  /** the source whose panel opens first: Open the tool of a notice (UI-APPR-011) */
+  /** the provider whose panel opens first: Open the tool of a notice (UI-APPR-011) */
   source?: string
 }) {
   const hub = useHub()
   const { t } = useTranslation()
   const { tools, error, reload, setTool } = useSpaceTools(agent, space, true)
-  const [open, setOpen] = useState<string | null>(source ?? null)
+  // the feature whose panel is open; undefined until the feature of `source` is known, null for the list
+  const [open, setOpen] = useState<string | null | undefined>(source ? undefined : null)
   // while a change shown here waits for the phone, a stream stays open for its outcome (UI-CONV-050, PROF-TOOL-006)
   const waiting = !!tools?.some((x) => x.pending)
   useEffect(() => (waiting ? hub.holdStream(agent.did) : undefined), [waiting, agent.did, hub])
-  const tool = tools?.find((x) => x.source === open)
+  const openId = open === undefined ? tools?.find((x) => x.source === source)?.feature.id : open
+  const tool = tools?.find((x) => x.feature.id === openId)
   if (tool)
     return (
-      <ToolPanel
-        key={tool.source}
+      <FeaturePanel
+        key={tool.feature.id}
         agent={agent}
         space={space}
         tool={tool}
@@ -111,21 +143,24 @@ export function ToolsSegment({
           {tools.map((x) => {
             const state = toolRowStateOf(x)
             return (
-              <li key={x.source} className="tool-row" data-state={state}>
-                <button type="button" className="tool-row-main" onClick={() => setOpen(x.source)}>
+              <li key={x.feature.id} className="tool-row" data-state={state}>
+                {/* a row opens the panel of its provider, or what Add opens for a feature with none (UI-CONV-050) */}
+                <button type="button" className="tool-row-main" onClick={() => setOpen(x.feature.id)}>
                   <span className="space-text">
-                    <span className="space-name">{sourceNameOf(x)}</span>
-                    {x.description ? <span className="space-sub">{x.description}</span> : null}
+                    <span className="space-name">{x.feature.title}</span>
+                    {/* the line of its provider, or "Choose a provider" (UI-CONV-065) */}
+                    <span className="space-sub tool-provider-line">{providerLineWords(x, agent.name, t)}</span>
                     {/* a policy of its tools that needs attention, on the row (UI-CONV-067) */}
                     {toolsNeedingAttention(x).map((item) => (
                       <AttentionLine key={item.name ?? item.title} policy={item.approval} className="space-sub" />
                     ))}
+                    {state === 'notConformant' ? <StateLine agent={agent} tool={x} /> : null}
                   </span>
-                  <span className={state === 'ready' ? 'tag' : 'state-tag'}>{stateWords(x, t)}</span>
+                  {state === 'notConformant' ? null : <StateLine agent={agent} tool={x} />}
                   <ChevronRight size={16} aria-hidden="true" className="tool-row-chevron" />
                 </button>
                 {canAdd(x) && !x.pending ? (
-                  <button type="button" className="btn small" onClick={() => setOpen(x.source)}>
+                  <button type="button" className="btn small" onClick={() => setOpen(x.feature.id)}>
                     {t('tools.add')}
                   </button>
                 ) : null}
@@ -137,6 +172,57 @@ export function ToolsSegment({
         <div className="muted empty">{t('tools.empty')}</div>
       )}
     </section>
+  )
+}
+
+/**
+ * The providers a feature's template allows, to choose one (UI-CONV-065, UI-CONV-066): under "Choose a provider for
+ * <feature>", in the agent's order, each with its title, its description and whose account it uses (UI-CONV-049), the
+ * template's default marked "Suggested".
+ */
+function ProviderChoice({
+  agent,
+  tool,
+  providers,
+  value,
+  disabled,
+  onChoose,
+}: {
+  agent: AgentRecord
+  tool: SpaceTool
+  providers: SpaceToolProvider[]
+  value: string
+  disabled: boolean
+  onChoose: (source: string) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <fieldset className="field tool-providers">
+      <legend className="section-label">{t('tools.chooseProviderFor', { feature: tool.feature.title })}</legend>
+      {providers.map((p) => {
+        const account = accountWords(p.account.kind, agent.name, t)
+        return (
+          <label key={p.source} className="tool-provider-option">
+            <input
+              type="radio"
+              name={`provider-${tool.feature.id}`}
+              value={p.source}
+              checked={value === p.source}
+              disabled={disabled}
+              onChange={() => onChoose(p.source)}
+            />
+            <span className="tool-provider-text">
+              <span className="tool-provider-title">
+                {p.title}
+                {p.default ? <span className="tag tool-suggested">{t('tools.suggested')}</span> : null}
+              </span>
+              {p.description ? <span className="muted small">{p.description}</span> : null}
+              {account ? <span className="muted small">{account}</span> : null}
+            </span>
+          </label>
+        )
+      })}
+    </fieldset>
   )
 }
 
@@ -169,7 +255,7 @@ function BindingFromAccount({
   const { t } = useTranslation()
   const choices = binding.choices ?? []
   // the row of Your accounts the tool's personal accounts are under: another source's when it uses that one's
-  const signIn = useSignIn(agent, { source: accountSourceOf(tool), title: tool.title, spaceId: space.id })
+  const signIn = useSignIn(agent, { source: accountSourceOf(tool), title: tool.title ?? '', spaceId: space.id })
   const current =
     binding.value !== null && binding.value !== ''
       ? bindingWords({ label: binding.label, valueLabel: binding.valueLabel ?? binding.value }, t)
@@ -183,7 +269,7 @@ function BindingFromAccount({
           <label key={c.value} className="tool-choice-option">
             <input
               type="radio"
-              name={`binding-${tool.source}-${binding.name}`}
+              name={`binding-${tool.feature.id}-${binding.name}`}
               value={c.value}
               checked={value === c.value}
               disabled={disabled}
@@ -225,11 +311,14 @@ interface PanelState {
 }
 
 /**
- * A source's panel (UI-CONV-050), in this order: Settings of the tool, Account (once the source is added), What each
- * tool asks, Who can use it, Remove from <space>. The Save of the settings, after what each tool asks, sends the
- * bindings and the rules together; for a source not added it is Add to <space>.
+ * A feature's panel (UI-CONV-050, UI-CONV-065). With no provider in use, what Add opens: the providers to choose among
+ * when the template allows several, then the panel of the one picked, whose Save is Add to <space>; with one, the
+ * panel of its provider, in this order: Settings of the tool, Account (once the provider is added), What each tool
+ * asks, Who can use it, Remove from <space>. The Save of the settings, after what each tool asks, sends the bindings
+ * and the rules together. The panel is the feature's: a change that waits, then its outcome, stays shown when its
+ * provider comes in.
  */
-function ToolPanel({
+function FeaturePanel({
   agent,
   space,
   tool,
@@ -248,8 +337,11 @@ function ToolPanel({
   const snap = useSnapshot()
   const { t, i18n } = useTranslation()
   const title = spaceTitle(space, t)
-  const adding = canAdd(tool)
+  const adding = canAdd(tool) || tool.source === null
   const added = isAdded(tool)
+  // the provider Add chooses: the template's default, selected, until the owner picks another (UI-CONV-065)
+  const [picked, setPicked] = useState(defaultProviderOf(tool)?.source ?? '')
+  const provider = tool.providers.find((p) => p.source === picked) ?? defaultProviderOf(tool)
   const ownerValues = () =>
     Object.fromEntries(tool.bindings.filter((b) => b.setBy === 'owner').map((b) => [b.name, b.value ?? '']))
   const toolRules = () =>
@@ -292,15 +384,15 @@ function ToolPanel({
     setPolicies({ ...toolPolicies(), ...(kept?.policies ?? {}) })
   }, [tool])
 
-  // the change that waits for the phone ends when the agent says so (`ayni.space.tools.changed`, PROF-TOOL-006)
+  // the change that waits for the phone ends when the agent says so, for this feature (`ayni.space.tools.changed`,
+  // PROF-TOOL-006): its provider may be another by then
   const waitingFor = state.waiting
   const heard = snap.toolChanges.find(
     (c) =>
       !!waitingFor &&
       c.n > waitingFor.since &&
       c.agentDid === agent.did &&
-      c.change.spaceId === space.id &&
-      c.change.source === tool.source &&
+      concernsFeature(c.change, space.id, tool.feature.id) &&
       c.change.changeId === waitingFor.change.changeId
   )
   useEffect(() => {
@@ -332,7 +424,7 @@ function ToolPanel({
     onTool(answer.tool)
   }
 
-  const accountFields = tool.account.fields ?? []
+  const accountFields = tool.account?.fields ?? []
   const badTokenWords = (field: SpaceToolAccountField) => t('tools.badToken', { agent: agent.name, label: field.label })
 
   const refused = (e: unknown, from: From) => {
@@ -350,7 +442,7 @@ function ToolPanel({
       setFieldErrors({
         [r.name]:
           r.reason === 'notYourAccount'
-            ? t('tools.notYourAccount', { source: tool.title })
+            ? t('tools.notYourAccount', { source: tool.title ?? '' })
             : t(r.reason === 'badBinding' ? 'tools.badValue' : 'tools.pinnedByPack', { agent: agent.name }),
       })
     else if (r.at === 'rule') {
@@ -365,15 +457,17 @@ function ToolPanel({
         setState((s) => ({ ...s, error: { from, text: t('tools.accountFieldsChanged') } }))
         onReload()
       }
-    } else {
+    } else if (r.at === 'panel') {
       const text =
         r.reason === 'phoneNeeded'
           ? t('tools.phoneNeeded', { agent: agent.name })
-          : r.reason === 'other'
-            ? e.message
-            : t(`tools.${r.reason}`)
+          : r.reason === 'featureHasProvider'
+            ? t('tools.featureHasProvider', { feature: tool.feature.title })
+            : r.reason === 'other'
+              ? e.message
+              : t(`tools.${r.reason}`)
       setState((s) => ({ ...s, error: { from, text } }))
-    }
+    } else setState((s) => ({ ...s, error: { from, text: e.message } }))
   }
 
   const send = async (
@@ -395,13 +489,13 @@ function ToolPanel({
   }
 
   /** The owner's binding values typed, checked against their patterns first (UI-CONV-050); null when one is wrong. */
-  const checkedBindings = (onlyChanged: boolean): Record<string, string> | null => {
+  const checkedBindings = (): Record<string, string> | null => {
     const out: Record<string, string> = {}
     const errors: Record<string, string> = {}
     for (const b of tool.bindings) {
       if (b.setBy !== 'owner') continue
       const value = (values[b.name] ?? '').trim()
-      if (!value || (onlyChanged && value === (b.value ?? ''))) continue
+      if (!value || value === (b.value ?? '')) continue
       if (!bindingValueFits(b, value)) errors[b.name] = t('tools.badValue', { agent: agent.name })
       else out[b.name] = value
     }
@@ -435,33 +529,29 @@ function ToolPanel({
   }
 
   /**
-   * The Save of the settings (UI-CONV-050): the bindings, the rules and the approval policies in one request; Add for a
-   * source not added.
+   * Add to <space> (UI-CONV-065, PROF-TOOL-002): the provider chosen for the feature. Its bindings, list and rules are
+   * not known before it is in use (the item of a feature with no provider carries none, PROF-TOOL-033): they are set in
+   * its panel once the phone confirms.
    */
+  const add = () => {
+    if (!provider) return
+    void send('settings', () => hub.addSpaceTool(agent.did, space.id, { source: provider.source }))
+  }
+
+  /** The Save of the settings (UI-CONV-050): the bindings, the rules and the approval policies in one request. */
   const saveSettings = () => {
-    const bindings = checkedBindings(!adding)
+    const source = tool.source
+    if (!source) return
+    const bindings = checkedBindings()
     if (!bindings) return
     const calls = changedRules()
-    const { approvals, forms } = adding ? { approvals: {}, forms: {} } : changedPolicies()
+    const { approvals, forms } = changedPolicies()
     const sent = { rules: calls, values: bindings, policies: forms }
-    if (adding) {
-      void send(
-        'settings',
-        () =>
-          hub.addSpaceTool(agent.did, space.id, {
-            source: tool.source,
-            ...(Object.keys(bindings).length ? { bindings } : {}),
-            ...(Object.keys(calls).length ? { calls } : {}),
-          }),
-        sent
-      )
-      return
-    }
     if (!Object.keys(bindings).length && !Object.keys(calls).length && !Object.keys(approvals).length) return
     void send(
       'settings',
       () =>
-        hub.patchSpaceTool(agent.did, space.id, tool.source, {
+        hub.patchSpaceTool(agent.did, space.id, source, {
           ...(Object.keys(bindings).length ? { bindings } : {}),
           ...(Object.keys(calls).length ? { calls } : {}),
           ...(Object.keys(approvals).length ? { approvals } : {}),
@@ -481,7 +571,8 @@ function ToolPanel({
    * keeps its value and shows why, and nothing is sent; else all go in one request, and the fields are emptied.
    */
   const saveAccount = () => {
-    if (!accountFields.length || !accountFields.every((f) => filled[f.name])) return
+    const source = tool.source
+    if (!source || !accountFields.length || !accountFields.every((f) => filled[f.name])) return
     const { values, refused } = accountValuesOf(
       accountFields,
       Object.fromEntries(accountFields.map((f) => [f.name, accountRefs.current[f.name]?.value ?? '']))
@@ -495,7 +586,7 @@ function ToolPanel({
       return
     }
     emptyAccount()
-    void send('account', () => hub.setSpaceToolAccount(agent.did, space.id, tool.source, values))
+    void send('account', () => hub.setSpaceToolAccount(agent.did, space.id, source, values))
   }
 
   /** A change that only narrows applies at once, also while another waits (PROF-TOOL-003). */
@@ -514,11 +605,17 @@ function ToolPanel({
     }
   }
 
+  /**
+   * Withdraw (PROF-TOOL-005, PROF-TOOL-034): any provider of the feature names its one change, the first choice of a
+   * provider included, which no provider in use names yet.
+   */
   const withdraw = async () => {
     const from = state.waiting?.from ?? 'loaded'
+    const source = tool.source ?? provider?.source
+    if (!source) return
     setBusy(true)
     try {
-      await hub.withdrawSpaceToolChange(agent.did, space.id, tool.source)
+      await hub.withdrawSpaceToolChange(agent.did, space.id, source)
     } catch (e) {
       // nothing waits any more: the change ended meanwhile
       if (!(e instanceof ProfileError && e.status === 404)) {
@@ -569,42 +666,111 @@ function ToolPanel({
         <CircleAlert size={13} aria-hidden="true" className="field-error-icon" /> {fieldErrors[key]}
       </span>
     ) : null
+  const back = (
+    <button type="button" className="link" onClick={onBack}>
+      <ArrowLeft size={15} aria-hidden="true" /> {t('tools.back')}
+    </button>
+  )
+  const who = (
+    <section className="space-section tool-section" aria-label={t('tools.who')}>
+      <h4 className="section-label">{t('tools.who')}</h4>
+      <p className="rule-line">
+        {tool.guests ? t('tools.guests') : t('tools.onlyMembers', { organization: organizationNameOf(agent) })}
+      </p>
+    </section>
+  )
+  /** The account a provider's calls run with, before it is added: the agent's, or each person's own (UI-CONV-050). */
+  const accountLine = (kind: SpaceToolProvider['account']['kind']) =>
+    kind === 'agent' || kind === 'personal' ? (
+      <section className="space-section tool-section" aria-label={t('tools.accountTitle')}>
+        <h4 className="section-label">{t('tools.accountTitle')}</h4>
+        <p className="rule-line">
+          {kind === 'agent' ? t('tools.account.agent', { agent: agent.name }) : t('tools.accountPersonal')}
+        </p>
+      </section>
+    ) : null
+
+  if (tool.source === null) {
+    // a feature with no provider in use: what Add opens (UI-CONV-065); while the choice of a first provider waits for
+    // the phone, its code and Withdraw
+    const several = choosesProvider(tool) && !tool.pending && !waiting
+    return (
+      <div className="tool-panel">
+        <div className="tool-panel-head">
+          {back}
+          <h3 className="tool-panel-title">
+            {several || !provider ? tool.feature.title : sourceNameOf({ title: provider.title, feature: tool.feature })}
+          </h3>
+          {!several && provider?.description && !waiting ? (
+            <p className="muted tool-panel-description">{provider.description}</p>
+          ) : null}
+          <StateLine agent={agent} tool={tool} />
+        </div>
+        {status('loaded')}
+        {several ? (
+          <ProviderChoice
+            agent={agent}
+            tool={tool}
+            providers={tool.providers}
+            value={provider?.source ?? ''}
+            disabled={busy}
+            onChoose={setPicked}
+          />
+        ) : null}
+        {provider && state.waiting?.from !== 'loaded' ? accountLine(provider.account.kind) : null}
+        {who}
+        {provider && state.waiting?.from !== 'loaded' ? (
+          <div className="tool-actions">
+            {state.waiting?.from === 'settings' ? null : (
+              <button
+                type="button"
+                className="btn primary settings-save"
+                disabled={busy || waiting || !adding}
+                onClick={add}
+              >
+                {t('tools.addTo', { space: title })}
+              </button>
+            )}
+            {status('settings')}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+  const source = tool.source
 
   const ownerBindings = tool.bindings.filter((b) => b.setBy === 'owner')
-  const account = tool.account
+  const account = tool.account ?? { kind: 'none' as const }
   // the fields of the account: until it is set, and then for Replace
   const typing = !account.set || replacing
   const accountComplete = accountFields.length > 0 && accountFields.every((f) => filled[f.name])
   const date = (iso: string | null | undefined) =>
     iso ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(iso)) : ''
   // while a change waits, only what narrows can be sent: a binding, a token or a looser rule would be refused
-  const grantsLocked = waiting && !adding
-  const hasSettings = adding || ownerBindings.length > 0 || tool.tools.some((x) => x.name)
+  const grantsLocked = waiting
+  const conformant = isConformant(tool)
+  const toolsShown = conformant ? tool.tools : []
+  const hasSettings = ownerBindings.length > 0 || toolsShown.some((x) => x.name)
   const settingsSave = hasSettings ? (
     <div className="tool-actions">
       {state.waiting?.from === 'settings' ? null : (
-        <button
-          type="button"
-          className={adding ? 'btn primary settings-save' : 'btn settings-save'}
-          disabled={busy || (adding && waiting)}
-          onClick={saveSettings}
-        >
-          {adding ? t('tools.addTo', { space: title }) : t('tools.save')}
+        <button type="button" className="btn settings-save" disabled={busy} onClick={saveSettings}>
+          {t('tools.save')}
         </button>
       )}
       {status('settings')}
     </div>
-  ) : null
+  ) : (
+    status('settings')
+  )
 
   return (
     <div className="tool-panel">
       <div className="tool-panel-head">
-        <button type="button" className="link" onClick={onBack}>
-          <ArrowLeft size={15} aria-hidden="true" /> {t('tools.back')}
-        </button>
-        <h3 className="tool-panel-title">{sourceNameOf(tool)}</h3>
+        {back}
+        <h3 className="tool-panel-title">{sourceNameOf({ title: tool.title ?? source, feature: tool.feature })}</h3>
         {tool.description ? <p className="muted tool-panel-description">{tool.description}</p> : null}
-        <span className={toolRowStateOf(tool) === 'ready' ? 'tag' : 'state-tag'}>{stateWords(tool, t)}</span>
+        <StateLine agent={agent} tool={tool} />
       </div>
       {status('loaded')}
 
@@ -646,7 +812,7 @@ function ToolPanel({
               </label>
             )
           )}
-          {tool.tools.length ? null : settingsSave}
+          {toolsShown.length ? null : settingsSave}
         </section>
       ) : null}
 
@@ -662,7 +828,7 @@ function ToolPanel({
           <p className="rule-line">{t('tools.accountPersonal')}</p>
         </section>
       ) : account.kind === 'space' && added ? (
-        // a space's account, once the source is added (UI-CONV-050): before, the agent would answer `409 not-added`
+        // a space's account, once the provider is added (UI-CONV-050): before, the agent would answer `409 not-added`
         <section className="space-section tool-section" aria-label={t('tools.accountTitle')}>
           <h4 className="section-label">{t('tools.accountTitle')}</h4>
           <div className="tool-account-status">
@@ -682,7 +848,7 @@ function ToolPanel({
                     }}
                     className="input"
                     type="password"
-                    name={`account-${tool.source}-${f.name}`}
+                    name={`account-${source}-${f.name}`}
                     autoComplete="off"
                     autoCorrect="off"
                     autoCapitalize="off"
@@ -749,7 +915,7 @@ function ToolPanel({
           </div>
           {confirming === 'account' ? (
             <div className="box tool-confirm" role="alertdialog" aria-label={t('tools.removeAccount')}>
-              <span>{t('tools.removeAccountConfirm', { tool: tool.title })}</span>
+              <span>{t('tools.removeAccountConfirm', { tool: tool.title ?? source })}</span>
               <div className="tool-actions">
                 <button type="button" className="btn" onClick={() => setConfirming(null)}>
                   {t('app.cancel')}
@@ -757,9 +923,7 @@ function ToolPanel({
                 <button
                   type="button"
                   className="btn tool-remove"
-                  onClick={() =>
-                    void narrow('account', () => hub.clearSpaceToolAccount(agent.did, space.id, tool.source))
-                  }
+                  onClick={() => void narrow('account', () => hub.clearSpaceToolAccount(agent.did, space.id, source))}
                 >
                   {t('tools.removeAccount')}
                 </button>
@@ -769,11 +933,11 @@ function ToolPanel({
         </section>
       ) : null}
 
-      {tool.tools.length ? (
+      {toolsShown.length ? (
         <section className="space-section tool-section" aria-label={t('tools.asks')}>
           <h4 className="section-label">{t('tools.asks')}</h4>
           <ul className="tool-rules">
-            {tool.tools.map((x) => {
+            {toolsShown.map((x) => {
               const name = x.name ?? x.title
               const current = rules[name] ?? x.rule
               const form = x.name ? policies[x.name] : undefined
@@ -794,7 +958,7 @@ function ToolPanel({
                       className="input"
                       aria-label={x.title}
                       value={current}
-                      disabled={busy || !x.name || (adding && waiting)}
+                      disabled={busy || !x.name}
                       aria-invalid={fieldErrors[`calls.${name}`] ? true : undefined}
                       onChange={(e) => setRules((r) => ({ ...r, [name]: e.target.value as ToolRule }))}
                     >
@@ -836,12 +1000,7 @@ function ToolPanel({
         settingsSave
       )}
 
-      <section className="space-section tool-section" aria-label={t('tools.who')}>
-        <h4 className="section-label">{t('tools.who')}</h4>
-        <p className="rule-line">
-          {tool.guests ? t('tools.guests') : t('tools.onlyMembers', { organization: organizationNameOf(agent) })}
-        </p>
-      </section>
+      {who}
 
       {added ? (
         <div className="tool-actions">
@@ -853,7 +1012,7 @@ function ToolPanel({
       ) : null}
       {confirming === 'remove' ? (
         <div className="box tool-confirm" role="alertdialog" aria-label={t('tools.remove', { space: title })}>
-          <span>{t('tools.removeConfirm', { tool: tool.title, space: title })}</span>
+          <span>{t('tools.removeConfirm', { tool: tool.title ?? source, space: title })}</span>
           <div className="tool-actions">
             <button type="button" className="btn" onClick={() => setConfirming(null)}>
               {t('app.cancel')}
@@ -861,7 +1020,7 @@ function ToolPanel({
             <button
               type="button"
               className="btn tool-remove"
-              onClick={() => void narrow('remove', () => hub.removeSpaceTool(agent.did, space.id, tool.source), onBack)}
+              onClick={() => void narrow('remove', () => hub.removeSpaceTool(agent.did, space.id, source), onBack)}
             >
               {t('tools.remove', { space: title })}
             </button>

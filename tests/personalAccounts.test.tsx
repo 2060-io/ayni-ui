@@ -676,6 +676,9 @@ const SALES_MEMBER: SpaceInfo = space({
 const SALES_OWNER: SpaceInfo = { ...SALES_MEMBER, role: 'owner' }
 const TOOLS_PATH = '/spaces/spc_sales/tools'
 const crm = (over: Record<string, unknown> = {}) => ({
+  // one item per feature, with its provider (package 3.5.8, PROF-TOOL-033)
+  feature: { id: 'crm', title: 'CRM', profile: null },
+  providers: [{ source: 'relaticle', title: 'Relaticle CRM', account: { kind: 'personal' }, default: true }],
   source: 'relaticle',
   title: 'Relaticle CRM',
   description: "The companies, people, notes and tasks of the space's workspace",
@@ -752,7 +755,10 @@ describe("a space's tool of each person's own account (UI-CONV-049, UI-CONV-050)
     )
     await until(() => el.querySelector('.about-tool'))
     const tool = el.querySelector('.about-tool') as HTMLElement
-    expect(tool.querySelector('.about-tool-account')?.textContent).toBe('Each person uses their own account')
+    // whose account, in the line of its provider (UI-CONV-065)
+    expect(tool.querySelector('.about-tool-provider')?.textContent).toBe(
+      'Relaticle CRM · Each person uses their own account'
+    )
     expect(tool.querySelector('.about-tool-yours')?.textContent).toBe('Your account: not connectedConnect')
     await click(byText(tool, 'button', 'Connect'))
     expect(hub.getSnapshot().view).toBe('accounts')
@@ -773,6 +779,7 @@ describe("a space's tool of each person's own account (UI-CONV-049, UI-CONV-050)
   it("opens the row of the source whose account a tool uses, as the space's tools name it (ayni-spec #110)", async () => {
     // GitHub repository uses the person's GitHub account: Your accounts lists it under GitHub
     const project = {
+      feature: { id: 'code', title: 'Code and issues', profile: null },
       source: 'github-project',
       title: 'GitHub repository',
       description: "The issues of the project's repository",

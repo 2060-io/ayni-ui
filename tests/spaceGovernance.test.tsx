@@ -102,6 +102,9 @@ const TWO_POLICY = {
 const BLOCKED = [{ code: 'own-requests-blocked', approvers: [{ name: 'Jonas Weber' }, { name: 'Marta Kova' }] }]
 
 const postTool = (approval: Record<string, unknown> | undefined, over: Record<string, unknown> = {}) => ({
+  // one item per feature, with its provider (package 3.5.8, PROF-TOOL-033)
+  feature: { id: 'social', title: 'Social posting', profile: null },
+  providers: [{ source: 'x', title: 'Post on X', account: { kind: 'space' }, default: true }],
   source: 'x',
   title: 'Post on X',
   description: "The space's account on X",
@@ -810,7 +813,8 @@ describe('the Notifications: progress, own requests and notices (UI-APPR-007, UI
     await click(byText(items(el)[1] as HTMLElement, 'button', 'Open the tool'))
     expect(hub.getSnapshot().spaceFor).toMatchObject({ spaceId: 'spc_comms', segment: 'tools', source: 'x' })
     await until(() => !!el.querySelector('.tool-panel'))
-    expect(el.querySelector('.tool-panel-title')?.textContent).toBe('Post on X')
+    // the notice names the provider: the panel of the feature it serves opens, titled "<feature> · <provider>"
+    expect(el.querySelector('.tool-panel-title')?.textContent).toBe('Social posting · Post on X')
   })
 
   it("lists a space without an owner in the agent's Notifications, and Name the owner opens Spaces you steward there", async () => {
