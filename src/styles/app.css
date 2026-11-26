@@ -3852,6 +3852,66 @@ mark.hit.current {
   color: var(--text);
 }
 
+/* ---- a team space's managed folder (UI-CONV-069 to 071; agent D145 to D150) ---------------------------------------- */
+
+/* the question the phone asks, under the code of a change that adds Files in the managed mode (UI-CONV-069) */
+.tool-pending-question {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+/* the folder in the owner's panel of Files: its line, its state and control, the members without access, Rename */
+.tool-folder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.tool-folder-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.tool-folder-status {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: normal;
+}
+.tool-folder-without,
+.tool-folder-my-access {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.tool-folder-rename {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* "Open in <provider>", in a new tab: beside the row of Files, and under it in About */
+.folder-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+.tool-row-open {
+  flex: none;
+}
+.about-tool-folder {
+  font-size: 13px;
+  color: var(--text);
+}
+.about-tool-open {
+  align-self: flex-start;
+}
+
 /* ---- the Notifications of a space and of the agent (UI-APPR-001, 002, 006..009; agent D114) ---------------------- */
 
 /* a list of the person's items, newest first; each item is the transcript's card, the width of the list */

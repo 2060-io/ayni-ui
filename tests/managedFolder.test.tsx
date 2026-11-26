@@ -7,7 +7,7 @@
  * TOOL-FEAT-032), and every refusal of the wire at its field.
  */
 import type { SpaceInfo } from '@ayni.org/ayni-ui-core'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { SpacePage } from '../src/components/SpacePage.js'
 import type { Hub } from '../src/state/hub.js'
 import {
@@ -24,6 +24,7 @@ import {
   space,
   tab,
   teardown,
+  type,
   until,
 } from './spacesFixture.js'
 
@@ -502,5 +503,330 @@ describe('Change provider to a provider of two modes (UI-CONV-069, UI-CONV-066, 
     expect(el.querySelector('.tool-change-provider .tool-error')?.textContent).toBe(
       'Fleet support cannot make a folder at Nextcloud. Choose a folder that already exists.'
     )
+  })
+})
+
+// ---------------------------------------------------------------------------------------------- the folder
+
+const folderOf = (over: Record<string, unknown>, tool: Record<string, unknown> = {}) => ({
+  ...MANAGED,
+  ...tool,
+  folder: { ...OWNER_FOLDER, ...over },
+})
+const rowLines = (el: HTMLElement) =>
+  [...(el.querySelector('.tool-row .space-text')?.children ?? [])].map((x) => x.textContent?.trim())
+const rowState = (el: HTMLElement) =>
+  el.querySelector('.tool-row > .tool-row-main > .tag, .tool-row > .tool-row-main > .state-tag')?.textContent
+const section = (el: HTMLElement) => el.querySelector<HTMLElement>('.tool-folder')
+async function toolsChanged(hub: Hub, value: Record<string, unknown>) {
+  // @ts-expect-error private: the event as the session's stream delivers it
+  await hub.onEvent('s1', { type: 'CUSTOM', name: 'ayni.space.tools.changed', value }, undefined, false)
+}
+
+describe("the managed folder on the owner's row and in the panel (UI-CONV-070, UI-CONV-052)", () => {
+  it('reads its line, the members without access, and Open in <provider>, which opens the folder in a new tab', async () => {
+    const { el } = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })]])
+    await until(() => el.querySelector('.tool-row'))
+    expect(rowLines(el)).toEqual([
+      'Files',
+      'Google Drive · Folders: Project Alpha · Each person uses their own account',
+      'Folder: Project Alpha · Managed by Fleet support',
+      '1 member has no access yet',
+    ])
+    expect(rowState(el)).toBe('Ready')
+    const open = el.querySelector<HTMLAnchorElement>('.tool-row > a.folder-open')
+    expect(open?.textContent).toBe('Open in Google Drive')
+    expect(open?.href).toBe('https://drive.example/folders/0AB')
+    expect(open?.target).toBe('_blank')
+    expect(open?.rel).toBe('noopener noreferrer')
+    // two members without access read so; none, no line; a folder with no link, no Open in
+    teardown()
+    const more = await alpha([
+      [
+        `GET ${TOOLS_PATH}`,
+        () => json({ tools: [folderOf({ access: { inPlace: 2, pending: 1, failed: 1 }, webUrl: undefined })] }),
+      ],
+    ])
+    await until(() => more.el.querySelector('.tool-row'))
+    expect(rowLines(more.el)[3]).toBe('2 members have no access yet')
+    expect(more.el.querySelector('.folder-open')).toBeNull()
+    teardown()
+    const all = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [folderOf({ access: { inPlace: 5, pending: 0, failed: 0 } })] })],
+    ])
+    await until(() => all.el.querySelector('.tool-row'))
+    expect(rowLines(all.el)).toHaveLength(3)
+  })
+
+  it('shows in the panel the folder in place of the choice of folder, its line, the count and Rename folder', async () => {
+    const { el } = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })]])
+    await openFiles(el)
+    expect(el.querySelector('.tool-list-editor')).toBeNull()
+    const f = section(el) as HTMLElement
+    expect(f.closest('.tool-section')?.getAttribute('aria-label')).toBe('Settings of the tool')
+    expect(f.querySelector('.tool-folder-line')?.textContent).toBe('Folder: Project Alpha · Managed by Fleet support')
+    expect(f.querySelector('a.folder-open')?.getAttribute('href')).toBe('https://drive.example/folders/0AB')
+    expect(f.querySelector('.tool-folder-without')?.textContent).toBe('1 member has no access yet')
+    expect(f.querySelector('.tool-folder-status')).toBeNull()
+    expect(byText(f, 'button', 'Rename folder')).toBeTruthy()
+    // no Save of a list that cannot change: the rules' Save only
+    expect(el.querySelectorAll('.settings-save')).toHaveLength(1)
+  })
+
+  it('says "Making the folder at <provider>…" in place of the state while it is made, with no Rename', async () => {
+    const creating = folderOf(
+      { state: 'creating', access: { inPlace: 0, pending: 0, failed: 0 } },
+      { state: 'setup', list: { ...MANAGED.list, entries: [] } }
+    )
+    const { el } = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [creating] })]])
+    await until(() => el.querySelector('.tool-row'))
+    expect(rowState(el)).toBe('Making the folder at Google Drive…')
+    // the list of a managed folder is not what is missing
+    expect(el.textContent).not.toContain('Needs setup')
+    await openFiles(el)
+    expect(el.querySelector('.tool-panel-head .state-tag')?.textContent).toBe('Making the folder at Google Drive…')
+    expect(section(el)?.querySelector('.tool-folder-status')?.textContent?.trim()).toBe(
+      'Making the folder at Google Drive…'
+    )
+    expect(byText(section(el) as HTMLElement, 'button', 'Rename folder')).toBeUndefined()
+  })
+
+  it('asks to allow the provider while its account is not connected or lacks a scope; Allow starts the sign-in for the space', async () => {
+    const tab = { opener: window as unknown, location: { replace: vi.fn() }, close: vi.fn() }
+    vi.spyOn(window, 'open').mockImplementation((() => tab) as never)
+    const signIn = 'https://accounts.example/o/oauth2/auth?client_id=x'
+    for (const reason of ['not-connected', 'scope-missing']) {
+      const allow = folderOf({ state: 'creating', reason }, { state: 'setup' })
+      const { el, agent } = await alpha([
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [allow] })],
+        [
+          'POST /connections/drive/authorize',
+          () =>
+            json(
+              { attemptId: 'att_1', authorizationUrl: signIn, expiresAt: new Date(Date.now() + 600_000).toISOString() },
+              202
+            ),
+        ],
+      ])
+      await until(() => el.querySelector('.tool-row'))
+      expect(rowState(el), reason).toBe('Needs setup')
+      expect(rowLines(el), reason).toContain("Allow Google Drive to manage this space's folder")
+      await openFiles(el)
+      const f = section(el) as HTMLElement
+      expect(f.querySelector('.tool-folder-status')?.textContent?.trim()).toBe(
+        "Allow Google Drive to manage this space's folder"
+      )
+      await click(byText(f, 'button', 'Allow'))
+      await until(() => agent.find('POST', '/connections/drive/authorize').length === 1)
+      expect(agent.find('POST', '/connections/drive/authorize')[0]?.body).toEqual({ spaceId: ALPHA.id })
+      await until(() => tab.location.replace.mock.calls.length > 0)
+      expect(tab.location.replace).toHaveBeenLastCalledWith(signIn)
+      teardown()
+      vi.spyOn(window, 'open').mockImplementation((() => tab) as never)
+    }
+  })
+
+  it('says a folder that needs a manager, and Check again checks it again', async () => {
+    const needs = folderOf({ state: 'needs-manager', reason: 'manager-gone' })
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [needs] })],
+      [`PATCH ${TOOLS_PATH}/drive`, () => json({ tool: MANAGED }, 202)],
+    ])
+    const words =
+      'Fleet support can no longer manage this folder. Ask a Google Workspace administrator to make you a manager of the shared drive Project Alpha, then press Check again.'
+    await until(() => el.querySelector('.tool-row'))
+    expect(rowLines(el)).toContain(words)
+    await openFiles(el)
+    expect(section(el)?.querySelector('.tool-folder-status')?.textContent?.trim()).toBe(words)
+    // made: it can be renamed
+    expect(byText(section(el) as HTMLElement, 'button', 'Rename folder')).toBeTruthy()
+    await click(byText(section(el) as HTMLElement, 'button', 'Check again'))
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/drive`).length === 1)
+    expect(agent.find('PATCH', `${TOOLS_PATH}/drive`)[0]?.body).toEqual({ folder: { check: true } })
+    // the item it answers: ready, the words gone
+    await until(() => !section(el)?.querySelector('.tool-folder-status'))
+    expect(byText(section(el) as HTMLElement, 'button', 'Check again')).toBeUndefined()
+  })
+
+  it('says a folder the provider did not let the agent make, and Try again checks it again', async () => {
+    const failed = folderOf({ state: 'failed', reason: 'permission-denied' }, { state: 'setup' })
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [failed] })],
+      [`PATCH ${TOOLS_PATH}/drive`, () => json({ tool: failed }, 202)],
+    ])
+    const words =
+      'Google Drive did not let Fleet support make this folder. Your organization may not allow it; ask its administrator.'
+    await until(() => el.querySelector('.tool-row'))
+    expect(rowLines(el)).toContain(words)
+    await openFiles(el)
+    expect(section(el)?.querySelector('.tool-folder-status')?.textContent?.trim()).toBe(words)
+    expect(byText(section(el) as HTMLElement, 'button', 'Rename folder')).toBeUndefined()
+    await click(byText(section(el) as HTMLElement, 'button', 'Try again'))
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/drive`).length === 1)
+    expect(agent.find('PATCH', `${TOOLS_PATH}/drive`)[0]?.body).toEqual({ folder: { check: true } })
+  })
+
+  it('renames the folder at once: the field Name of the folder, Save and Cancel; "Saved", the line follows', async () => {
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })],
+      [`PATCH ${TOOLS_PATH}/drive`, () => json({ tool: folderOf({ title: 'Alpha files' }) })],
+    ])
+    await openFiles(el)
+    await click(byText(section(el) as HTMLElement, 'button', 'Rename folder'))
+    const field = () => section(el)?.querySelector<HTMLInputElement>('.tool-folder-rename input')
+    expect(section(el)?.querySelector('.tool-folder-rename label')?.childNodes[0]?.textContent).toBe(
+      'Name of the folder'
+    )
+    expect(field()?.value).toBe('Project Alpha')
+    // unchanged or empty: nothing to save
+    const save = () => byText(section(el) as HTMLElement, 'button', 'Save') as HTMLButtonElement
+    expect(save().disabled).toBe(true)
+    await type(field(), '   ')
+    expect(save().disabled).toBe(true)
+    // Cancel changes nothing
+    await click(byText(section(el) as HTMLElement, 'button', 'Cancel'))
+    expect(field()).toBeFalsy()
+    expect(agent.find('PATCH', `${TOOLS_PATH}/drive`)).toHaveLength(0)
+    await click(byText(section(el) as HTMLElement, 'button', 'Rename folder'))
+    await type(field(), '  Alpha files ')
+    await click(save())
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/drive`).length === 1)
+    // trimmed, and no phone: it applies at once
+    expect(agent.find('PATCH', `${TOOLS_PATH}/drive`)[0]?.body).toEqual({ folder: { title: 'Alpha files' } })
+    await until(() => section(el)?.querySelector('.tool-change-outcome')?.textContent === 'Saved')
+    expect(section(el)?.querySelector('.tool-folder-line')?.textContent).toBe(
+      'Folder: Alpha files · Managed by Fleet support'
+    )
+    expect(el.querySelector('.tool-pending')).toBeNull()
+  })
+
+  it('says each refusal of the rename: the name at its field, any other under the folder', async () => {
+    const cases: [Response, string, string][] = [
+      [
+        json({ error: 'bad-name', field: 'folder.title', message: 'Google Drive does not take this name' }, 422),
+        '.tool-folder-rename .field-error',
+        'This value is not in the form Fleet support expects.',
+      ],
+      [
+        json({ error: 'not-owner' }, 403),
+        '.tool-folder > .tool-error',
+        'Only the owner of the space changes its tools.',
+      ],
+      [
+        json({ error: 'not-managed', message: 'the folder is not made yet' }, 409),
+        '.tool-folder > .tool-error',
+        'the folder is not made yet',
+      ],
+      [
+        json({ error: 'source-unavailable', message: 'Google Drive did not rename the folder' }, 502),
+        '.tool-folder > .tool-error',
+        'Google Drive did not rename the folder',
+      ],
+    ]
+    for (const [answer, where, words] of cases) {
+      const { el, agent } = await alpha([
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })],
+        [`PATCH ${TOOLS_PATH}/drive`, () => answer],
+      ])
+      await openFiles(el)
+      await click(byText(section(el) as HTMLElement, 'button', 'Rename folder'))
+      await type(section(el)?.querySelector('.tool-folder-rename input'), 'Alpha/files')
+      await click(byText(section(el) as HTMLElement, 'button', 'Save'))
+      await until(() => el.querySelector(where))
+      expect(el.querySelector(where)?.textContent?.trim(), words).toBe(words)
+      // a 409 reads the tools again
+      if (answer.status === 409) await until(() => agent.find('GET', TOOLS_PATH).length === 2)
+      teardown()
+    }
+  })
+
+  it('says the agent manages the folder when a list is refused with 409 managed-location, and reads the tools again', async () => {
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [EXISTING] })],
+      [`PATCH ${TOOLS_PATH}/webdav`, () => json({ error: 'managed-location' }, 409)],
+    ])
+    await openFiles(el)
+    await click(byText(el, '.tool-list-entry button', 'Remove'))
+    await click(el.querySelector('.settings-save'))
+    await until(() => el.querySelector('.tool-error'))
+    expect(el.querySelector('.tool-error')?.textContent).toBe(
+      'Fleet support manages this folder: it cannot be changed.'
+    )
+    await until(() => agent.find('GET', TOOLS_PATH).length === 2)
+  })
+})
+
+/** Files of Project Alpha as Ana, a member, reads it: the folder's title, its link and her own access. */
+const memberFiles = (myAccess: string) => ({
+  feature: FILES_FEATURE,
+  source: 'drive',
+  title: 'Google Drive',
+  description: DRIVE.description,
+  state: 'ready',
+  guests: true,
+  account: { kind: 'personal', connected: true },
+  bindings: [],
+  list: { label: 'Folders', any: false, entries: [{ label: 'Project Alpha' }] },
+  folder: { title: 'Project Alpha', webUrl: 'https://drive.example/folders/0AB', myAccess },
+  tools: [{ title: 'Read a file', effect: 'read', rule: 'none', stepUp: null }],
+})
+const aboutFiles = (el: HTMLElement) =>
+  [...(el.querySelector('.about-tool')?.children ?? [])].map((x) => x.textContent?.trim())
+
+describe('the managed folder in About (UI-CONV-070)', () => {
+  it("reads to a member the folder's line and Open in <provider>, and No access yet while their access is not in place", async () => {
+    let myAccess = 'pending'
+    const { el, hub, agent } = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [memberFiles(myAccess)] })]], {
+      segment: 'about',
+      member: true,
+    })
+    await until(() => el.querySelector('.about-tool'))
+    expect(aboutFiles(el)).toEqual([
+      'Files',
+      'Google Drive · Folders: Project Alpha · Each person uses their own account',
+      'Folder: Project Alpha · Managed by Fleet support',
+      "No access yet. Fleet support is giving you access to this space's folder.",
+      'Open in Google Drive',
+      'A shared drive of the organization',
+      expect.stringContaining('Your account'),
+      'Runs without asking: Read a file',
+    ])
+    expect(el.querySelector<HTMLAnchorElement>('.about-tool a.folder-open')?.target).toBe('_blank')
+    // her access put in place: the agent tells her session, with no change id (PROF-TOOL-041), and About follows
+    myAccess = 'in-place'
+    await toolsChanged(hub, {
+      spaceId: ALPHA.id,
+      feature: 'files',
+      source: 'drive',
+      state: 'ready',
+      outcome: 'applied',
+    })
+    await until(() => !el.querySelector('.tool-folder-my-access'))
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(2)
+    // and a failed access reads the same
+    teardown()
+    const failed = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [memberFiles('failed')] })]], {
+      segment: 'about',
+      member: true,
+    })
+    await until(() => failed.el.querySelector('.about-tool'))
+    expect(failed.el.querySelector('.tool-folder-my-access')?.textContent).toBe(
+      "No access yet. Fleet support is giving you access to this space's folder."
+    )
+  })
+
+  it("reads to the owner the folder's line, its state and the members without access", async () => {
+    const needs = folderOf({ state: 'needs-manager', reason: 'manager-gone' })
+    const { el } = await alpha([[`GET ${TOOLS_PATH}`, () => json({ tools: [needs] })]], { segment: 'about' })
+    await until(() => el.querySelector('.about-tool'))
+    expect(aboutFiles(el).slice(0, 6)).toEqual([
+      'Files',
+      'Google Drive · Folders: Project Alpha · Each person uses their own account',
+      'Folder: Project Alpha · Managed by Fleet support',
+      'Fleet support can no longer manage this folder. Ask a Google Workspace administrator to make you a manager of the shared drive Project Alpha, then press Check again.',
+      '1 member has no access yet',
+      'Open in Google Drive',
+    ])
+    expect(el.querySelector('.tool-folder-my-access')).toBeNull()
   })
 })

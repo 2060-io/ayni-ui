@@ -18,7 +18,8 @@
  * allows it, "Only these" or any; the Save of the settings sends it whole. For Files in a team space (UI-CONV-069,
  * profile package 3.5.9), Add, and Change provider, show the two modes where the provider has both, the managed one
  * first and selected, and send the mode chosen; in the managed mode the page shows, under the code, the question the
- * phone asks.
+ * phone asks. In the managed mode (UI-CONV-070) the row of Files shows the folder's line, its state and the members
+ * without access, with "Open in <provider>" beside it, and its panel the folder in place of the choice of folder.
  */
 import {
   type AgentRecord,
@@ -41,6 +42,7 @@ import {
   concernsFeature,
   defaultLocationOf,
   defaultProviderOf,
+  folderLineOf,
   isAdded,
   isConformant,
   type ListChoice,
@@ -86,7 +88,7 @@ import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { AccountNoticeLine, bindingWords, SignInWaiting, useNow, useSignIn } from './Accounts.js'
 import { AttentionLine, PolicyEditor, policyRefusalText } from './ApprovalPolicy.js'
-import { LocationChoice } from './ManagedFolder.js'
+import { FolderLines, FolderOpen, FolderSection, LocationChoice } from './ManagedFolder.js'
 import { organizationNameOf, spaceTitle } from './SpaceParts.js'
 import { accountWords, providerLineWords, useSpaceTools } from './Tools.js'
 
@@ -99,9 +101,13 @@ type T = (key: string, options?: Record<string, unknown>) => string
  */
 type From = 'settings' | 'account' | 'provider' | 'remove' | 'loaded'
 
-/** A row's state in words (UI-CONV-050, UI-CONV-052): "Needs setup: Folders, account". */
+/**
+ * A row's state in words (UI-CONV-050, UI-CONV-052): "Needs setup: Folders, account"; while the agent makes the managed
+ * folder, "Making the folder at <provider>…".
+ */
 function stateWords(tool: SpaceTool, t: T): string {
   const state = toolRowStateOf(tool)
+  if (state === 'makingFolder') return t('tools.folder.creating', { provider: tool.title ?? tool.source ?? '' })
   const words = t(`tools.state.${state}`)
   if (state !== 'needsSetup') return words
   const missing = missingPartsOf(tool)
@@ -173,6 +179,7 @@ export function ToolsSegment({
         <ul className="tool-list">
           {tools.map((x) => {
             const state = toolRowStateOf(x)
+            const folder = folderLineOf(x)
             return (
               <li key={x.feature.id} className="tool-row" data-state={state}>
                 {/* a row opens the panel of its provider, or what Add opens for a feature with none (UI-CONV-050) */}
@@ -186,6 +193,8 @@ export function ToolsSegment({
                       <AttentionLine key={item.name ?? item.title} policy={item.approval} className="space-sub" />
                     ))}
                     {state === 'notConformant' ? <StateLine agent={agent} tool={x} /> : null}
+                    {/* the managed folder, its state and the members without access (UI-CONV-070) */}
+                    <FolderLines agentName={agent.name} tool={x} lineClass="space-sub" creating={false} />
                   </span>
                   {state === 'notConformant' ? null : <StateLine agent={agent} tool={x} />}
                   <ChevronRight size={16} aria-hidden="true" className="tool-row-chevron" />
@@ -195,6 +204,8 @@ export function ToolsSegment({
                     {t('tools.add')}
                   </button>
                 ) : null}
+                {/* beside the row's button, which a link cannot be inside */}
+                {folder ? <FolderOpen line={folder} className="tool-row-open" /> : null}
               </li>
             )
           })}
@@ -760,10 +771,14 @@ function FeaturePanel({
           ? t('tools.phoneNeeded', { agent: agent.name })
           : r.reason === 'featureHasProvider'
             ? t('tools.featureHasProvider', { feature: tool.feature.title })
-            : r.reason === 'other'
-              ? e.message
-              : t(`tools.${r.reason}`)
+            : r.reason === 'managedLocation'
+              ? t('tools.folder.managedLocation', { agent: agent.name })
+              : r.reason === 'other'
+                ? e.message
+                : t(`tools.${r.reason}`)
       setState((s) => ({ ...s, error: { from, text } }))
+      // the agent manages the folder this panel read as one that exists: the tools are read again
+      if (r.reason === 'managedLocation') onReload()
     } else setState((s) => ({ ...s, error: { from, text: e.message } }))
   }
 
@@ -1105,7 +1120,9 @@ function FeaturePanel({
   const grantsLocked = waiting
   const conformant = isConformant(tool)
   const toolsShown = conformant ? tool.tools : []
-  const hasSettings = ownerBindings.length > 0 || toolsShown.some((x) => x.name) || !!tool.list
+  // the managed folder is the feature's one location, which the owner does not change (UI-CONV-069, PROF-TOOL-041)
+  const managed = tool.location === 'managed'
+  const hasSettings = ownerBindings.length > 0 || toolsShown.some((x) => x.name) || (!!tool.list && !managed)
   const settingsSave = hasSettings ? (
     <div className="tool-actions">
       {state.waiting?.from === 'settings' ? null : (
@@ -1167,8 +1184,11 @@ function FeaturePanel({
               </label>
             )
           )}
-          {/* the list, in place of the fields of the bindings it names (UI-CONV-059) */}
-          {tool.list && listForm ? (
+          {/* the managed folder in place of a choice of folder (UI-CONV-070); else the list, in place of the fields of
+          the bindings it names (UI-CONV-059) */}
+          {managed ? (
+            <FolderSection agent={agent} space={space} tool={tool} onTool={onTool} onReload={onReload} />
+          ) : tool.list && listForm ? (
             <ListEditor
               agent={agent}
               space={space}
