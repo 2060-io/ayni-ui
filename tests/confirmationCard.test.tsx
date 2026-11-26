@@ -368,6 +368,31 @@ describe('the approval of a tool call (UI-APPR-006)', () => {
     expect(byText(el, 'button', 'Approve')).toBeUndefined()
   })
 
+  it('names its source on the requester\'s card by the feature it serves, "<feature> · <source>" (UI-CONV-064)', async () => {
+    const { card } = await conversation(
+      [
+        cardMessage(
+          approval({
+            own: true,
+            action: {
+              title: 'Create a file',
+              source: { id: 'drive', title: 'Google Drive', feature: { id: 'files', title: 'Files' } },
+              account: { kind: 'personal', label: 'ana@2060.io' },
+              fields: [{ label: 'Name', value: 'Q4.md' }],
+              erased: false,
+            },
+          })
+        ),
+      ],
+      [],
+      { spaces: { spaces: [PERSONAL, COMMS], templates: [] } }
+    )
+    const c = card() as HTMLElement
+    expect(c.querySelector('.tool-source')?.textContent).toBe('Files · Google Drive')
+    expect(c.querySelector('.tool-title')?.textContent).toBe('Create a file')
+    expect(c.querySelector('.tool-field dt')?.textContent).toBe('Name')
+  })
+
   it("shows the requester whose approval it waits for, with Cancel, and the owner's decision in its place", async () => {
     const { card, hub } = await conversation([cardMessage(approval({ own: true }))], [], {
       spaces: { spaces: [PERSONAL, COMMS], templates: [] },

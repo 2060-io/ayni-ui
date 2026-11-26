@@ -255,6 +255,30 @@ describe('an approver sees an approval once (UI-APPR-001, UI-APPR-007)', () => {
     expect(agent.find('GET', '/spaces/spc_comms/notifications?limit=50').length).toBeGreaterThan(0)
   })
 
+  it('names the source of an item by the feature it serves, "<feature> · <source>" (UI-CONV-064, PROF-TOOL-035)', async () => {
+    const files = postApproval({
+      action: {
+        title: 'Create a file',
+        source: { id: 'nextcloud', title: 'Nextcloud', feature: { id: 'files', title: 'Files' } },
+        account: { kind: 'space', space: { id: 'spc_comms', title: 'Communication' } },
+        fields: [{ label: 'Name', value: 'Q4.md' }],
+        erased: false,
+      },
+    })
+    const { el } = await jonas([[/^GET \/spaces\/spc_comms\/notifications\?/, page([item(files)], 1)]])
+    await click(row(el, 'Communication'))
+    await click(tabOf(el, /^Notifications/))
+    await until(() => items(el).length === 1)
+    expect(lines(items(el)[0])).toEqual([
+      'Ana Ríos asks for your approval',
+      'Create a file',
+      'Communication',
+      'Files · Nextcloud',
+    ])
+    // the title of the action and the labels of its fields are the agent's, as they come
+    expect(items(el)[0]?.querySelector('.tool-field dt')?.textContent).toBe('Name')
+  })
+
   it("has the agent's Notifications in the agent's menu, with their badge, for the approvals no space holds", async () => {
     const { el, hub } = await jonas([
       [/^GET \/notifications\?/, page([item(DELETE)], 1)],
