@@ -5,10 +5,13 @@
  */
 import {
   type AgentRecord,
+  activityFolderOf,
   type DirectoryPerson,
   handoverCandidatesOf,
+  isFolderActivity,
   lawfulBasisKeyOf,
   looksLikeEmail,
+  memberAccessLineOf,
   memberRefusalOf,
   memberStateOf,
   type OrganizationInfo,
@@ -265,13 +268,36 @@ function InviteDialog({
 /**
  * Members (UI-CONV-040): a list space's members with their state and the owner marked, Add from the employee list,
  * an invitation outside the organization, Remove; a rule space's rule in words with its count, and nothing to change.
+ * In a team space whose folder the agent manages (UI-CONV-070, profile package 3.5.9), each member's access to it beside
+ * their state ("No access yet", "No access yet: <reason>", nothing once in place), and under the list the people the
+ * folder holds that the agent did not add ("Added outside <agent>: <name>, <name>"); the list is read again when the
+ * agent says the space's tools changed, which it does at each change of a member's access (PROF-TOOL-041).
  */
 export function MembersSegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
+  const snap = useSnapshot()
   const { t } = useTranslation()
   const refusal = useRefusal(agent)
   const [version, setVersion] = useState(0)
+  const announced = snap.toolChanges.filter((c) => c.agentDid === agent.did && c.change.spaceId === space.id)
+  const lastAnnounced = announced[announced.length - 1]?.n ?? 0
+  useEffect(() => {
+    if (lastAnnounced) setVersion((v) => v + 1)
+  }, [lastAnnounced])
   const detail = useSpaceDetail(agent.did, space, version)
+  // the provider of the managed folder, which the reasons of a member's access name
+  const folderShown = !!detail?.addedOutside || !!detail?.members?.some((m) => m.folderAccess)
+  const { tools, error: toolsError } = useSpaceTools(agent, space, folderShown && hub.takesTools(agent.did))
+  const provider = tools?.find((x) => x.location === 'managed')
+  const accessReady = tools !== null || !!toolsError
+  const accessWords = (m: { folderAccess?: Parameters<typeof memberAccessLineOf>[0] }) => {
+    const line = memberAccessLineOf(m.folderAccess)
+    if (!line || !accessReady) return ''
+    if (line.key === 'noAccess') return t('tools.folder.noAccess')
+    return t('tools.folder.noAccessBecause', {
+      reason: t(`tools.folder.reason.${line.reason}`, { provider: provider?.title ?? '', agent: agent.name }),
+    })
+  }
   const [picking, setPicking] = useState(false)
   const [inviting, setInviting] = useState(false)
   const organization = organizationNameOf(agent)
@@ -343,6 +369,7 @@ export function MembersSegment({ agent, space }: { agent: AgentRecord; space: Sp
                       <span className={state === 'active' ? '' : 'state-tag'}>
                         {t(`spaces.state.${state}`, { agent: agent.name })}
                       </span>
+                      {accessWords(m) ? <span className="member-folder-access">{accessWords(m)}</span> : null}
                     </td>
                     <td className="actions-cell">
                       {m.role !== 'owner' && m.state !== 'left' ? (
@@ -356,6 +383,14 @@ export function MembersSegment({ agent, space }: { agent: AgentRecord; space: Sp
               })}
             </tbody>
           </table>
+          {detail.addedOutside?.length ? (
+            <p className="members-added-outside">
+              {t('tools.folder.addedOutside', {
+                agent: agent.name,
+                names: detail.addedOutside.map((p) => p.name).join(', '),
+              })}
+            </p>
+          ) : null}
         </div>
       )}
       {picking ? (
@@ -824,13 +859,16 @@ function activityKey(a: SpaceActivityItem): string {
  * Activity (UI-CONV-041, UI-CONV-051): newest first; who did what, never the value of a field nor a token. A change of
  * provider reads "<by> changed the provider of <feature> from <former> to <tool>": the line names the former provider
  * by its id only (`tool.formerSource`, profile §3.7), its title is the feature's `providers`', read from the space's
- * tools when the page holds such a line.
+ * tools when the page holds such a line. The lines of a managed folder (profile package 3.5.9) name the agent, the
+ * folder and, for `access-failed`, the member; a line carries no name of the folder, which is the one of its feature in
+ * the space's tools, else the space's title, after which the agent names the folder it makes (agent D149).
  */
 export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
   const { t, i18n } = useTranslation()
   const [items, setItems] = useState<SpaceActivityItem[] | null>(null)
-  const providersWanted = !!items?.some((a) => a.kind === 'provider-changed') && hub.takesTools(agent.did)
+  const providersWanted =
+    !!items?.some((a) => a.kind === 'provider-changed' || isFolderActivity(a.kind)) && hub.takesTools(agent.did)
   const { tools } = useSpaceTools(agent, space, providersWanted)
   /** The title of a provider the line names by its id: among its feature's providers first, else any feature's. */
   const providerTitle = (a: SpaceActivityItem): string => {
@@ -872,6 +910,8 @@ export function ActivitySegment({ agent, space }: { agent: AgentRecord; space: S
                   feature: a.feature?.title ?? someone,
                   former: providerTitle(a) || someone,
                   reason: a.reason ?? '',
+                  agent: agent.name,
+                  folder: isFolderActivity(a.kind) ? activityFolderOf(a, tools, spaceTitle(space, t)) : '',
                 })}
               </span>
             </li>

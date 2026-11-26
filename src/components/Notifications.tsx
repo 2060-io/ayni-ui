@@ -8,14 +8,20 @@
  * tab) and each time the tab comes back in front; a link names an item, which is shown selected and decided by
  * nothing but the person. For a tool of a space (profile 3.5.4) an item shows where the approval stands, the person's
  * own confirmation of their own request is listed under "Your own request" with Decide on your phone, and the notices
- * of the space's governance are listed read-only, with Open the tool or Name the owner while they wait.
+ * of the space's governance are listed read-only, with Open the tool or Name the owner while they wait. To the owner of
+ * a team space whose folder the agent manages (UI-CONV-071, profile package 3.5.9), each member whose access to it
+ * failed is an item, with Try again while it waits.
  */
 import {
   type AgentRecord,
   approvalRefusalOf,
   deciderProgressOf,
+  FOLDER_CHECK,
+  folderAccessControlOf,
+  folderAccessWordsOf,
   type GovernanceNoticeKind,
   isApprovalItem,
+  isFolderAccessItem,
   NOTIFICATIONS_PAGE,
   type NotificationApproval,
   type NotificationItem,
@@ -24,8 +30,10 @@ import {
   notificationControlsOf,
   notificationHeadingOf,
   notificationStatusOf,
+  ProfileError,
+  toolRefusalOf,
 } from '@ayni.org/ayni-ui-core'
-import { ArrowLeft, Info, ShieldAlert, Smartphone } from 'lucide-react'
+import { ArrowLeft, FolderX, Info, ShieldAlert, Smartphone } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../i18n/index.js'
@@ -160,6 +168,16 @@ export function NotificationList({
           {items.map((n) =>
             isApprovalItem(n) ? (
               <NotificationRow key={n.id} agent={agent} item={n} me={me} selected={!!focus && focused(n, focus)} />
+            ) : isFolderAccessItem(n) ? (
+              spaceId ? (
+                <FolderAccessRow
+                  key={n.id}
+                  agent={agent}
+                  spaceId={spaceId}
+                  item={n}
+                  selected={!!focus && focused(n, focus)}
+                />
+              ) : null
             ) : (
               <NoticeRow key={n.id} agent={agent} item={n} selected={!!focus && focused(n, focus)} />
             )
@@ -453,6 +471,97 @@ function NoticeRow({
             <button type="button" className="btn primary" onClick={() => hub.openSteward(agent.did, words.spaceId)}>
               {t('notices.nameOwner')}
             </button>
+          </div>
+        ) : null}
+      </article>
+    </li>
+  )
+}
+
+/**
+ * A member whose access to the space's managed folder failed, to its owner (UI-CONV-071, UI-CONV-052, PROF-TOOL-042):
+ * "<member> has no access to the folder <folder> yet: <reason>", with Try again while it waits, which checks the folder
+ * again with the members whose access failed (`folder.check`, PROF-TOOL-043) and reads the list again; once the access is
+ * in place, or no longer needed, it reads as past, with no control. A screen reader reads it as its words, then its
+ * control.
+ */
+function FolderAccessRow({
+  agent,
+  spaceId,
+  item,
+  selected,
+}: {
+  agent: AgentRecord
+  spaceId: string
+  item: Extract<NotificationItem, { kind: 'folder-access' }>
+  selected: boolean
+}) {
+  const hub = useHub()
+  const { t, i18n } = useTranslation()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const words = folderAccessWordsOf(item.folderAccess)
+  const names = { member: words.member, folder: words.folder }
+  const text = words.reason
+    ? t('notices.folderAccess', {
+        ...names,
+        reason: t(`tools.folder.reason.${words.reason}`, { provider: words.provider, agent: agent.name }),
+      })
+    : t('notices.folderAccessNoReason', names)
+  const control = folderAccessControlOf(item)
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!selected) return
+    ref.current?.scrollIntoView?.({ block: 'center' })
+    ref.current?.focus({ preventScroll: true })
+  }, [selected])
+  const tryAgain = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      await hub.patchSpaceTool(agent.did, spaceId, item.folderAccess.source.id, FOLDER_CHECK)
+    } catch (e) {
+      const r = toolRefusalOf(e instanceof ProfileError ? e : undefined)
+      setError(r.at === 'panel' && r.reason === 'notOwner' ? t('tools.notOwner') : String((e as Error).message))
+    } finally {
+      setBusy(false)
+      // whether its access is in place now: the list says
+      hub.rereadNotifications()
+    }
+  }
+  return (
+    <li>
+      <article
+        ref={ref}
+        tabIndex={-1}
+        className={['card', 'notice', control ? 'waiting' : 'past', selected ? 'selected' : '']
+          .filter(Boolean)
+          .join(' ')}
+        data-kind={item.kind}
+        aria-current={selected ? 'true' : undefined}
+        aria-label={text}
+      >
+        <div className="notification-head">
+          <div className="notice-text">
+            <FolderX size={16} aria-hidden="true" className="notice-icon" />
+            <span>{text}</span>
+          </div>
+          {item.at ? (
+            <time className="notification-time" dateTime={item.at}>
+              {formatTime(item.at, i18n.language)}
+            </time>
+          ) : null}
+        </div>
+        {control === 'tryAgain' ? (
+          <div className="actions">
+            <button type="button" className="btn" disabled={busy} onClick={() => void tryAgain()}>
+              {t('tools.folder.tryAgain')}
+            </button>
+          </div>
+        ) : null}
+        {error ? (
+          <div className="tool-error" role="alert">
+            {error}
           </div>
         ) : null}
       </article>

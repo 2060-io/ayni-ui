@@ -15,13 +15,18 @@
  * that needs attention says so on the tool's line and on its source's row. A provider's list, for a feature with a
  * contract its location (UI-CONV-059, PROF-TOOL-022, PROF-TOOL-023), is edited in Settings of the tool: its entries
  * with Remove, Add with a search of the owner's account, each choice added or "In the list", and, where the template
- * allows it, "Only these" or any; the Save of the settings sends it whole.
+ * allows it, "Only these" or any; the Save of the settings sends it whole. For Files in a team space (UI-CONV-069,
+ * profile package 3.5.9), Add, and Change provider, show the two modes where the provider has both, the managed one
+ * first and selected, and send the mode chosen; in the managed mode the page shows, under the code, the question the
+ * phone asks. In the managed mode (UI-CONV-070) the row of Files shows the folder's line, its state and the members
+ * without access, with "Open in <provider>" beside it, and its panel the folder in place of the choice of folder.
  */
 import {
   type AgentRecord,
   type ApprovalPolicyInput,
   accountSourceOf,
   accountValuesOf,
+  addInputOf,
   bindingValueFits,
   CHOICES_PAUSE_MS,
   CHOICES_TEXT_MAX,
@@ -32,9 +37,12 @@ import {
   choiceInList,
   choicesRefusalOf,
   choicesTextOf,
+  choosesLocation,
   choosesProvider,
   concernsFeature,
+  defaultLocationOf,
   defaultProviderOf,
+  folderLineOf,
   isAdded,
   isConformant,
   type ListChoice,
@@ -43,9 +51,11 @@ import {
   listFormOf,
   listInputOf,
   listIsFull,
+  locationsFor,
   loosens,
   missingPartsOf,
   otherProvidersOf,
+  ownerFolderOf,
   type PendingToolChange,
   type PolicyForm,
   type PolicyRefusal,
@@ -62,6 +72,7 @@ import {
   type SpaceToolAnswer,
   type SpaceToolBinding,
   type SpaceToolList,
+  type SpaceToolLocation,
   type SpaceToolProvider,
   sourceNameOf,
   type ToolRule,
@@ -78,6 +89,7 @@ import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { AccountNoticeLine, bindingWords, SignInWaiting, useNow, useSignIn } from './Accounts.js'
 import { AttentionLine, PolicyEditor, policyRefusalText } from './ApprovalPolicy.js'
+import { FolderLines, FolderOpen, FolderSection, folderReleaseWords, LocationChoice } from './ManagedFolder.js'
 import { organizationNameOf, spaceTitle } from './SpaceParts.js'
 import { accountWords, providerLineWords, useSpaceTools } from './Tools.js'
 
@@ -90,9 +102,13 @@ type T = (key: string, options?: Record<string, unknown>) => string
  */
 type From = 'settings' | 'account' | 'provider' | 'remove' | 'loaded'
 
-/** A row's state in words (UI-CONV-050, UI-CONV-052): "Needs setup: Folders, account". */
+/**
+ * A row's state in words (UI-CONV-050, UI-CONV-052): "Needs setup: Folders, account"; while the agent makes the managed
+ * folder, "Making the folder at <provider>…".
+ */
 function stateWords(tool: SpaceTool, t: T): string {
   const state = toolRowStateOf(tool)
+  if (state === 'makingFolder') return t('tools.folder.creating', { provider: tool.title ?? tool.source ?? '' })
   const words = t(`tools.state.${state}`)
   if (state !== 'needsSetup') return words
   const missing = missingPartsOf(tool)
@@ -138,8 +154,9 @@ export function ToolsSegment({
   const { tools, error, reload, setTool } = useSpaceTools(agent, space, true)
   // the feature whose panel is open; undefined until the feature of `source` is known, null for the list
   const [open, setOpen] = useState<string | null | undefined>(source ? undefined : null)
-  // while a change shown here waits for the phone, a stream stays open for its outcome (UI-CONV-050, PROF-TOOL-006)
-  const waiting = !!tools?.some((x) => x.pending)
+  // while a change shown here waits for the phone, a stream stays open for its outcome (UI-CONV-050, PROF-TOOL-006); and
+  // while the agent makes a managed folder, for the change of its state (PROF-TOOL-041)
+  const waiting = !!tools?.some((x) => x.pending || ownerFolderOf(x)?.state === 'creating')
   useEffect(() => (waiting ? hub.holdStream(agent.did) : undefined), [waiting, agent.did, hub])
   const openId = open === undefined ? tools?.find((x) => x.source === source)?.feature.id : open
   const tool = tools?.find((x) => x.feature.id === openId)
@@ -164,6 +181,7 @@ export function ToolsSegment({
         <ul className="tool-list">
           {tools.map((x) => {
             const state = toolRowStateOf(x)
+            const folder = folderLineOf(x)
             return (
               <li key={x.feature.id} className="tool-row" data-state={state}>
                 {/* a row opens the panel of its provider, or what Add opens for a feature with none (UI-CONV-050) */}
@@ -177,6 +195,8 @@ export function ToolsSegment({
                       <AttentionLine key={item.name ?? item.title} policy={item.approval} className="space-sub" />
                     ))}
                     {state === 'notConformant' ? <StateLine agent={agent} tool={x} /> : null}
+                    {/* the managed folder, its state and the members without access (UI-CONV-070) */}
+                    <FolderLines agentName={agent.name} tool={x} lineClass="space-sub" creating={false} />
                   </span>
                   {state === 'notConformant' ? null : <StateLine agent={agent} tool={x} />}
                   <ChevronRight size={16} aria-hidden="true" className="tool-row-chevron" />
@@ -186,6 +206,8 @@ export function ToolsSegment({
                     {t('tools.add')}
                   </button>
                 ) : null}
+                {/* beside the row's button, which a link cannot be inside */}
+                {folder ? <FolderOpen line={folder} className="tool-row-open" /> : null}
               </li>
             )
           })}
@@ -547,9 +569,12 @@ interface PanelState {
     values?: Record<string, string>
     policies?: Record<string, PolicyForm>
     list?: ListForm
+    /** Files added, or its provider changed, in the managed mode: the page shows the question the phone asks */
+    managed?: boolean
   } | null
   outcome: { from: From; key: 'saved' | 'declined' | 'expired' | 'withdrawn' } | null
-  error: { from: From; text: string } | null
+  /** `at: "location"`: a refusal of the mode of Files, said under the choice of the modes while it shows */
+  error: { from: From; text: string; at?: 'location' } | null
 }
 
 /**
@@ -616,6 +641,12 @@ function FeaturePanel({
   // Change provider (UI-CONV-066): the other providers shown, and the one the owner picked, asked about in the page
   const [changing, setChanging] = useState(false)
   const [next, setNext] = useState('')
+  // the mode of Files picked for each provider, until then the managed one where it is offered (UI-CONV-069)
+  const [modes, setModes] = useState<Record<string, SpaceToolLocation>>({})
+  const modeOf = (source: string | undefined): SpaceToolLocation | null =>
+    source ? (modes[source] ?? defaultLocationOf(locationsFor(tool, source))) : null
+  // the provider a request named, as a refusal of its mode names it
+  const asked = useRef('')
   // the values of the account: never in React state, a draft or a store; read once at Save, the fields emptied as the
   // request leaves and gone with the panel. Only whether each field holds something is kept, for the Save.
   const accountRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -661,6 +692,7 @@ function FeaturePanel({
       values?: Record<string, string>
       policies?: Record<string, PolicyForm>
       list?: ListForm
+      managed?: boolean
     } = {}
   ) => {
     if (answer.status === 202 && answer.tool.pending)
@@ -686,6 +718,19 @@ function FeaturePanel({
     // the provider in use is no longer the one this page read (`400`, `field: "replaces"`): the list is read again
     if (e.field === 'replaces') onReload()
     const r = toolRefusalOf(e)
+    if (r.at === 'location') {
+      // at the choice of the modes (UI-CONV-069, UI-CONV-052); the modes are read again, which the agent may have
+      // narrowed to the existing one
+      const text =
+        r.reason === 'cannotManage'
+          ? t('tools.folder.cannotManage', { agent: agent.name, provider: asked.current })
+          : r.reason === 'locationNotAllowed'
+            ? t('tools.list.anyNotAllowed', { agent: agent.name })
+            : e.message
+      setState((s) => ({ ...s, error: { from, text, at: 'location' } }))
+      onReload()
+      return
+    }
     if (r.at === 'policy') {
       // at the entry, the number needed or the switch the agent names (UI-CONV-067, UI-CONV-052)
       setPolicyError(r.refusal)
@@ -728,10 +773,14 @@ function FeaturePanel({
           ? t('tools.phoneNeeded', { agent: agent.name })
           : r.reason === 'featureHasProvider'
             ? t('tools.featureHasProvider', { feature: tool.feature.title })
-            : r.reason === 'other'
-              ? e.message
-              : t(`tools.${r.reason}`)
+            : r.reason === 'managedLocation'
+              ? t('tools.folder.managedLocation', { agent: agent.name })
+              : r.reason === 'other'
+                ? e.message
+                : t(`tools.${r.reason}`)
       setState((s) => ({ ...s, error: { from, text } }))
+      // the agent manages the folder this panel read as one that exists: the tools are read again
+      if (r.reason === 'managedLocation') onReload()
     } else setState((s) => ({ ...s, error: { from, text: e.message } }))
   }
 
@@ -743,6 +792,7 @@ function FeaturePanel({
       values?: Record<string, string>
       policies?: Record<string, PolicyForm>
       list?: ListForm
+      managed?: boolean
     }
   ) => {
     setBusy(true)
@@ -800,13 +850,18 @@ function FeaturePanel({
   }
 
   /**
-   * Add to <space> (UI-CONV-065, PROF-TOOL-002): the provider chosen for the feature. Its bindings, list and rules are
-   * not known before it is in use (the item of a feature with no provider carries none, PROF-TOOL-033): they are set in
-   * its panel once the phone confirms.
+   * Add to <space> (UI-CONV-065, PROF-TOOL-002): the provider chosen for the feature, and for Files the mode chosen
+   * (UI-CONV-069, PROF-TOOL-040), the one there is when the provider has one. Its bindings, list and rules are not known
+   * before it is in use (the item of a feature with no provider carries none, PROF-TOOL-033): they are set in its panel
+   * once the phone confirms.
    */
   const add = () => {
     if (!provider) return
-    void send('settings', () => hub.addSpaceTool(agent.did, space.id, { source: provider.source }))
+    const location = modeOf(provider.source)
+    asked.current = provider.title
+    void send('settings', () => hub.addSpaceTool(agent.did, space.id, addInputOf(provider.source, location)), {
+      managed: location === 'managed',
+    })
   }
 
   /**
@@ -842,9 +897,13 @@ function FeaturePanel({
    */
   const changeProvider = () => {
     if (!next || !tool.source) return
+    const location = modeOf(next)
+    asked.current = tool.providers.find((p) => p.source === next)?.title ?? next
     setChanging(false)
     setNext('')
-    void send('provider', () => hub.addSpaceTool(agent.did, space.id, providerChangeInputOf(tool, next)))
+    void send('provider', () => hub.addSpaceTool(agent.did, space.id, providerChangeInputOf(tool, next, location)), {
+      managed: location === 'managed',
+    })
   }
 
   /** Empties every field of the account: nothing typed in them is ever shown back. */
@@ -917,8 +976,12 @@ function FeaturePanel({
   }
 
   const waiting = !!state.waiting
-  /** In place of the Save that sent it: the code and the time left; then the outcome; or the refusal (UI-CONV-052). */
-  const status = (from: From) => (
+  /**
+   * In place of the Save that sent it: the code and the time left, and in the managed mode the question the phone asks
+   * (UI-CONV-069); then the outcome; or the refusal (UI-CONV-052). A refusal of the mode is said under the choice of
+   * the modes while it shows (`modesShown`).
+   */
+  const status = (from: From, modesShown = false) => (
     <>
       {state.waiting?.from === from ? (
         <div className="tool-pending" role="status">
@@ -935,18 +998,24 @@ function FeaturePanel({
           </button>
         </div>
       ) : null}
+      {state.waiting?.from === from && state.waiting.managed && state.waiting.change.summary ? (
+        <p className="tool-pending-question">{state.waiting.change.summary}</p>
+      ) : null}
       {state.outcome?.from === from ? (
         <div className="tool-change-outcome" role="status">
           {t(`tools.${state.outcome.key}`)}
         </div>
       ) : null}
-      {state.error?.from === from ? (
+      {state.error?.from === from && !(modesShown && state.error.at === 'location') ? (
         <div className="tool-error" role="alert">
           {state.error.text}
         </div>
       ) : null}
     </>
   )
+  /** A refusal of the mode, under the choice of the modes (UI-CONV-069). */
+  const locationError = (from: From) =>
+    state.error?.from === from && state.error.at === 'location' ? state.error.text : null
   const fieldError = (key: string) =>
     fieldErrors[key] ? (
       <span className="field-error" role="alert">
@@ -981,6 +1050,9 @@ function FeaturePanel({
     // a feature with no provider in use: what Add opens (UI-CONV-065); while the choice of a first provider waits for
     // the phone, its code and Withdraw
     const several = choosesProvider(tool) && !tool.pending && !waiting
+    // the two modes of Files for the provider picked, while nothing waits (UI-CONV-069)
+    const locations = provider ? locationsFor(tool, provider.source) : []
+    const modesShown = !!provider && choosesLocation(locations) && !tool.pending && !waiting
     return (
       <div className="tool-panel">
         <div className="tool-panel-head">
@@ -1004,6 +1076,19 @@ function FeaturePanel({
             onChoose={setPicked}
           />
         ) : null}
+        {provider && modesShown ? (
+          <LocationChoice
+            agentName={agent.name}
+            feature={tool.feature}
+            source={provider.source}
+            provider={provider.title}
+            locations={locations}
+            value={modeOf(provider.source)}
+            disabled={busy}
+            error={locationError('settings')}
+            onChoose={(mode) => setModes((m) => ({ ...m, [provider.source]: mode }))}
+          />
+        ) : null}
         {provider && state.waiting?.from !== 'loaded' ? accountLine(provider.account.kind) : null}
         {who}
         {provider && state.waiting?.from !== 'loaded' ? (
@@ -1018,7 +1103,7 @@ function FeaturePanel({
                 {t('tools.addTo', { space: title })}
               </button>
             )}
-            {status('settings')}
+            {status('settings', modesShown)}
           </div>
         ) : null}
       </div>
@@ -1037,7 +1122,9 @@ function FeaturePanel({
   const grantsLocked = waiting
   const conformant = isConformant(tool)
   const toolsShown = conformant ? tool.tools : []
-  const hasSettings = ownerBindings.length > 0 || toolsShown.some((x) => x.name) || !!tool.list
+  // the managed folder is the feature's one location, which the owner does not change (UI-CONV-069, PROF-TOOL-041)
+  const managed = tool.location === 'managed'
+  const hasSettings = ownerBindings.length > 0 || toolsShown.some((x) => x.name) || (!!tool.list && !managed)
   const settingsSave = hasSettings ? (
     <div className="tool-actions">
       {state.waiting?.from === 'settings' ? null : (
@@ -1099,8 +1186,11 @@ function FeaturePanel({
               </label>
             )
           )}
-          {/* the list, in place of the fields of the bindings it names (UI-CONV-059) */}
-          {tool.list && listForm ? (
+          {/* the managed folder in place of a choice of folder (UI-CONV-070); else the list, in place of the fields of
+          the bindings it names (UI-CONV-059) */}
+          {managed ? (
+            <FolderSection agent={agent} space={space} tool={tool} onTool={onTool} onReload={onReload} />
+          ) : tool.list && listForm ? (
             <ListEditor
               agent={agent}
               space={space}
@@ -1313,13 +1403,19 @@ function FeaturePanel({
           changing={changing}
           next={next}
           disabled={busy || (waiting && state.waiting?.from !== 'provider')}
-          status={status('provider')}
+          status={status('provider', changing && !!next && choosesLocation(locationsFor(tool, next)))}
           shown={state.waiting?.from !== 'provider'}
+          location={modeOf(next || undefined)}
+          locationError={locationError('provider')}
+          onLocation={(mode) => setModes((m) => ({ ...m, [next]: mode }))}
           onOpen={() => {
             setChanging(true)
             setNext('')
           }}
-          onPick={setNext}
+          onPick={(source) => {
+            setNext(source)
+            setState((s) => ({ ...s, error: null }))
+          }}
           onCancel={() => {
             setChanging(false)
             setNext('')
@@ -1339,6 +1435,10 @@ function FeaturePanel({
       {confirming === 'remove' ? (
         <div className="box tool-confirm" role="alertdialog" aria-label={t('tools.remove', { space: title })}>
           <span>{t('tools.removeConfirm', { tool: tool.title ?? source, space: title })}</span>
+          {/* the folder the agent stops managing, said before the DELETE, which releases it at once (TOOL-FEAT-032) */}
+          {folderReleaseWords(tool, agent.name, t) ? (
+            <span className="tool-confirm-release">{folderReleaseWords(tool, agent.name, t)}</span>
+          ) : null}
           <div className="tool-actions">
             <button type="button" className="btn" onClick={() => setConfirming(null)}>
               {t('app.cancel')}
@@ -1359,9 +1459,10 @@ function FeaturePanel({
 
 /**
  * Change provider (UI-CONV-066, UI-CONV-052), in the panel of a feature whose template allows several: the other
- * providers, shown as Add shows them; once the owner picks one, the question in the page, "Use <new> for <feature> in
- * <space>, in place of <former>?" with its three lines, and Change and Cancel. Change becomes the code, the time left
- * and Withdraw, as any change (UI-CONV-050); Cancel changes nothing.
+ * providers, shown as Add shows them; once the owner picks one, for Files the two modes where it has both (UI-CONV-069,
+ * which the agent asks of a change too), then the question in the page, "Use <new> for <feature> in <space>, in place of
+ * <former>?" with its three lines, and Change and Cancel. Change becomes the code, the time left and Withdraw, as any
+ * change (UI-CONV-050); Cancel changes nothing.
  */
 function ChangeProvider({
   agent,
@@ -1372,6 +1473,9 @@ function ChangeProvider({
   disabled,
   status,
   shown,
+  location,
+  locationError,
+  onLocation,
   onOpen,
   onPick,
   onCancel,
@@ -1388,6 +1492,10 @@ function ChangeProvider({
   status: ReactNode
   /** false while the change waits: the code stands in place of the control */
   shown: boolean
+  /** the mode of Files picked for the new provider (UI-CONV-069), and its refusal */
+  location: SpaceToolLocation | null
+  locationError: string | null
+  onLocation: (location: SpaceToolLocation) => void
   onOpen: () => void
   onPick: (source: string) => void
   onCancel: () => void
@@ -1395,6 +1503,7 @@ function ChangeProvider({
 }) {
   const { t } = useTranslation()
   const change = next ? providerChangeOf(tool, next) : null
+  const locations = next ? locationsFor(tool, next) : []
   const cancel = (
     <button type="button" className="btn" onClick={onCancel}>
       {t('app.cancel')}
@@ -1420,6 +1529,19 @@ function ChangeProvider({
             disabled={disabled}
             onChoose={onPick}
           />
+          {change && choosesLocation(locations) ? (
+            <LocationChoice
+              agentName={agent.name}
+              feature={tool.feature}
+              source={next}
+              provider={change.next}
+              locations={locations}
+              value={location}
+              disabled={disabled}
+              error={locationError}
+              onChoose={onLocation}
+            />
+          ) : null}
           {change ? (
             <div
               className="box tool-confirm"
@@ -1430,6 +1552,10 @@ function ChangeProvider({
               <p>{t('tools.changeStops', { agent: agent.name, former: change.former })}</p>
               <p>{t('tools.changeNothingCopied', { former: change.former, next: change.next })}</p>
               <p>{t('tools.changeReadStays', { former: change.former })}</p>
+              {/* the folder the agent stops managing, added to the question (UI-CONV-052, TOOL-FEAT-032) */}
+              {folderReleaseWords(tool, agent.name, t) ? (
+                <p className="tool-confirm-release">{folderReleaseWords(tool, agent.name, t)}</p>
+              ) : null}
               <div className="tool-actions">
                 {cancel}
                 <button type="button" className="btn primary" disabled={disabled} onClick={onChange}>

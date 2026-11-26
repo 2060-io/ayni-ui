@@ -15,6 +15,11 @@
  * come only with one. A feature with a contract carries its profile, `conformant`, `capabilities` and its location as
  * `list`, whose entries are picked among the choices the provider answers (`…/list/choices`), never typed. The change
  * of provider is the same `POST` with `replaces`. Not additive: no shape of one item per source is read.
+ *
+ * Package 3.5.9 (agent D145 to D150, PROF-TOOL-040 to 043; UI-CONV-069 to 071): the owner's item of Files carries the
+ * modes the template allows (`locations`, for the item and for each provider) and the mode in use (`location`); in the
+ * managed mode it carries the folder the agent made and keeps (`folder`). The rules of the managed folder are in
+ * `managedFolder.ts`.
  */
 import {
   type ApprovalPolicyInput,
@@ -26,6 +31,13 @@ import {
   policyKeyOf,
   policyRefusalOf,
 } from './approvalPolicy.js'
+import {
+  locationOf,
+  locationsOf,
+  type SpaceToolFolder,
+  type SpaceToolLocation,
+  spaceToolFolderOf,
+} from './managedFolder.js'
 import type { Transcript, TranscriptMessage } from './types.js'
 
 /** The live event of a change of a space's tools that applied or was dropped (PROF-TOOL-006). */
@@ -144,6 +156,11 @@ export interface SpaceToolProvider {
   description: string
   account: { kind: ToolAccountKind }
   default: boolean
+  /**
+   * Files (package 3.5.9, PROF-TOOL-040): the modes the template allows for this provider, `existing` alone where the
+   * agent cannot manage a folder at it, the managed one first; empty for another feature
+   */
+  locations: SpaceToolLocation[]
 }
 
 /** An entry of a list (PROF-TOOL-022): the `values` it binds, in the owner's answer only, and the label people read. */
@@ -205,6 +222,15 @@ export interface SpaceTool {
   list: SpaceToolList | null
   tools: SpaceToolItem[]
   pending: PendingToolChange | null
+  /**
+   * Files, the owner's (package 3.5.9, PROF-TOOL-040): the modes the template allows for the provider in use, or for the
+   * default one while none is chosen, the managed one first; empty otherwise
+   */
+  locations: SpaceToolLocation[]
+  /** Files, the owner's: the mode in use, once chosen (PROF-TOOL-040); null otherwise */
+  location: SpaceToolLocation | null
+  /** Files in the managed mode: the folder the agent made and keeps, the owner's view or a member's (PROF-TOOL-041) */
+  folder: SpaceToolFolder | null
 }
 
 /** How the agent answered a change of a space's tools: applied at once (`200`) or waiting for the phone (`202`). */
@@ -244,6 +270,8 @@ export type SpaceToolListInput = { entries: Record<string, string>[] } | { any: 
 export interface AddSpaceToolInput {
   source: string
   replaces?: string
+  /** Files (package 3.5.9, PROF-TOOL-040): a folder the agent makes, with no `list`, or one that exists */
+  location?: SpaceToolLocation
   bindings?: Record<string, string>
   list?: SpaceToolListInput
   calls?: Record<string, ToolRule>
@@ -251,6 +279,11 @@ export interface AddSpaceToolInput {
 
 /** `PATCH {sessions}/spaces/{id}/tools/{source}` (PROF-TOOL-003, PROF-TOOL-022, PROF-TOOL-036). */
 export interface SpaceToolPatchInput {
+  /**
+   * the managed folder (package 3.5.9, PROF-TOOL-043): `title` renames it at once (`200`), `check: true` checks it again
+   * with the members whose access failed (`202`)
+   */
+  folder?: { title?: string; check?: true }
   bindings?: Record<string, string>
   list?: SpaceToolListInput
   calls?: Record<string, ToolRule>
@@ -441,6 +474,7 @@ function providerOf(value: unknown): SpaceToolProvider | null {
     description: str(p.description),
     account: { kind: accountKindOf(obj(p.account).kind) },
     default: p.default === true,
+    locations: locationsOf(p.locations),
   }
 }
 
@@ -517,6 +551,9 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
             expiresAt: str(pending.expiresAt),
           }
         : null,
+    locations: locationsOf(t.locations),
+    location: inUse ? locationOf(t.location) : null,
+    folder: inUse ? spaceToolFolderOf(t.folder) : null,
   }
 }
 
@@ -697,9 +734,16 @@ export function providerChangeOf(
   return { next: next.title, feature: tool.feature.title, former: tool.title ?? tool.source }
 }
 
-/** The request of a change of provider (PROF-TOOL-034): the new provider, and the one in use it replaces. */
-export function providerChangeInputOf(tool: Pick<SpaceTool, 'source'>, source: string): AddSpaceToolInput {
-  return { source, ...(tool.source ? { replaces: tool.source } : {}) }
+/**
+ * The request of a change of provider (PROF-TOOL-034): the new provider, the one in use it replaces, and for Files the
+ * mode chosen where the new provider has modes (PROF-TOOL-040, which the agent requires where both are allowed).
+ */
+export function providerChangeInputOf(
+  tool: Pick<SpaceTool, 'source'>,
+  source: string,
+  location: SpaceToolLocation | null = null
+): AddSpaceToolInput {
+  return { source, ...(tool.source ? { replaces: tool.source } : {}), ...(location ? { location } : {}) }
 }
 
 /**
@@ -763,20 +807,26 @@ export function providerLineOf(
  * of its list while it holds no entry, and its account while a space's account is not set; "Needs setup: Folders,
  * account".
  */
-export function missingOf(tool: Pick<SpaceTool, 'bindings' | 'account' | 'list'>): {
+export function missingOf(
+  tool: Pick<SpaceTool, 'bindings' | 'account' | 'list'> & Partial<Pick<SpaceTool, 'location'>>
+): {
   bindings: string[]
   list: string | null
   account: boolean
 } {
   return {
     bindings: tool.bindings.filter((b) => b.value === null || b.value === '').map((b) => b.label),
-    list: tool.list && !tool.list.any && !tool.list.entries.length ? tool.list.label : null,
+    // the list of a managed folder is the agent's, which it sets once the folder is made (PROF-TOOL-041)
+    list:
+      tool.list && !tool.list.any && !tool.list.entries.length && tool.location !== 'managed' ? tool.list.label : null,
     account: tool.account?.kind === 'space' && tool.account.set !== true,
   }
 }
 
 /** The parts of "Needs setup: <what is missing>" (UI-CONV-052), in order: bindings, the list, then `account`. */
-export function missingPartsOf(tool: Pick<SpaceTool, 'bindings' | 'account' | 'list'>): {
+export function missingPartsOf(
+  tool: Pick<SpaceTool, 'bindings' | 'account' | 'list'> & Partial<Pick<SpaceTool, 'location'>>
+): {
   labels: string[]
   account: boolean
 } {
@@ -905,15 +955,19 @@ export function toolsNeedingAttention(tool: Pick<SpaceTool, 'tools'>): SpaceTool
 /**
  * The state of a feature's row in the owner's Tools segment (UI-CONV-050, UI-CONV-065): "Waiting for your phone" while
  * a change waits; `notConformant` for a provider that does not offer its feature as its contract says, whose words
- * stand in place of its state; else its state.
+ * stand in place of its state; `makingFolder` while the agent makes the managed folder ("Making the folder at
+ * <provider>…", UI-CONV-052, package 3.5.9); else its state.
  */
-export type ToolRowState = 'notAdded' | 'needsSetup' | 'ready' | 'off' | 'waiting' | 'notConformant'
+export type ToolRowState = 'notAdded' | 'needsSetup' | 'ready' | 'off' | 'waiting' | 'notConformant' | 'makingFolder'
 
 export function toolRowStateOf(
-  tool: Pick<SpaceTool, 'state' | 'pending'> & Partial<Pick<SpaceTool, 'conformant'>>
+  tool: Pick<SpaceTool, 'state' | 'pending'> & Partial<Pick<SpaceTool, 'conformant' | 'folder'>>
 ): ToolRowState {
   if (tool.pending) return 'waiting'
   if (tool.conformant === false && isAdded(tool)) return 'notConformant'
+  const folder = tool.folder?.view === 'owner' ? tool.folder : null
+  if (folder?.state === 'creating' && folder.reason !== 'not-connected' && folder.reason !== 'scope-missing')
+    return 'makingFolder'
   return tool.state === 'available'
     ? 'notAdded'
     : tool.state === 'setup'
@@ -1061,6 +1115,14 @@ export function toolRefusalOf(
   | { at: 'entries'; reason: 'tooManyEntries' }
   /** the choice of any value (`list.any`), at that choice */
   | { at: 'any'; reason: 'anyNotAllowed' }
+  /**
+   * the mode of Files (`location`, package 3.5.9, PROF-TOOL-040), at the choice of the two modes: a mode the template does
+   * not allow, the managed mode with a provider the agent cannot manage, a `400` naming `location` (the modes changed
+   * since the panel was read) or `list` (a list sent with the managed mode)
+   */
+  | { at: 'location'; reason: 'locationNotAllowed' | 'cannotManage' | 'badRequest' }
+  /** the name of the managed folder (`folder.title`, PROF-TOOL-043), at its field */
+  | { at: 'folderTitle'; reason: 'badName' }
   | {
       at: 'panel'
       reason:
@@ -1074,6 +1136,8 @@ export function toolRefusalOf(
         | 'spaceAccountNotSet'
         | 'providerNotUsed'
         | 'personalSpace'
+        /** `409 managed-location`: a list of Files while the agent manages its folder (PROF-TOOL-043) */
+        | 'managedLocation'
         | 'notFound'
         | 'other'
     } {
@@ -1081,6 +1145,11 @@ export function toolRefusalOf(
   if (policy) return { at: 'policy', refusal: policy }
   const code = error?.code
   const field = error?.field ?? ''
+  if (code === 'cannot-manage') return { at: 'location', reason: 'cannotManage' }
+  if (code === 'location-not-allowed') return { at: 'location', reason: 'locationNotAllowed' }
+  if (error?.status === 400 && (field === 'location' || field === 'list'))
+    return { at: 'location', reason: 'badRequest' }
+  if (code === 'bad-name') return { at: 'folderTitle', reason: 'badName' }
   const entry = /^list\.entries\.(\d+)(\.|$)/.exec(field)
   if (entry && (code === 'bad-binding' || code === 'repeated-entry' || code === 'not-portable'))
     return {
@@ -1120,9 +1189,11 @@ export function toolRefusalOf(
                       ? 'providerNotUsed'
                       : code === 'personal-space'
                         ? 'personalSpace'
-                        : error?.status === 404
-                          ? 'notFound'
-                          : 'other'
+                        : code === 'managed-location'
+                          ? 'managedLocation'
+                          : error?.status === 404
+                            ? 'notFound'
+                            : 'other'
   return { at: 'panel', reason }
 }
 

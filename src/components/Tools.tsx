@@ -17,6 +17,7 @@ import {
   cardStatusOf,
   confirmationOf,
   confirmationOutcomeOf,
+  folderLineOf,
   looksLikeJson,
   type MessageSource,
   providerLineOf,
@@ -40,6 +41,7 @@ import { formatTime } from '../i18n/index.js'
 import { useHub, useSnapshot } from '../state/useHub.js'
 import { ApprovalStatusIcon, approvalRuleText, approvalStatusWords } from './ApprovalWords.js'
 import { Dialog } from './Dialog.js'
+import { FolderLines, FolderOpen } from './ManagedFolder.js'
 
 const D = CONVERSATION_DESIGN.toolCard
 
@@ -538,7 +540,9 @@ export function useSpaceTools(
  * template's order, each with its title, the line of its provider (its title, what it is bound to with the line of its
  * list, whose account it uses), the provider's description, the reader's own account of a provider of each person's
  * account, and what its tools ask before they act, grouped by rule; a tool `off` is not shown. Against an agent that
- * serves tools only, and when the space has a ready one.
+ * serves tools only, and when the space has a ready one. Files in the managed mode (UI-CONV-070) reads its folder's line
+ * with "Open in <provider>", to the owner its state and the members without access, and to a member whose access is not
+ * in place "No access yet. <agent> is giving you access to this space's folder."
  */
 export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceInfo }) {
   const hub = useHub()
@@ -556,10 +560,13 @@ export function AboutTools({ agent, space }: { agent: AgentRecord; space: SpaceI
       <ul className="about-tool-list">
         {ready.map((tool) => {
           const groups = ruleGroupsOf(tool)
+          const folder = folderLineOf(tool)
           return (
             <li key={tool.feature.id} className="about-tool">
               <span className="about-tool-title">{tool.feature.title}</span>
               <span className="about-tool-provider">{providerLineWords(tool, agent.name, t)}</span>
+              <FolderLines agentName={agent.name} tool={tool} lineClass="about-tool-folder" />
+              {folder ? <FolderOpen line={folder} className="about-tool-open" /> : null}
               {tool.description ? <span className="about-tool-description">{tool.description}</span> : null}
               {tool.account?.kind === 'personal' ? (
                 // the reader's own account of it, for this space; Connect opens Your accounts there (UI-CONV-049)

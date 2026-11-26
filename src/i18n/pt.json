@@ -733,7 +733,12 @@
       "successor-cleared": "{{member}} não é mais o sucessor",
       "ownerSuccession": "{{member}} passou a ser proprietário como sucessor",
       "ownerSteward": "{{by}}, como responsável, nomeou {{member}} proprietário: {{reason}}",
-      "provider-changed": "{{by}} mudou o fornecedor de {{feature}} de {{former}} para {{tool}}"
+      "provider-changed": "{{by}} mudou o fornecedor de {{feature}} de {{former}} para {{tool}}",
+      "folder-created": "{{agent}} criou a pasta {{folder}} em {{tool}}",
+      "folder-renamed": "{{by}} renomeou a pasta para {{folder}}",
+      "folder-released": "{{agent}} deixou de gerenciar a pasta {{folder}}",
+      "access-failed": "{{member}} ainda não tem acesso à pasta {{folder}}",
+      "manager-needed": "{{agent}} não pode mais gerenciar a pasta {{folder}}"
     },
     "create": {
       "title": "Novo espaço",
@@ -1001,6 +1006,45 @@
       "repeated": "Isto já está na lista.",
       "anyNotAllowed": "{{agent}} não permite esta escolha neste espaço.",
       "unavailable": "Não é possível pesquisar em {{source}} agora. Tente mais tarde."
+    },
+    "folder": {
+      "choice": "A pasta de {{feature}}",
+      "managed": "Uma pasta nova para este espaço",
+      "managedLine": "{{agent}} a cria em {{provider}}, de propriedade da sua organização, e dá acesso a ela aos membros do espaço.",
+      "existing": "Uma pasta que já existe",
+      "existingLine": "Você a escolhe; {{agent}} não muda o acesso de ninguém.",
+      "line": "Pasta: {{folder}} · Gerenciada por {{agent}}",
+      "open": "Abrir em {{provider}}",
+      "creating": "Criando a pasta em {{provider}}…",
+      "needsManager": "{{agent}} não pode mais gerenciar esta pasta. Peça a um administrador do Google Workspace que torne você gerente do drive compartilhado {{folder}} e depois toque em Verificar de novo.",
+      "checkAgain": "Verificar de novo",
+      "failed": "{{provider}} não deixou {{agent}} criar esta pasta. Talvez sua organização não permita; fale com o administrador dela.",
+      "tryAgain": "Tentar de novo",
+      "allow": "Permitir que {{provider}} gerencie a pasta deste espaço",
+      "allowButton": "Permitir",
+      "withoutAccess_one": "{{count}} membro ainda não tem acesso",
+      "withoutAccess_other": "{{count}} membros ainda não têm acesso",
+      "noAccess": "Ainda sem acesso",
+      "noAccessBecause": "Ainda sem acesso: {{reason}}",
+      "reason": {
+        "no-address": "o registro no diretório não tem e-mail",
+        "no-account": "a pessoa não tem conta em {{provider}}",
+        "not-allowed": "sua organização não permite que esta pasta receba pessoas de fora",
+        "too-many": "a pasta já tem tantas pessoas quanto {{provider}} permite",
+        "permission-denied": "{{provider}} recusou",
+        "unavailable": "{{provider}} não respondeu; {{agent}} está tentando de novo"
+      },
+      "addedOutside": "Adicionadas fora de {{agent}}: {{names}}",
+      "myAccess": "Ainda sem acesso. {{agent}} está dando a você acesso à pasta deste espaço.",
+      "rename": "Renomear pasta",
+      "name": "Nome da pasta",
+      "managedLocation": "{{agent}} gerencia esta pasta: ela não pode ser alterada.",
+      "cannotManage": "{{agent}} não pode criar uma pasta em {{provider}}. Escolha uma pasta que já existe.",
+      "release": "{{agent}} deixa de gerenciar {{kind}} {{folder}}. Continua em {{provider}} com seus membros e seus arquivos.",
+      "kind": {
+        "sharedDrive": "o drive compartilhado",
+        "teamFolder": "a pasta de equipe"
+      }
     }
   },
   "accounts": {
@@ -1108,7 +1152,9 @@
     "openTool": "Abrir a ferramenta",
     "noApprover": "A solicitação de {{requester}} para {{tool}} foi recusada: nenhum outro aprovador podia decidi-la.",
     "spaceWithoutOwner": "{{space}} não tem proprietário",
-    "nameOwner": "Nomear o proprietário"
+    "nameOwner": "Nomear o proprietário",
+    "folderAccess": "{{member}} ainda não tem acesso à pasta {{folder}}: {{reason}}",
+    "folderAccessNoReason": "{{member}} ainda não tem acesso à pasta {{folder}}"
   },
   "steward": {
     "title": "Espaços sob sua responsabilidade",
