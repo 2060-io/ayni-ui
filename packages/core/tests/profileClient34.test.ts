@@ -12,6 +12,8 @@ const json = (body: unknown, status = 200) =>
     headers: { 'content-type': 'application/json' },
   })
 const TOOL = {
+  feature: { id: 'crm', title: 'CRM', profile: null },
+  providers: [{ source: 'relaticle', title: 'Relaticle CRM', account: { kind: 'space' }, default: true }],
   source: 'relaticle',
   title: 'Relaticle CRM',
   state: 'setup',
@@ -87,14 +89,18 @@ describe("a space's tools (PROF-TOOL-001..005)", () => {
       path: '/spaces/spc_sales/tools/relaticle/account',
       body: undefined,
     })
-    expect(cleared.account.set).toBe(false)
+    expect(cleared.account?.set).toBe(false)
   })
 
   it('removes a source, and withdraws a change that waits', async () => {
     const { client, calls } = agent((_m, path) =>
-      path.endsWith('/pending') ? new Response(null, { status: 204 }) : json({ tool: { ...TOOL, state: 'off' } })
+      path.endsWith('/pending')
+        ? new Response(null, { status: 204 })
+        : json({ tool: { ...TOOL, source: null, title: null, state: 'off' } })
     )
-    expect((await client.removeSpaceTool('t', 'spc_sales', 'relaticle')).state).toBe('off')
+    // removed, the feature has no provider: nothing of one is left (PROF-TOOL-033)
+    const removed = await client.removeSpaceTool('t', 'spc_sales', 'relaticle')
+    expect([removed.state, removed.source, removed.account]).toEqual(['off', null, null])
     await client.withdrawSpaceToolChange('t', 'spc_sales', 'relaticle')
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
       'DELETE /spaces/spc_sales/tools/relaticle',
@@ -119,6 +125,84 @@ describe("a space's tools (PROF-TOOL-001..005)", () => {
     expect(
       await bad.client.setSpaceToolAccount('t', 's', 'x', { api_key: 'k', api_secret: 's' }).catch((e) => e)
     ).toMatchObject({ status: 422, code: 'bad-token', field: 'account.api_secret' })
+  })
+})
+
+describe('a feature and its provider (package 3.5.8, PROF-TOOL-002, PROF-TOOL-022, PROF-TOOL-023, PROF-TOOL-034)', () => {
+  const FILES = {
+    feature: { id: 'files', title: 'Files', profile: { id: 'org.ayni/files', version: '1.0' } },
+    providers: [
+      { source: 'nextcloud', title: 'Nextcloud', account: { kind: 'space' }, default: true },
+      { source: 'drive', title: 'Google Drive', account: { kind: 'personal' }, default: false },
+    ],
+    source: 'nextcloud',
+    title: 'Nextcloud',
+    state: 'ready',
+    pending: { changeId: 'chg_2', summary: 'Use Google Drive for Files', code: '31 07', expiresAt: 'x' },
+  }
+
+  it('changes the provider with `replaces`, the provider in use staying until the phone confirms', async () => {
+    const { client, calls } = agent(() => json({ tool: FILES }, 202))
+    const answer = await client.addSpaceTool('t', 'spc_alpha', { source: 'drive', replaces: 'nextcloud' })
+    expect(calls[0]).toMatchObject({
+      method: 'POST',
+      path: '/spaces/spc_alpha/tools',
+      body: { source: 'drive', replaces: 'nextcloud' },
+    })
+    expect([answer.status, answer.tool.source, answer.tool.pending?.code]).toEqual([202, 'nextcloud', '31 07'])
+    const refused = agent(() => json({ error: 'feature-has-provider' }, 409))
+    expect(await refused.client.addSpaceTool('t', 's', { source: 'drive' }).catch((e) => e)).toMatchObject({
+      status: 409,
+      code: 'feature-has-provider',
+    })
+  })
+
+  it('sends a list whole, by the values of its entries, or any', async () => {
+    const { client, calls } = agent(() => json({ tool: FILES }, 202))
+    await client.patchSpaceTool('t', 'spc_alpha', 'nextcloud', { list: { entries: [{ root: '48213' }] } })
+    await client.patchSpaceTool('t', 'spc_alpha', 'nextcloud', { list: { any: true } })
+    expect(calls.map((c) => c.body)).toEqual([{ list: { entries: [{ root: '48213' }] } }, { list: { any: true } }])
+    const refused = agent(() => json({ error: 'not-portable', field: 'list.entries.0.root' }, 422))
+    expect(
+      await refused.client.patchSpaceTool('t', 's', 'drive', { list: { entries: [{ root: '0AB' }] } }).catch((e) => e)
+    ).toMatchObject({ status: 422, code: 'not-portable', field: 'list.entries.0.root' })
+  })
+
+  it('searches the choices of a location with the text typed, and refuses a blank text before it goes', async () => {
+    const { client, calls } = agent(() =>
+      json({
+        choices: [
+          { values: { root: '48213' }, label: '/Projects/Alpha' },
+          { values: { root: '48214' }, label: '/Projects/Beta' },
+        ],
+      })
+    )
+    const choices = await client.spaceToolChoices('t', 'spc_alpha', 'nextcloud', ' /Proj & co ')
+    expect(calls[0]).toEqual({
+      method: 'GET',
+      path: '/spaces/spc_alpha/tools/nextcloud/list/choices?text=%2FProj+%26+co',
+      body: undefined,
+      auth: 'Bearer t',
+    })
+    expect(choices.map((c) => c.label)).toEqual(['/Projects/Alpha', '/Projects/Beta'])
+    expect(await client.spaceToolChoices('t', 'spc_alpha', 'nextcloud', '  ').catch((e) => e)).toMatchObject({
+      status: 400,
+      code: 'bad-request',
+      field: 'text',
+    })
+    expect(calls).toHaveLength(1)
+    for (const [status, error] of [
+      [409, 'not-connected'],
+      [409, 'space-account-not-set'],
+      [502, 'source-unavailable'],
+      [403, 'not-owner'],
+    ] as const) {
+      const refusing = agent(() => json({ error }, status))
+      expect(await refusing.client.spaceToolChoices('t', 's', 'drive', 'a').catch((e) => e)).toMatchObject({
+        status,
+        code: error,
+      })
+    }
   })
 })
 

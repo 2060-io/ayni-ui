@@ -5,27 +5,51 @@
 import { describe, expect, it } from 'vitest'
 import { progressOf } from '../src/conversationDesign.js'
 import {
+  accountSourceOf,
   accountValueFits,
   accountValueOf,
   accountValuesOf,
   awaitsConfirmation,
   bindingValueFits,
+  CHOICES_TEXT_MAX,
   canAdd,
+  canChangeProvider,
   canStopAllowing,
   changeOutcomeKeyOf,
+  choiceInList,
+  choicesRefusalOf,
+  choicesTextOf,
+  choosesProvider,
+  concernsFeature,
   confirmationOf,
   confirmationOutcomeOf,
   conversationSourcesOf,
+  defaultProviderOf,
+  entryCovers,
   isAdded,
+  isConformant,
+  LIST_CHOICES_MAX,
+  listChanged,
+  listChoicesOf,
+  listFormOf,
+  listInputOf,
+  listIsFull,
+  listLineOf,
   looksLikeJson,
   loosens,
   messageSourcesOf,
   missingOf,
+  missingPartsOf,
+  otherProvidersOf,
+  providerChangeInputOf,
+  providerChangeOf,
+  providerLineOf,
   readyToolsOf,
   requesterNameOf,
   ruleChoicesFor,
   ruleGroupsOf,
   sourceNameOf,
+  spaceToolOf,
   spaceToolsChangeOf,
   spaceToolsOf,
   TOKEN_MAX_LENGTH,
@@ -34,10 +58,22 @@ import {
   toolApprovalOf,
   toolRefusalOf,
   toolRowStateOf,
+  withListEntry,
+  withoutListEntry,
 } from '../src/tools.js'
 
-/** The CRM of Sales EU as its owner reads it (profile §3.10). */
+/** The CRM of Sales EU as its owner reads it (profile §3.10): one item per feature, the provider in use. */
 const CRM_OWNER = {
+  feature: { id: 'crm', title: 'CRM', profile: null },
+  providers: [
+    {
+      source: 'relaticle',
+      title: 'Relaticle CRM',
+      description: "The sales team's accounts, contacts and notes",
+      account: { kind: 'space' },
+      default: true,
+    },
+  ],
   source: 'relaticle',
   title: 'Relaticle CRM',
   description: "The sales team's accounts, contacts and notes",
@@ -110,8 +146,23 @@ const CARD = {
 describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
   it("reads the owner's answer whole, and carries no token", () => {
     const [crm] = spaceToolsOf({ tools: [{ ...CRM_OWNER, account: { ...CRM_OWNER.account, token: 'secret' } }] })
+    expect(crm.feature).toEqual({ id: 'crm', title: 'CRM', profile: null })
+    expect(crm.providers).toEqual([
+      {
+        source: 'relaticle',
+        title: 'Relaticle CRM',
+        description: "The sales team's accounts, contacts and notes",
+        account: { kind: 'space' },
+        default: true,
+      },
+    ])
+    expect([crm.source, crm.title]).toEqual(['relaticle', 'Relaticle CRM'])
     expect(crm.state).toBe('ready')
     expect(crm.add).toBe('auto')
+    // a category: no contract, no capability, no conformance, no list
+    expect(crm.capabilities).toEqual([])
+    expect(crm).not.toHaveProperty('conformant')
+    expect(crm.list).toBeNull()
     expect(crm.account).toEqual({
       kind: 'space',
       fields: [{ name: 'token', label: 'API token', pattern: '^[A-Za-z0-9|]{20,200}$' }],
@@ -135,6 +186,7 @@ describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
     const [crm] = spaceToolsOf({
       tools: [
         {
+          feature: { id: 'crm', title: 'CRM', profile: null },
           source: 'relaticle',
           title: 'Relaticle CRM',
           description: 'd',
@@ -147,6 +199,8 @@ describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
       ],
     })
     expect(crm.add).toBeUndefined()
+    // a member chooses no provider: none is given
+    expect(crm.providers).toEqual([])
     expect(crm.tools[0]).toEqual({ title: 'Add a note', effect: 'write', rule: 'confirm', stepUp: null })
     // a member's answer names the kind only: no field, no state of the account
     expect(crm.account).toEqual({ kind: 'space', fields: [], set: false, setAt: null, setBy: null })
@@ -156,8 +210,8 @@ describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
 
   it("reads one field per value of a space's account, in the agent's order (PROF-TOOL-001)", () => {
     const [x] = spaceToolsOf({ tools: [{ ...CRM_OWNER, source: 'x', title: 'X', account: X_ACCOUNT }] })
-    expect(x.account.fields).toEqual(X_ACCOUNT.fields)
-    expect(x.account.set).toBe(false)
+    expect(x.account?.fields).toEqual(X_ACCOUNT.fields)
+    expect(x.account?.set).toBe(false)
     // a field with no name, or a name said twice, is not shown; a field with no label is named by its name
     const [odd] = spaceToolsOf({
       tools: [
@@ -170,10 +224,10 @@ describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
         },
       ],
     })
-    expect(odd.account.fields).toEqual([{ name: 'token', label: 'token' }])
+    expect(odd.account?.fields).toEqual([{ name: 'token', label: 'token' }])
     // the old single label and pattern are not read: the fields are
     const [old] = spaceToolsOf({ tools: [{ ...CRM_OWNER, account: { kind: 'space', label: 'API token' } }] })
-    expect(old.account.fields).toEqual([])
+    expect(old.account?.fields).toEqual([])
     expect(JSON.stringify(old.account)).not.toContain('API token')
   })
 
@@ -187,14 +241,34 @@ describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
     expect(toolRowStateOf(crm)).toBe('waiting')
   })
 
-  it('reads `ayni.space.tools.changed`', () => {
+  it('reads `ayni.space.tools.changed`, with its feature (PROF-TOOL-006)', () => {
     expect(
-      spaceToolsChangeOf({ spaceId: 's', source: 'relaticle', state: 'ready', changeId: 'chg_1', outcome: 'applied' })
-    ).toEqual({ spaceId: 's', source: 'relaticle', state: 'ready', changeId: 'chg_1', outcome: 'applied' })
+      spaceToolsChangeOf({
+        spaceId: 's',
+        feature: 'crm',
+        source: 'relaticle',
+        state: 'ready',
+        changeId: 'chg_1',
+        outcome: 'applied',
+      })
+    ).toEqual({
+      spaceId: 's',
+      feature: 'crm',
+      source: 'relaticle',
+      state: 'ready',
+      changeId: 'chg_1',
+      outcome: 'applied',
+    })
     expect(
-      spaceToolsChangeOf({ spaceId: 's', source: 'x', state: 'ready', outcome: 'applied' })?.changeId
+      spaceToolsChangeOf({ spaceId: 's', feature: 'social', source: 'x', state: 'ready', outcome: 'applied' })?.changeId
     ).toBeUndefined()
-    expect(spaceToolsChangeOf({ spaceId: 's', source: 'x', outcome: 'nope' })).toBeNull()
+    expect(spaceToolsChangeOf({ spaceId: 's', feature: 'social', source: 'x', outcome: 'nope' })).toBeNull()
+    // a feature left with no provider names none (§5)
+    expect(
+      spaceToolsChangeOf({ spaceId: 's', feature: 'crm', source: null, state: 'off', outcome: 'applied' })?.source
+    ).toBeNull()
+    // the earlier shape, one change per source with no feature, is not read: no backward compatibility
+    expect(spaceToolsChangeOf({ spaceId: 's', source: 'x', state: 'ready', outcome: 'applied' })).toBeNull()
   })
 
   it('serves tools only to an agent that declares them (PROF-DESC-009)', () => {
@@ -225,12 +299,13 @@ describe("the owner's rules (UI-CONV-050, agent D98)", () => {
 
   it('names what a source in setup still lacks, and the state of each row', () => {
     const setup = { ...crm, state: 'setup' as const, bindings: [{ ...crm.bindings[0], value: null }] }
-    expect(missingOf({ ...setup, account: { ...crm.account, set: false } })).toEqual({
+    expect(missingOf({ ...setup, account: { ...(crm.account ?? { kind: 'space' }), set: false } })).toEqual({
       bindings: ['Workspace'],
+      list: null,
       account: true,
     })
-    expect(missingOf(crm)).toEqual({ bindings: [], account: false })
-    expect(missingOf({ ...crm, account: { kind: 'agent' } })).toEqual({ bindings: [], account: false })
+    expect(missingOf(crm)).toEqual({ bindings: [], list: null, account: false })
+    expect(missingOf({ ...crm, account: { kind: 'agent' } })).toEqual({ bindings: [], list: null, account: false })
     expect(toolRowStateOf({ state: 'available', pending: null })).toBe('notAdded')
     expect(toolRowStateOf({ state: 'setup', pending: null })).toBe('needsSetup')
     expect(toolRowStateOf({ state: 'ready', pending: null })).toBe('ready')
@@ -549,7 +624,11 @@ describe('a source named by the feature it serves (PROF-TOOL-035, UI-CONV-064)',
         sources: [{ source: 'relaticle', title: 'Relaticle', feature: CRM, account: { kind: 'agent' }, results: 1 }],
       })[0]?.feature
     ).toEqual(CRM)
-    expect(spaceToolsOf({ tools: [{ ...CRM_OWNER, feature: { ...CRM, profile: null } }] })[0]?.feature).toEqual(CRM)
+    // a space's item is the feature itself, with its profile: `null` for a category (PROF-TOOL-033)
+    expect(spaceToolsOf({ tools: [{ ...CRM_OWNER, feature: { ...CRM, profile: null } }] })[0]?.feature).toEqual({
+      ...CRM,
+      profile: null,
+    })
     // a feature with no title names none
     expect(messageSourcesOf([{ source: 'web', title: 'Web search', feature: { id: 'web' } }])[0]).not.toHaveProperty(
       'feature'
@@ -577,5 +656,367 @@ describe('the addresses outside the organization on a card (PROF-TOOL-007, agent
     expect(card([])).not.toHaveProperty('outsideOrganization')
     expect(card()).not.toHaveProperty('outsideOrganization')
     expect(card(['', 3, 'p.lee@partner.example'])?.outsideOrganization).toEqual(['p.lee@partner.example'])
+  })
+})
+
+/** Files in Project Alpha as its owner reads it (profile §3.10, agent tests/features.test.ts): two providers. */
+const PROVIDERS = [
+  {
+    source: 'nextcloud',
+    title: 'Nextcloud',
+    description: "A folder of the organization's Nextcloud, with an account of the space",
+    account: { kind: 'space' },
+    default: true,
+  },
+  {
+    source: 'drive',
+    title: 'Google Drive',
+    description: 'The files each person can open in their drive',
+    account: { kind: 'personal' },
+    default: false,
+  },
+]
+const FILES = { id: 'files', title: 'Files', profile: { id: 'org.ayni/files', version: '1.0' } }
+const FILES_AVAILABLE = {
+  feature: FILES,
+  providers: PROVIDERS,
+  source: null,
+  title: null,
+  state: 'available',
+  add: 'owner',
+  guests: false,
+  pending: null,
+}
+const FOLDERS = {
+  label: 'Folders',
+  any: false,
+  entries: [{ values: { root: '48213' }, label: '/Projects/Alpha' }],
+  anyAllowed: false,
+  anyLabel: 'Any folder you can reach',
+  choices: true,
+  typed: false,
+  maxEntries: 10,
+}
+const FILES_READY = {
+  ...FILES_AVAILABLE,
+  source: 'nextcloud',
+  title: 'Nextcloud',
+  description: "A folder of the organization's Nextcloud, with an account of the space",
+  state: 'ready',
+  conformant: true,
+  capabilities: ['search', 'folders'],
+  account: {
+    kind: 'space',
+    fields: [
+      { name: 'username', label: 'User name' },
+      { name: 'password', label: 'App password' },
+    ],
+    set: true,
+    setAt: '2026-11-22T09:10:00Z',
+    setBy: { name: 'Jonas Weber' },
+  },
+  bindings: [],
+  list: FOLDERS,
+  tools: [
+    { name: 'files_read', title: 'Read a file', effect: 'read', rule: 'none', packRule: 'none', stepUp: null },
+    {
+      name: 'files_replace',
+      title: "Replace a file's content",
+      effect: 'write',
+      rule: 'confirm',
+      packRule: 'confirm',
+      stepUp: null,
+    },
+  ],
+}
+const read = (value: unknown) => {
+  const tool = spaceToolOf(value)
+  if (!tool) throw new Error('not a feature')
+  return tool
+}
+
+describe("a space's tools by feature, each with one provider (package 3.5.8, PROF-TOOL-033, agent D120)", () => {
+  it('reads a feature with no provider: the providers its template allows, and nothing of a provider', () => {
+    const files = read(FILES_AVAILABLE)
+    expect(files.feature).toEqual(FILES)
+    expect(files.providers.map((p) => [p.source, p.account.kind, p.default])).toEqual([
+      ['nextcloud', 'space', true],
+      ['drive', 'personal', false],
+    ])
+    expect([files.source, files.title, files.description]).toEqual([null, null, ''])
+    expect([files.account, files.list, files.bindings, files.tools]).toEqual([null, null, [], []])
+    // nothing of a provider is read while none is in use, whatever the value carries
+    const odd = read({ ...FILES_AVAILABLE, account: { kind: 'space' }, bindings: [{ name: 'x' }], list: FOLDERS })
+    expect([odd.account, odd.list, odd.bindings]).toEqual([null, null, []])
+    expect(toolRowStateOf(files)).toBe('notAdded')
+    // an item with no feature is not one: the earlier shape, one item per source, is not read
+    expect(spaceToolOf({ ...CRM_OWNER, feature: undefined })).toBeNull()
+    expect(spaceToolsOf({ tools: [{ source: 'relaticle', title: 'Relaticle CRM', state: 'ready' }] })).toEqual([])
+  })
+
+  it('reads a feature with a contract: its profile, conformance, capabilities and location (PROF-TOOL-022)', () => {
+    const files = read(FILES_READY)
+    expect(files.feature.profile).toEqual({ id: 'org.ayni/files', version: '1.0' })
+    expect([files.source, files.conformant, files.capabilities]).toEqual(['nextcloud', true, ['search', 'folders']])
+    expect(files.list).toEqual({ ...FOLDERS, typed: false })
+    expect(files.tools.map((t) => t.title)).toEqual(['Read a file', "Replace a file's content"])
+    // before any connection `conformant` is absent: not a refusal
+    const fresh = read({ ...FILES_READY, conformant: undefined })
+    expect(fresh).not.toHaveProperty('conformant')
+    expect(isConformant(fresh)).toBe(true)
+    // a member reads the labels of the list only
+    const member = read({
+      feature: FILES,
+      source: 'nextcloud',
+      title: 'Nextcloud',
+      state: 'ready',
+      guests: false,
+      account: { kind: 'space' },
+      bindings: [],
+      list: { label: 'Folders', any: false, entries: [{ label: '/Projects/Alpha' }] },
+      tools: [{ title: 'Read a file', effect: 'read', rule: 'none', stepUp: null }],
+    })
+    expect(member.list).toEqual({
+      label: 'Folders',
+      any: false,
+      entries: [{ label: '/Projects/Alpha' }],
+      anyLabel: '',
+      anyAllowed: false,
+      choices: false,
+      typed: false,
+      maxEntries: null,
+    })
+    expect(member.providers).toEqual([])
+    // any location: no entries, its label
+    expect(read({ ...FILES_READY, list: { ...FOLDERS, any: true, entries: undefined } }).list?.entries).toEqual([])
+  })
+
+  it('reads a provider that does not offer its feature: its words in place of the state, no tool (UI-CONV-065)', () => {
+    const files = read({ ...FILES_READY, conformant: false, tools: [] })
+    expect(isConformant(files)).toBe(false)
+    expect(toolRowStateOf(files)).toBe('notConformant')
+    // a change that waits still reads as waiting
+    expect(toolRowStateOf({ ...files, pending: { changeId: 'c', summary: '', code: '1', expiresAt: '' } })).toBe(
+      'waiting'
+    )
+  })
+
+  it('chooses a provider: the default suggested, several shown first, one opened at once (UI-CONV-065)', () => {
+    const files = read(FILES_AVAILABLE)
+    expect(defaultProviderOf(files)?.source).toBe('nextcloud')
+    expect(choosesProvider(files)).toBe(true)
+    const calendar = read({
+      ...FILES_AVAILABLE,
+      feature: { id: 'calendar', title: 'Calendar', profile: null },
+      providers: [PROVIDERS[0]],
+    })
+    expect(choosesProvider(calendar)).toBe(false)
+    expect(defaultProviderOf(calendar)?.source).toBe('nextcloud')
+    // no default said: the first the template allows
+    expect(defaultProviderOf({ providers: [{ ...read(FILES_AVAILABLE).providers[1] }] })?.source).toBe('drive')
+    expect(defaultProviderOf({ providers: [] })).toBeUndefined()
+  })
+
+  it('changes the provider: the others shown, the question named, the request with `replaces` (UI-CONV-066, PROF-TOOL-034)', () => {
+    const files = read(FILES_READY)
+    expect(canChangeProvider(files)).toBe(true)
+    expect(otherProvidersOf(files).map((p) => p.source)).toEqual(['drive'])
+    expect(providerChangeOf(files, 'drive')).toEqual({ next: 'Google Drive', feature: 'Files', former: 'Nextcloud' })
+    expect(providerChangeOf(files, 'nextcloud')).toBeNull()
+    expect(providerChangeOf(files, 'onedrive')).toBeNull()
+    expect(providerChangeInputOf(files, 'drive')).toEqual({ source: 'drive', replaces: 'nextcloud' })
+    // one provider, or none in use: no Change provider
+    expect(canChangeProvider({ ...files, providers: [files.providers[0]] })).toBe(false)
+    expect(canChangeProvider(read(FILES_AVAILABLE))).toBe(false)
+    expect(providerChangeOf(read(FILES_AVAILABLE), 'drive')).toBeNull()
+  })
+
+  it("writes the provider's line: its title, what it is bound to, whose account (UI-CONV-065, UI-CONV-060)", () => {
+    expect(providerLineOf(read(FILES_READY))).toEqual({
+      provider: 'Nextcloud',
+      bindings: [],
+      list: { label: 'Folders', values: ['/Projects/Alpha'] },
+      account: 'space',
+    })
+    // a binding by its value, or the name of its value; one with no value binds nothing yet
+    const crm = read({
+      ...CRM_OWNER,
+      bindings: [
+        { name: 'workspace', label: 'Workspace', value: '01JD8', valueLabel: 'sales-eu', setBy: 'owner' },
+        { name: 'region', label: 'Region', value: null, setBy: 'owner' },
+      ],
+    })
+    expect(providerLineOf(crm)).toEqual({
+      provider: 'Relaticle CRM',
+      bindings: [{ label: 'Workspace', value: 'sales-eu' }],
+      list: null,
+      account: 'space',
+    })
+    // any value of a list reads its label; an account `none` is left out
+    const anyList = read({
+      ...FILES_READY,
+      account: { kind: 'none' },
+      list: { ...FOLDERS, any: true, entries: undefined },
+    })
+    expect(providerLineOf(anyList)).toMatchObject({
+      list: { label: 'Folders', values: ['Any folder you can reach'] },
+      account: null,
+    })
+    expect(listLineOf({ label: 'Folders', any: false, entries: [], anyLabel: '' })).toBeNull()
+    // no provider: the row reads "Choose a provider"
+    expect(providerLineOf(read(FILES_AVAILABLE))).toBeNull()
+  })
+
+  it('names what a feature in setup lacks: bindings, then the list with no entry, then the account (UI-CONV-052)', () => {
+    const setup = read({
+      ...FILES_READY,
+      state: 'setup',
+      account: { ...FILES_READY.account, set: false },
+      list: { ...FOLDERS, entries: [] },
+    })
+    expect(missingOf(setup)).toEqual({ bindings: [], list: 'Folders', account: true })
+    expect(missingPartsOf(setup)).toEqual({ labels: ['Folders'], account: true })
+    expect(missingOf(read({ ...FILES_READY, list: { ...FOLDERS, any: true } })).list).toBeNull()
+    // no provider: nothing of one is missing
+    expect(missingOf(read(FILES_AVAILABLE))).toEqual({ bindings: [], list: null, account: false })
+    expect(accountSourceOf(read(FILES_AVAILABLE))).toBe('')
+    expect(accountSourceOf(read(FILES_READY))).toBe('nextcloud')
+  })
+
+  it('tells which feature an announced change concerns, and the former provider of a change of provider', () => {
+    const change = spaceToolsChangeOf({
+      spaceId: 'spc_alpha',
+      feature: 'files',
+      source: 'drive',
+      formerSource: 'nextcloud',
+      state: 'setup',
+      changeId: 'chg_2',
+      outcome: 'applied',
+    })
+    expect(change).toEqual({
+      spaceId: 'spc_alpha',
+      feature: 'files',
+      source: 'drive',
+      formerSource: 'nextcloud',
+      state: 'setup',
+      changeId: 'chg_2',
+      outcome: 'applied',
+    })
+    expect(change && concernsFeature(change, 'spc_alpha', 'files')).toBe(true)
+    expect(change && concernsFeature(change, 'spc_alpha', 'calendar')).toBe(false)
+    expect(change && concernsFeature(change, 'spc_beta', 'files')).toBe(false)
+    expect(readyToolsOf([read(FILES_AVAILABLE), read(FILES_READY)]).map((t) => t.feature.id)).toEqual(['files'])
+  })
+})
+
+describe('the list of a location and its choices (UI-CONV-059, PROF-TOOL-022, PROF-TOOL-023)', () => {
+  const folders = read(FILES_READY).list
+  if (!folders) throw new Error('no list')
+  const beta = { values: { root: '48214' }, label: '/Projects/Beta' }
+
+  it('makes a form of the list in force, adds a choice, removes an entry, and sends it whole', () => {
+    const form = listFormOf(folders)
+    expect(form).toEqual({ any: false, entries: [{ values: { root: '48213' }, label: '/Projects/Alpha' }] })
+    expect(listChanged(form, folders)).toBe(false)
+    const added = withListEntry(form, beta, folders)
+    expect(added.entries.map((e) => e.label)).toEqual(['/Projects/Alpha', '/Projects/Beta'])
+    expect(listChanged(added, folders)).toBe(true)
+    expect(listInputOf(added)).toEqual({ entries: [{ root: '48213' }, { root: '48214' }] })
+    // a choice in the list changes nothing, and reads "In the list"
+    expect(choiceInList(added, beta)).toBe(true)
+    expect(withListEntry(added, beta, folders)).toBe(added)
+    const removed = withoutListEntry(added, 0)
+    expect(removed.entries.map((e) => e.label)).toEqual(['/Projects/Beta'])
+    expect(listInputOf({ any: true, entries: [] })).toEqual({ any: true })
+    expect(listChanged({ any: true, entries: [] }, folders)).toBe(true)
+  })
+
+  it('removes the entries a wider one covers, and adds nothing beyond `maxEntries`', () => {
+    expect(entryCovers({ owner: '2060-io' }, { owner: '2060-io', repo: 'ayni-agent' })).toBe(true)
+    expect(entryCovers({ owner: '2060-io', repo: 'ayni-agent' }, { owner: '2060-io' })).toBe(false)
+    expect(entryCovers({ owner: 'verana-labs' }, { owner: '2060-io', repo: 'ayni-agent' })).toBe(false)
+    const repos = { maxEntries: 2 }
+    const form = {
+      any: false,
+      entries: [{ values: { owner: '2060-io', repo: 'ayni-agent-test-repo' }, label: '2060-io/ayni-agent-test-repo' }],
+    }
+    const wider = withListEntry(form, { values: { owner: '2060-io' }, label: 'All of 2060-io' }, repos)
+    expect(wider.entries.map((e) => e.label)).toEqual(['All of 2060-io'])
+    const full = withListEntry(wider, { values: { owner: 'verana-labs' }, label: 'All of verana-labs' }, repos)
+    expect(listIsFull(full, repos)).toBe(true)
+    expect(withListEntry(full, { values: { owner: 'other' }, label: 'All of other' }, repos)).toBe(full)
+    expect(listIsFull(full, { maxEntries: null })).toBe(false)
+  })
+
+  it('reads the choices: each once, at most fifty, with their values and label', () => {
+    const many = Array.from({ length: 60 }, (_, i) => ({ values: { root: String(i) }, label: `/F${i}` }))
+    expect(listChoicesOf({ choices: many })).toHaveLength(LIST_CHOICES_MAX)
+    expect(
+      listChoicesOf({
+        choices: [
+          { values: { root: '48213' }, label: '/Projects/Alpha' },
+          { values: { root: '48213' }, label: '/Projects/Alpha again' },
+          { values: {}, label: 'none' },
+          { label: 'no values' },
+          { values: { root: '48214' } },
+          'junk',
+          { values: { root: '48214', n: 3 }, label: '/Projects/Beta' },
+        ],
+      })
+    ).toEqual([
+      { values: { root: '48213' }, label: '/Projects/Alpha' },
+      { values: { root: '48214' }, label: '/Projects/Beta' },
+    ])
+    expect(listChoicesOf(undefined)).toEqual([])
+  })
+
+  it('asks a search only for a text, trimmed and at most 100 characters', () => {
+    expect(choicesTextOf('  /Proj ')).toBe('/Proj')
+    expect(choicesTextOf('   ')).toBeNull()
+    expect(choicesTextOf('x'.repeat(150))).toHaveLength(CHOICES_TEXT_MAX)
+  })
+
+  it('says why a search answered nothing', () => {
+    expect(choicesRefusalOf({ status: 409, code: 'not-connected' })).toBe('notConnected')
+    expect(choicesRefusalOf({ status: 409, code: 'space-account-not-set' })).toBe('spaceAccountNotSet')
+    expect(choicesRefusalOf({ status: 502, code: 'source-unavailable' })).toBe('unavailable')
+    expect(choicesRefusalOf({ status: 502, code: '502' })).toBe('unavailable')
+    expect(choicesRefusalOf({ status: 403, code: 'not-owner' })).toBe('notOwner')
+    expect(choicesRefusalOf({ status: 404, code: '404' })).toBe('notFound')
+    expect(choicesRefusalOf({ status: 400, code: 'bad-request' })).toBe('other')
+  })
+
+  it("puts a refusal of the list at the entry, under Add, or at the choice of any; another provider's under the control", () => {
+    expect(toolRefusalOf({ status: 422, code: 'bad-binding', field: 'list.entries.0.root' })).toEqual({
+      at: 'entry',
+      index: 0,
+      reason: 'badBinding',
+    })
+    expect(toolRefusalOf({ status: 422, code: 'repeated-entry', field: 'list.entries.2' })).toEqual({
+      at: 'entry',
+      index: 2,
+      reason: 'repeatedEntry',
+    })
+    expect(toolRefusalOf({ status: 422, code: 'not-portable', field: 'list.entries.1.root' })).toEqual({
+      at: 'entry',
+      index: 1,
+      reason: 'notPortable',
+    })
+    expect(toolRefusalOf({ status: 422, code: 'too-many-entries', field: 'list.entries' })).toEqual({
+      at: 'entries',
+      reason: 'tooManyEntries',
+    })
+    expect(toolRefusalOf({ status: 422, code: 'any-not-allowed', field: 'list.any' })).toEqual({
+      at: 'any',
+      reason: 'anyNotAllowed',
+    })
+    expect(toolRefusalOf({ status: 409, code: 'feature-has-provider' })).toEqual({
+      at: 'panel',
+      reason: 'featureHasProvider',
+    })
+    // a binding's refusal is the binding's still
+    expect(toolRefusalOf({ status: 422, code: 'bad-binding', field: 'bindings.workspace' })).toMatchObject({
+      at: 'binding',
+    })
   })
 })

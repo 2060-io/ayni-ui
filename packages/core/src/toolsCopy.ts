@@ -3,13 +3,18 @@
  * for the browser and the Ayni app: the browser's English translation file must say the same (a test compares them),
  * and the app starts from these (APP-CONV-046..052). Keys are paths in the translation file; `{{name}}` marks what the
  * screen puts in. The words of accounts, effects and rules are those of UI-CONV-049; those of outcomes, refusals, the
- * time left, the needs-setup line and the lines of an approval are the table of UI-CONV-052.
+ * time left, the needs-setup line and the lines of an approval are the table of UI-CONV-052. With features and
+ * providers (package 3.5.8): the rows of that table for a feature with no provider, the providers to choose among,
+ * Change provider and its question, a provider that does not offer its feature, the list of a location and its search,
+ * and `provider-changed` in Activity (UI-CONV-051). `tools.boundTo` is the "<label>: <value>" of a binding and of a
+ * list in a provider's line, the parts of which a screen joins with " · " (UI-CONV-065).
  */
 export const TOOLS_COPY = {
   'spaces.segments.tools': 'Tools',
   'spaces.activity.tool-added': '{{by}} added {{tool}}',
   'spaces.activity.tool-changed': '{{by}} changed the settings of {{tool}}',
   'spaces.activity.tool-removed': '{{by}} removed {{tool}}',
+  'spaces.activity.provider-changed': '{{by}} changed the provider of {{feature}} from {{former}} to {{tool}}',
   'spaces.activity.account-set': '{{by}} set the account of {{tool}}',
   'spaces.activity.account-cleared': '{{by}} removed the account of {{tool}}',
   'approval.asksYou': '{{requester}} asks for your approval',
@@ -81,6 +86,30 @@ export const TOOLS_COPY = {
   'tools.providerNotUsed': "This provider isn't used in this space.",
   'tools.personalSpace': 'Personal has no tools of a space.',
   'tools.notFound': 'This tool is not offered in this space.',
+  'tools.featureHasProvider': '{{feature}} already has a provider in this space. Change it instead.',
+  'tools.notConformant': '{{provider}} does not offer {{feature}} as {{agent}} expects. Choose another provider.',
+  'tools.notPortable':
+    "Each member would see this place differently. Choose another one, or a provider that uses the space's account.",
+  'tools.chooseProvider': 'Choose a provider',
+  'tools.chooseProviderFor': 'Choose a provider for {{feature}}',
+  'tools.suggested': 'Suggested',
+  'tools.changeProvider': 'Change provider',
+  'tools.changeQuestion': 'Use {{next}} for {{feature}} in {{space}}, in place of {{former}}?',
+  'tools.changeStops': '{{agent}} stops using {{former}} in this space.',
+  'tools.changeNothingCopied': 'Nothing is copied from {{former}} to {{next}}.',
+  'tools.changeReadStays': 'What earlier conversations read from {{former}} stays in them.',
+  'tools.change': 'Change',
+  'tools.boundTo': '{{label}}: {{value}}',
+  'tools.list.onlyThese': 'Only these',
+  'tools.list.anyWarning':
+    "Each member's calls use their own account, but what {{agent}} reads with it goes into this space's conversations, which the other members read once they are shared.",
+  'tools.list.search': 'Search your account to add',
+  'tools.list.inList': 'In the list',
+  'tools.list.remove': 'Remove',
+  'tools.list.tooMany': 'A list holds at most {{max}} entries.',
+  'tools.list.repeated': 'This is already in the list.',
+  'tools.list.anyNotAllowed': '{{agent}} does not allow this choice in this space.',
+  'tools.list.unavailable': '{{source}} cannot be searched now. Try again later.',
   'tools.card.label': 'Confirmation: {{title}}, {{source}}',
   'tools.card.accountSpace': 'With the account of {{space}}',
   'tools.card.accountAgent': "With {{agent}}'s account",

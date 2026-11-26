@@ -39,7 +39,6 @@ import {
   type LegalHoldResponse,
   legalHoldOf,
 } from './adminAccess.js'
-import type { ApprovalPolicyInput } from './approvalPolicy.js'
 import {
   type Connection,
   type ConnectionAttempt,
@@ -80,13 +79,17 @@ import {
 } from './spaces.js'
 import { readSse } from './sse.js'
 import {
+  type AddSpaceToolInput,
   type ConversationSource,
+  choicesTextOf,
   conversationSourcesOf,
+  type ListChoice,
+  listChoicesOf,
   type SpaceTool,
   type SpaceToolAnswer,
+  type SpaceToolPatchInput,
   spaceToolOf,
   spaceToolsOf,
-  type ToolRule,
 } from './tools.js'
 import { type VoiceMeasures, voiceMeasureFields } from './voiceNote.js'
 
@@ -611,35 +614,49 @@ export class ProfileClient {
     return `/spaces/${encodeURIComponent(spaceId)}/tools${source ? `/${encodeURIComponent(source)}` : ''}${rest}`
   }
 
-  /** The tools of a space: every source of its template to its owner, the `ready` ones to a member (PROF-TOOL-001). */
+  /**
+   * The tools of a space, one item per feature of its template (PROF-TOOL-001, PROF-TOOL-033): every feature to its
+   * owner, the `ready` ones to a member.
+   */
   public async spaceTools(token: string, spaceId: string): Promise<SpaceTool[]> {
     return spaceToolsOf(await this.getJson(token, ProfileClient.toolsPath(spaceId)))
   }
 
-  /** The owner adds a source the template offers, or switches an `off` one back on: `202`, waiting (PROF-TOOL-002). */
-  public async addSpaceTool(
-    token: string,
-    spaceId: string,
-    input: { source: string; bindings?: Record<string, string>; calls?: Record<string, ToolRule> }
-  ): Promise<SpaceToolAnswer> {
+  /**
+   * The owner chooses the provider of a feature offered or `off`, or, with `replaces`, changes the provider in use
+   * (PROF-TOOL-002, PROF-TOOL-034): `202`, the feature's item with its change waiting for the phone.
+   */
+  public async addSpaceTool(token: string, spaceId: string, input: AddSpaceToolInput): Promise<SpaceToolAnswer> {
     return this.toolChange(token, 'POST', ProfileClient.toolsPath(spaceId), input)
   }
 
   /**
-   * The owner changes bindings, rules and approval policies (each policy whole, profile 3.5.4 PROF-TOOL-036): `200`
-   * when it only narrows, `202` when it grants (PROF-TOOL-003).
+   * The owner changes bindings, the list (whole, PROF-TOOL-022), rules and approval policies (each policy whole, profile
+   * 3.5.4 PROF-TOOL-036): `200` when it only narrows, `202` when it grants (PROF-TOOL-003).
    */
   public async patchSpaceTool(
     token: string,
     spaceId: string,
     source: string,
-    patch: {
-      bindings?: Record<string, string>
-      calls?: Record<string, ToolRule>
-      approvals?: Record<string, ApprovalPolicyInput>
-    }
+    patch: SpaceToolPatchInput
   ): Promise<SpaceToolAnswer> {
     return this.toolChange(token, 'PATCH', ProfileClient.toolsPath(spaceId, source), patch)
+  }
+
+  /**
+   * The owner's search of the list of a provider the template allows (PROF-TOOL-023): the locations it answers to the
+   * text, at most fifty, read with the account the owner's own calls would use in the space. A blank text is refused
+   * before it goes (`400 bad-request`, `field: "text"`, as the agent would), and a long one is cut at 100 characters.
+   */
+  public async spaceToolChoices(token: string, spaceId: string, source: string, text: string): Promise<ListChoice[]> {
+    const q = choicesTextOf(text)
+    if (!q) throw new ProfileError(400, 'bad-request', undefined, undefined, undefined, 'text')
+    return listChoicesOf(
+      await this.getJson(
+        token,
+        ProfileClient.toolsPath(spaceId, source, `/list/choices?${new URLSearchParams({ text: q }).toString()}`)
+      )
+    )
   }
 
   /**

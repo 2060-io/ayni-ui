@@ -7,8 +7,17 @@
  * browser and the Ayni app apply the same ones. Phase 2 (profile 3.5, PROF-TOOL-021; agent D104, D110) adds the kind
  * of account `personal` to these shapes, and the binding of a space set from an account of its owner; each person's
  * own accounts are in `connections.ts`.
+ *
+ * Package 3.5.8 (agent D120 to D124, PROF-TOOL-001, 002, 022, 023, 033 to 035; UI-CONV-050, 059, 060, 064 to 066): a
+ * space's tools are one item per feature of its template (Files, Calendar, CRM), never one per source, each with the
+ * provider chosen for it among those the template allows (`providers`, to the owner); `source`, `title` and
+ * `description` are the provider in use, `null` while none is chosen, and `account`, `bindings`, `list` and `tools`
+ * come only with one. A feature with a contract carries its profile, `conformant`, `capabilities` and its location as
+ * `list`, whose entries are picked among the choices the provider answers (`…/list/choices`), never typed. The change
+ * of provider is the same `POST` with `replaces`. Not additive: no shape of one item per source is read.
  */
 import {
+  type ApprovalPolicyInput,
   type ApprovalPolicyView,
   type ApprovalProgress,
   approvalPolicyOf,
@@ -114,19 +123,86 @@ export interface FeatureRef {
   title: string
 }
 
-/** A source a space's template names, in that space (`SpaceTool`, §3.10). */
-export interface SpaceTool {
+/**
+ * A feature of a space's tools (agent D120, PROF-TOOL-033): its id, the title people read ("Files", "CRM") and, for a
+ * feature with a contract, the feature profile it follows (`{ id: "org.ayni/files", version: "1.0" }`); `null` for a
+ * category, a heading under which its provider's own tools are shown.
+ */
+export interface SpaceFeature {
+  id: string
+  title: string
+  profile: { id: string; version: string } | null
+}
+
+/**
+ * A provider the template allows for a feature, as its owner chooses among them (PROF-TOOL-033): the source, its title
+ * and description, whose account its calls run with, and whether it is the template's default ("Suggested").
+ */
+export interface SpaceToolProvider {
   source: string
   title: string
-  /** the feature the source serves (PROF-TOOL-033, PROF-TOOL-035), when the agent gives it */
-  feature?: FeatureRef
+  description: string
+  account: { kind: ToolAccountKind }
+  default: boolean
+}
+
+/** An entry of a list (PROF-TOOL-022): the `values` it binds, in the owner's answer only, and the label people read. */
+export interface SpaceToolListEntry {
+  values?: Record<string, string>
+  label: string
+}
+
+/**
+ * The list of a source (PROF-TOOL-022), for a feature with a contract its location (PROF-TOOL-033): its folders or
+ * calendars, or any. To a member, `label`, `any`, the entries' labels and `anyLabel` when `any` is true; the rest is the
+ * owner's: whether the template allows any value, whether the owner may search their account for entries (`choices`),
+ * whether an entry may be typed (`typed`, false for a location: always one of the choices) and the most it holds.
+ */
+export interface SpaceToolList {
+  label: string
+  any: boolean
+  /** in the owner's order; none with `any` */
+  entries: SpaceToolListEntry[]
+  anyLabel: string
+  anyAllowed: boolean
+  choices: boolean
+  typed: boolean
+  /** null when the answer gives no limit */
+  maxEntries: number | null
+}
+
+/**
+ * A feature of a space's template, in that space (`SpaceTool`, §3.10, PROF-TOOL-033): one item per feature, in the
+ * template's order, with the provider in use. To the owner every feature in every state with the `providers` the
+ * template allows; to a member the `ready` ones, with no provider to choose. While no provider is chosen (also while the
+ * choice of a first one waits for the phone) `source` and `title` are null, `account` and `list` null, and `bindings`
+ * and `tools` empty.
+ */
+export interface SpaceTool {
+  feature: SpaceFeature
+  /** the owner's answer only: the providers the template allows for the feature, in its order; empty to a member */
+  providers: SpaceToolProvider[]
+  /** the provider in use: null while none is chosen */
+  source: string | null
+  title: string | null
+  /** the provider's description; empty with none */
   description: string
   state: SpaceToolState
   /** the owner's answer only */
   add?: 'auto' | 'owner'
   guests: boolean
-  account: SpaceToolAccount
+  /**
+   * a feature with a contract: `false` when its provider did not offer the profile at its last connection (agent
+   * TOOL-FEAT-011), `true` when it did; absent before any connection, and for a category
+   */
+  conformant?: boolean
+  /** a feature with a contract: the optional capabilities of its profile in use; empty otherwise */
+  capabilities: string[]
+  /** null while no provider is in use */
+  account: SpaceToolAccount | null
   bindings: SpaceToolBinding[]
+  /** the list of the provider in use (a feature's location, PROF-TOOL-033), null when it has none */
+  list: SpaceToolList | null
   tools: SpaceToolItem[]
   pending: PendingToolChange | null
 }
@@ -137,14 +213,48 @@ export interface SpaceToolAnswer {
   tool: SpaceTool
 }
 
-/** `ayni.space.tools.changed` (PROF-TOOL-006). */
+/** `ayni.space.tools.changed` (PROF-TOOL-006, PROF-TOOL-034). */
 export interface SpaceToolsChange {
   spaceId: string
-  source: string
+  /** the id of the feature the change concerns */
+  feature: string
+  /** the provider it concerns, for a change of provider the new one; null when the feature has none (§5) */
+  source: string | null
+  /** a change of provider: the provider it replaced */
+  formerSource?: string
   state: SpaceToolState
   /** absent for a change that applied at once */
   changeId?: string
   outcome: 'applied' | 'declined' | 'expired' | 'failed' | 'cancelled'
+}
+
+/** A location the provider answered to the owner's search (`…/list/choices`, PROF-TOOL-023). */
+export interface ListChoice {
+  values: Record<string, string>
+  label: string
+}
+
+/** A list as the owner sends it, whole (PROF-TOOL-022): the `values` of each entry, or any. */
+export type SpaceToolListInput = { entries: Record<string, string>[] } | { any: true }
+
+/**
+ * `POST {sessions}/spaces/{id}/tools` (PROF-TOOL-002, PROF-TOOL-034): `source`, the provider chosen for its feature;
+ * with `replaces`, the provider in use, it changes the feature's provider.
+ */
+export interface AddSpaceToolInput {
+  source: string
+  replaces?: string
+  bindings?: Record<string, string>
+  list?: SpaceToolListInput
+  calls?: Record<string, ToolRule>
+}
+
+/** `PATCH {sessions}/spaces/{id}/tools/{source}` (PROF-TOOL-003, PROF-TOOL-022, PROF-TOOL-036). */
+export interface SpaceToolPatchInput {
+  bindings?: Record<string, string>
+  list?: SpaceToolListInput
+  calls?: Record<string, ToolRule>
+  approvals?: Record<string, ApprovalPolicyInput>
 }
 
 /** A field of the exact action: an argument the tool will receive, whole, as text (PROF-TOOL-007). */
@@ -263,40 +373,110 @@ function accountFieldsOf(value: unknown): SpaceToolAccountField[] {
   return fields
 }
 
-/** A space's tool as the agent gives it, with what is missing filled in; null for one with no source. */
-export function spaceToolOf(value: unknown): SpaceTool | null {
-  const t = obj(value)
-  if (typeof t.source !== 'string' || !t.source) return null
-  const account = obj(t.account)
+/** The account of the provider in use (§3.10): the fields and status of a space's account, `connected` of a personal one. */
+function spaceToolAccountOf(value: unknown): SpaceToolAccount {
+  const account = obj(value)
   const kind = accountKindOf(account.kind)
   const setBy = obj(account.setBy)
-  const pending = obj(t.pending)
   return {
-    source: t.source,
-    title: str(t.title, t.source),
-    ...withFeature(t.feature),
-    description: str(t.description),
-    state: STATES.includes(t.state as SpaceToolState) ? (t.state as SpaceToolState) : 'ready',
+    kind,
+    ...(kind === 'space'
+      ? {
+          fields: accountFieldsOf(account.fields),
+          set: account.set === true,
+          setAt: typeof account.setAt === 'string' ? account.setAt : null,
+          setBy: typeof setBy.name === 'string' ? { name: setBy.name } : null,
+        }
+      : {}),
+    ...(kind === 'personal'
+      ? {
+          connected: account.connected === true,
+          ...(typeof account.source === 'string' && account.source ? { source: account.source } : {}),
+        }
+      : {}),
+  }
+}
+
+/** The values of an entry or a choice: text values by binding name; an entry with none names nothing. */
+function valuesOf(value: unknown): Record<string, string> | undefined {
+  const v = obj(value)
+  const out: Record<string, string> = {}
+  for (const [name, text] of Object.entries(v)) if (typeof text === 'string') out[name] = text
+  return Object.keys(out).length ? out : undefined
+}
+
+/** The list of the provider in use (PROF-TOOL-022, PROF-TOOL-033); null for a value with no label. */
+export function spaceToolListOf(value: unknown): SpaceToolList | null {
+  const l = obj(value)
+  if (typeof l.label !== 'string') return null
+  const any = l.any === true
+  return {
+    label: l.label,
+    any,
+    entries: any
+      ? []
+      : list(l.entries)
+          .filter((e) => typeof e.label === 'string')
+          .map((e) => {
+            const values = valuesOf(e.values)
+            return { ...(values ? { values } : {}), label: e.label as string }
+          }),
+    anyLabel: str(l.anyLabel),
+    anyAllowed: l.anyAllowed === true,
+    choices: l.choices === true,
+    // only an answer that says so takes a typed entry: a feature's location never does (`typed: false`)
+    typed: l.typed === true,
+    maxEntries:
+      typeof l.maxEntries === 'number' && Number.isInteger(l.maxEntries) && l.maxEntries > 0 ? l.maxEntries : null,
+  }
+}
+
+/** A provider of the owner's answer (PROF-TOOL-033); null for one with no source. */
+function providerOf(value: unknown): SpaceToolProvider | null {
+  const p = obj(value)
+  if (typeof p.source !== 'string' || !p.source) return null
+  return {
+    source: p.source,
+    title: str(p.title, p.source),
+    description: str(p.description),
+    account: { kind: accountKindOf(obj(p.account).kind) },
+    default: p.default === true,
+  }
+}
+
+/**
+ * A feature of a space as the agent gives it, with what is missing filled in (PROF-TOOL-033); null for one with no
+ * feature. What belongs to a provider in use (its account, bindings, list and tools) is read only while one is.
+ */
+export function spaceToolOf(value: unknown): SpaceTool | null {
+  const t = obj(value)
+  const f = obj(t.feature)
+  if (typeof f.id !== 'string' || !f.id) return null
+  const profile = obj(f.profile)
+  const source = typeof t.source === 'string' && t.source ? t.source : null
+  const pending = obj(t.pending)
+  const inUse = source !== null
+  return {
+    feature: {
+      id: f.id,
+      title: str(f.title, f.id),
+      profile: typeof profile.id === 'string' && profile.id ? { id: profile.id, version: str(profile.version) } : null,
+    },
+    providers: list(t.providers)
+      .map(providerOf)
+      .filter((p): p is SpaceToolProvider => !!p),
+    source,
+    title: inUse ? str(t.title, source) : null,
+    description: inUse ? str(t.description) : '',
+    state: STATES.includes(t.state as SpaceToolState) ? (t.state as SpaceToolState) : inUse ? 'ready' : 'available',
     ...(t.add === 'auto' || t.add === 'owner' ? { add: t.add } : {}),
     guests: t.guests === true,
-    account: {
-      kind,
-      ...(kind === 'space'
-        ? {
-            fields: accountFieldsOf(account.fields),
-            set: account.set === true,
-            setAt: typeof account.setAt === 'string' ? account.setAt : null,
-            setBy: typeof setBy.name === 'string' ? { name: setBy.name } : null,
-          }
-        : {}),
-      ...(kind === 'personal'
-        ? {
-            connected: account.connected === true,
-            ...(typeof account.source === 'string' && account.source ? { source: account.source } : {}),
-          }
-        : {}),
-    },
-    bindings: list(t.bindings).map((b) => ({
+    ...(inUse && typeof t.conformant === 'boolean' ? { conformant: t.conformant } : {}),
+    capabilities:
+      inUse && Array.isArray(t.capabilities) ? t.capabilities.filter((c): c is string => typeof c === 'string') : [],
+    account: inUse ? spaceToolAccountOf(t.account) : null,
+    list: inUse ? spaceToolListOf(t.list) : null,
+    bindings: (inUse ? list(t.bindings) : []).map((b) => ({
       name: str(b.name, str(b.label)),
       label: str(b.label, str(b.name)),
       value: typeof b.value === 'string' ? b.value : null,
@@ -312,7 +492,7 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
           }
         : {}),
     })),
-    tools: list(t.tools)
+    tools: (inUse ? list(t.tools) : [])
       .filter((x) => typeof x.title === 'string' || typeof x.name === 'string')
       .map((x) => {
         const rule = ruleOf(x.rule, 'approval')
@@ -340,27 +520,58 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
   }
 }
 
-/** `GET {sessions}/spaces/{id}/tools` (PROF-TOOL-001): the sources in the agent's order. */
+/** `GET {sessions}/spaces/{id}/tools` (PROF-TOOL-001, PROF-TOOL-033): one item per feature, in the template's order. */
 export function spaceToolsOf(body: unknown): SpaceTool[] {
   return list(obj(body).tools)
     .map(spaceToolOf)
     .filter((t): t is SpaceTool => !!t)
 }
 
-/** What `ayni.space.tools.changed` says; null for a value that is not one. */
+/**
+ * What `ayni.space.tools.changed` says (PROF-TOOL-006): the feature, the provider, the former one for a change of
+ * provider; null for a value that is not one, one that names no feature among them.
+ */
 export function spaceToolsChangeOf(value: unknown): SpaceToolsChange | null {
   const v = obj(value)
-  if (typeof v.spaceId !== 'string' || typeof v.source !== 'string') return null
+  if (typeof v.spaceId !== 'string' || (typeof v.source !== 'string' && v.source !== null)) return null
+  if (typeof v.feature !== 'string' || !v.feature) return null
   const outcomes = ['applied', 'declined', 'expired', 'failed', 'cancelled'] as const
   const outcome = outcomes.find((o) => o === v.outcome)
   if (!outcome) return null
   return {
     spaceId: v.spaceId,
-    source: v.source,
+    feature: v.feature,
+    source: typeof v.source === 'string' && v.source ? v.source : null,
+    ...(typeof v.formerSource === 'string' && v.formerSource ? { formerSource: v.formerSource } : {}),
     state: STATES.includes(v.state as SpaceToolState) ? (v.state as SpaceToolState) : 'ready',
     ...(typeof v.changeId === 'string' ? { changeId: v.changeId } : {}),
     outcome,
   }
+}
+
+/** Whether an announced change concerns a feature of a space (PROF-TOOL-006): its waiting change ends with it. */
+export function concernsFeature(
+  change: Pick<SpaceToolsChange, 'spaceId' | 'feature'>,
+  spaceId: string,
+  featureId: string
+): boolean {
+  return change.spaceId === spaceId && change.feature === featureId
+}
+
+/** The choices of a location the provider answered (PROF-TOOL-023): at most fifty, each once, in the order read. */
+export function listChoicesOf(body: unknown): ListChoice[] {
+  const seen = new Set<string>()
+  const out: ListChoice[] = []
+  for (const c of list(obj(body).choices)) {
+    const values = valuesOf(c.values)
+    if (!values || typeof c.label !== 'string') continue
+    const key = entryKeyOf(values)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({ values, label: c.label })
+    if (out.length === LIST_CHOICES_MAX) break
+  }
+  return out
 }
 
 /** The sources of a conversation's tool results (PROF-TOOL-011). */
@@ -428,24 +639,258 @@ export function loosens(next: ToolRule, current: ToolRule): boolean {
  * space's tools opens, or signs in to, that row.
  */
 export function accountSourceOf(tool: Pick<SpaceTool, 'source' | 'account'>): string {
-  return tool.account.kind === 'personal' ? (tool.account.source ?? tool.source) : tool.source
+  return (tool.account?.kind === 'personal' ? tool.account.source : undefined) ?? tool.source ?? ''
 }
 
-/** Whether the source is in the space: added, ready or still missing something. */
+/** Whether the feature has a provider in the space: added, ready or still missing something. */
 export function isAdded(tool: Pick<SpaceTool, 'state'>): boolean {
   return tool.state === 'setup' || tool.state === 'ready'
 }
 
-/** Whether the owner may add the source: offered and not added, or an automatic one switched off. */
+/** Whether the owner may add the feature, choosing its provider: offered and not added, or an automatic one switched off. */
 export function canAdd(tool: Pick<SpaceTool, 'state'>): boolean {
   return tool.state === 'available' || tool.state === 'off'
 }
 
-/** What a source in `setup` still lacks (UI-CONV-050): the labels of its bindings with no value, and its account. */
-export function missingOf(tool: Pick<SpaceTool, 'bindings' | 'account'>): { bindings: string[]; account: boolean } {
+// ---------------------------------------------------------------------------------------------------- providers
+
+/**
+ * The provider Add starts from (UI-CONV-065): the template's default, "Suggested" and selected among several, else the
+ * first the template allows; none when the answer gives no provider (a member's).
+ */
+export function defaultProviderOf(tool: Pick<SpaceTool, 'providers'>): SpaceToolProvider | undefined {
+  return tool.providers.find((p) => p.default) ?? tool.providers[0]
+}
+
+/**
+ * Whether Add first shows the providers to choose among, under "Choose a provider for <feature>" (UI-CONV-065): a
+ * feature whose template allows several; with one, Add opens that provider's panel.
+ */
+export function choosesProvider(tool: Pick<SpaceTool, 'providers'>): boolean {
+  return tool.providers.length > 1
+}
+
+/**
+ * Whether the panel offers Change provider (UI-CONV-066): a provider in use, and another the template allows. A feature
+ * with one provider shows none.
+ */
+export function canChangeProvider(tool: Pick<SpaceTool, 'providers' | 'source'>): boolean {
+  return tool.source !== null && tool.providers.some((p) => p.source !== tool.source)
+}
+
+/** The providers Change provider shows (UI-CONV-066): those the template allows but the one in use, in its order. */
+export function otherProvidersOf(tool: Pick<SpaceTool, 'providers' | 'source'>): SpaceToolProvider[] {
+  return tool.providers.filter((p) => p.source !== tool.source)
+}
+
+/**
+ * What the question of a change of provider names (UI-CONV-052, UI-CONV-066): the new provider, the feature and the
+ * former one, by their titles ("Use Nextcloud for Files in Project Alpha, in place of Google Drive?"); null for a source
+ * that is not another provider of the feature, or a feature with no provider in use.
+ */
+export function providerChangeOf(
+  tool: Pick<SpaceTool, 'providers' | 'source' | 'title' | 'feature'>,
+  source: string
+): { next: string; feature: string; former: string } | null {
+  const next = otherProvidersOf(tool).find((p) => p.source === source)
+  if (!next || tool.source === null) return null
+  return { next: next.title, feature: tool.feature.title, former: tool.title ?? tool.source }
+}
+
+/** The request of a change of provider (PROF-TOOL-034): the new provider, and the one in use it replaces. */
+export function providerChangeInputOf(tool: Pick<SpaceTool, 'source'>, source: string): AddSpaceToolInput {
+  return { source, ...(tool.source ? { replaces: tool.source } : {}) }
+}
+
+/**
+ * Whether the provider of a feature offers it as its contract says (UI-CONV-065, agent TOOL-FEAT-011): `conformant:
+ * false` shows "<provider> does not offer <feature> as <agent> expects. Choose another provider." in place of its state,
+ * and no tool. Absent (before any connection, or a category) is not a refusal.
+ */
+export function isConformant(tool: Pick<SpaceTool, 'conformant'>): boolean {
+  return tool.conformant !== false
+}
+
+/** The line of a list (UI-CONV-060): its label and the labels of its entries, or its `anyLabel` for any value. */
+export interface ListLine {
+  label: string
+  values: string[]
+}
+
+/**
+ * The line of a list (UI-CONV-060, UI-CONV-052): "Repositories: All of 2060-io, verana-labs/vs-agent", or "<label>:
+ * <anyLabel>" for any value; null for a list with no entry, which binds nothing yet.
+ */
+export function listLineOf(
+  list: Pick<SpaceToolList, 'label' | 'any' | 'entries' | 'anyLabel'> | null
+): ListLine | null {
+  if (!list) return null
+  if (list.any) return { label: list.label, values: [list.anyLabel] }
+  return list.entries.length ? { label: list.label, values: list.entries.map((e) => e.label) } : null
+}
+
+/**
+ * The line of a feature's provider (UI-CONV-065, UI-CONV-052), on its row of Tools and in About: the provider's title,
+ * what it is bound to (each binding with a value as "<label>: <value>", the `valueLabel` of one that has it, then the
+ * line of its list) and whose account its calls use, in the words of UI-CONV-049 (none for `none`); the parts a screen
+ * joins with " · ", such as "Nextcloud · Folders: /Projects/Alpha · Uses the space's account". Null while the feature
+ * has no provider: its row then reads "Choose a provider".
+ */
+export interface ProviderLine {
+  provider: string
+  bindings: { label: string; value: string }[]
+  list: ListLine | null
+  account: Exclude<ToolAccountKind, 'none'> | null
+}
+
+export function providerLineOf(
+  tool: Pick<SpaceTool, 'source' | 'title' | 'bindings' | 'list' | 'account'>
+): ProviderLine | null {
+  if (tool.source === null) return null
+  const kind = tool.account?.kind ?? 'none'
+  return {
+    provider: tool.title ?? tool.source,
+    bindings: tool.bindings
+      .filter((b) => b.value !== null && b.value !== '')
+      .map((b) => ({ label: b.label, value: b.valueLabel || (b.value as string) })),
+    list: listLineOf(tool.list),
+    account: kind === 'none' ? null : kind,
+  }
+}
+
+/**
+ * What a feature in `setup` still lacks (UI-CONV-050, UI-CONV-052): the labels of its bindings with no value, the label
+ * of its list while it holds no entry, and its account while a space's account is not set; "Needs setup: Folders,
+ * account".
+ */
+export function missingOf(tool: Pick<SpaceTool, 'bindings' | 'account' | 'list'>): {
+  bindings: string[]
+  list: string | null
+  account: boolean
+} {
   return {
     bindings: tool.bindings.filter((b) => b.value === null || b.value === '').map((b) => b.label),
-    account: tool.account.kind === 'space' && tool.account.set !== true,
+    list: tool.list && !tool.list.any && !tool.list.entries.length ? tool.list.label : null,
+    account: tool.account?.kind === 'space' && tool.account.set !== true,
+  }
+}
+
+/** The parts of "Needs setup: <what is missing>" (UI-CONV-052), in order: bindings, the list, then `account`. */
+export function missingPartsOf(tool: Pick<SpaceTool, 'bindings' | 'account' | 'list'>): {
+  labels: string[]
+  account: boolean
+} {
+  const missing = missingOf(tool)
+  return { labels: [...missing.bindings, ...(missing.list ? [missing.list] : [])], account: missing.account }
+}
+
+// ---------------------------------------------------------------------------------------------------- a list
+
+/** The most choices one search answers (PROF-TOOL-023). */
+export const LIST_CHOICES_MAX = 50
+/** The longest text a search takes (PROF-TOOL-023, `400 bad-request` with `field: "text"` beyond it). */
+export const CHOICES_TEXT_MAX = 100
+/** How long the owner's typing pauses before the search is asked (UI-CONV-059). */
+export const CHOICES_PAUSE_MS = 400
+
+/** The text a search of a list sends (PROF-TOOL-023): trimmed, at most 100 characters; null for none, which asks nothing. */
+export function choicesTextOf(typed: string): string | null {
+  const text = typed.trim().slice(0, CHOICES_TEXT_MAX)
+  return text ? text : null
+}
+
+const entryKeyOf = (values: Record<string, string>): string =>
+  JSON.stringify(
+    Object.keys(values)
+      .sort()
+      .map((k) => [k, values[k]])
+  )
+
+/**
+ * Whether one entry covers another (§3.10, UI-CONV-059): it names no more of the bindings, each with the same value; an
+ * entry covers itself.
+ */
+export function entryCovers(cover: Record<string, string>, entry: Record<string, string>): boolean {
+  const names = Object.keys(cover)
+  return names.length > 0 && names.every((name) => entry[name] === cover[name])
+}
+
+/** The list as the owner changes it in the panel, until the Save of the settings sends it whole (UI-CONV-059). */
+export interface ListForm {
+  any: boolean
+  /** each with its `values`, in the owner's order */
+  entries: { values: Record<string, string>; label: string }[]
+}
+
+/** The form of the list in force: its entries with their values (the owner's answer), or any. */
+export function listFormOf(list: Pick<SpaceToolList, 'any' | 'entries'>): ListForm {
+  return {
+    any: list.any,
+    entries: list.entries.flatMap((e) => (e.values ? [{ values: e.values, label: e.label }] : [])),
+  }
+}
+
+/** Whether a choice is in the list: an entry equals it or covers it, which reads "In the list" (UI-CONV-059). */
+export function choiceInList(form: ListForm, choice: Pick<ListChoice, 'values'>): boolean {
+  return form.entries.some((e) => entryCovers(e.values, choice.values))
+}
+
+/** Whether Add is at the most entries the list holds (`maxEntries`): disabled, "A list holds at most <n> entries." */
+export function listIsFull(form: ListForm, list: Pick<SpaceToolList, 'maxEntries'>): boolean {
+  return list.maxEntries !== null && form.entries.length >= list.maxEntries
+}
+
+/**
+ * The list with a choice added at its end (UI-CONV-059): the entries it covers leave the list; a choice already in the
+ * list, or one beyond `maxEntries`, changes nothing.
+ */
+export function withListEntry(form: ListForm, choice: ListChoice, list: Pick<SpaceToolList, 'maxEntries'>): ListForm {
+  if (choiceInList(form, choice)) return form
+  const kept = form.entries.filter((e) => !entryCovers(choice.values, e.values))
+  if (list.maxEntries !== null && kept.length >= list.maxEntries) return form
+  return { any: false, entries: [...kept, { values: choice.values, label: choice.label }] }
+}
+
+/** The list without the entry at an index (Remove, UI-CONV-059). */
+export function withoutListEntry(form: ListForm, index: number): ListForm {
+  return { ...form, entries: form.entries.filter((_, i) => i !== index) }
+}
+
+/** Whether the form differs from the list in force: its choice of any, or its entries and their order. */
+export function listChanged(form: ListForm, list: Pick<SpaceToolList, 'any' | 'entries'>): boolean {
+  const held = listFormOf(list)
+  if (form.any !== held.any) return true
+  if (form.any) return false
+  return (
+    form.entries.length !== held.entries.length ||
+    form.entries.some((e, i) => entryKeyOf(e.values) !== entryKeyOf(held.entries[i]?.values ?? {}))
+  )
+}
+
+/** The list a request sends, whole (PROF-TOOL-022): `{ any: true }`, or the values of each entry in order. */
+export function listInputOf(form: ListForm): SpaceToolListInput {
+  return form.any ? { any: true } : { entries: form.entries.map((e) => ({ ...e.values })) }
+}
+
+/**
+ * Why the search of a list answered nothing (PROF-TOOL-023, UI-CONV-059): `notConnected`, the owner's own account is
+ * not connected ("Connect your account to choose", with Connect); `spaceAccountNotSet`, the space's account is not set;
+ * `unavailable`, the provider could not be read ("<source> cannot be searched now. Try again later.").
+ */
+export type ChoicesRefusal = 'notConnected' | 'spaceAccountNotSet' | 'unavailable' | 'notOwner' | 'notFound' | 'other'
+
+export function choicesRefusalOf(error: { status?: number; code?: string } | undefined): ChoicesRefusal {
+  switch (error?.code) {
+    case 'not-connected':
+      return 'notConnected'
+    case 'space-account-not-set':
+      return 'spaceAccountNotSet'
+    case 'source-unavailable':
+      return 'unavailable'
+    case 'not-owner':
+      return 'notOwner'
+    default:
+      return error?.status === 502 ? 'unavailable' : error?.status === 404 ? 'notFound' : 'other'
   }
 }
 
@@ -457,11 +902,18 @@ export function toolsNeedingAttention(tool: Pick<SpaceTool, 'tools'>): SpaceTool
   return tool.tools.filter((x) => x.rule === 'approval' && x.approval?.state === 'needs-attention')
 }
 
-/** The state of a source's row in the owner's Tools segment (UI-CONV-050). */
-export type ToolRowState = 'notAdded' | 'needsSetup' | 'ready' | 'off' | 'waiting'
+/**
+ * The state of a feature's row in the owner's Tools segment (UI-CONV-050, UI-CONV-065): "Waiting for your phone" while
+ * a change waits; `notConformant` for a provider that does not offer its feature as its contract says, whose words
+ * stand in place of its state; else its state.
+ */
+export type ToolRowState = 'notAdded' | 'needsSetup' | 'ready' | 'off' | 'waiting' | 'notConformant'
 
-export function toolRowStateOf(tool: Pick<SpaceTool, 'state' | 'pending'>): ToolRowState {
+export function toolRowStateOf(
+  tool: Pick<SpaceTool, 'state' | 'pending'> & Partial<Pick<SpaceTool, 'conformant'>>
+): ToolRowState {
   if (tool.pending) return 'waiting'
+  if (tool.conformant === false && isAdded(tool)) return 'notConformant'
   return tool.state === 'available'
     ? 'notAdded'
     : tool.state === 'setup'
@@ -554,9 +1006,9 @@ export function ruleGroupsOf(tool: Pick<SpaceTool, 'tools'>): ToolRuleGroup[] {
   return groups.sort((a, b) => strictnessOf(a.rule) - strictnessOf(b.rule)).map(({ key: _key, ...group }) => group)
 }
 
-/** The tools a space's About shows (UI-CONV-031): its `ready` sources only. */
+/** The tools a space's About shows (UI-CONV-031): its `ready` features, each with its provider, in the template's order. */
 export function readyToolsOf(tools: readonly SpaceTool[]): SpaceTool[] {
-  return tools.filter((t) => t.state === 'ready')
+  return tools.filter((t) => t.state === 'ready' && t.source !== null)
 }
 
 /**
@@ -600,6 +1052,15 @@ export function toolRefusalOf(
   | { at: 'account'; field: string | null; reason: 'badToken' | 'fieldsChanged' }
   /** a field of an approval policy (`approvals.<tool>…`, profile 3.5.4, PROF-TOOL-036) */
   | { at: 'policy'; refusal: PolicyRefusal }
+  /**
+   * an entry of a list (`list.entries.<i>` or `list.entries.<i>.<name>`, PROF-TOOL-022), at that entry's row: its value
+   * not in a shape or a pattern, a repeat, or a place each member's own account would see differently
+   */
+  | { at: 'entry'; index: number; reason: 'badBinding' | 'repeatedEntry' | 'notPortable' }
+  /** the entries of a list (`list.entries`), under its Add: more than it holds */
+  | { at: 'entries'; reason: 'tooManyEntries' }
+  /** the choice of any value (`list.any`), at that choice */
+  | { at: 'any'; reason: 'anyNotAllowed' }
   | {
       at: 'panel'
       reason:
@@ -607,6 +1068,7 @@ export function toolRefusalOf(
         | 'changePending'
         | 'notAdded'
         | 'alreadyAdded'
+        | 'featureHasProvider'
         | 'notOwner'
         | 'noSpaceAccount'
         | 'spaceAccountNotSet'
@@ -619,6 +1081,15 @@ export function toolRefusalOf(
   if (policy) return { at: 'policy', refusal: policy }
   const code = error?.code
   const field = error?.field ?? ''
+  const entry = /^list\.entries\.(\d+)(\.|$)/.exec(field)
+  if (entry && (code === 'bad-binding' || code === 'repeated-entry' || code === 'not-portable'))
+    return {
+      at: 'entry',
+      index: Number(entry[1]),
+      reason: code === 'bad-binding' ? 'badBinding' : code === 'repeated-entry' ? 'repeatedEntry' : 'notPortable',
+    }
+  if (code === 'too-many-entries') return { at: 'entries', reason: 'tooManyEntries' }
+  if (code === 'any-not-allowed') return { at: 'any', reason: 'anyNotAllowed' }
   const named = field.replace(/^(bindings|calls)\./, '')
   if (code === 'bad-binding' || code === 'pinned-by-pack')
     return { at: 'binding', name: named, reason: code === 'bad-binding' ? 'badBinding' : 'pinnedByPack' }
@@ -637,19 +1108,21 @@ export function toolRefusalOf(
           ? 'notAdded'
           : code === 'already-added'
             ? 'alreadyAdded'
-            : code === 'not-owner'
-              ? 'notOwner'
-              : code === 'no-space-account'
-                ? 'noSpaceAccount'
-                : code === 'space-account-not-set'
-                  ? 'spaceAccountNotSet'
-                  : code === 'provider-not-used'
-                    ? 'providerNotUsed'
-                    : code === 'personal-space'
-                      ? 'personalSpace'
-                      : error?.status === 404
-                        ? 'notFound'
-                        : 'other'
+            : code === 'feature-has-provider'
+              ? 'featureHasProvider'
+              : code === 'not-owner'
+                ? 'notOwner'
+                : code === 'no-space-account'
+                  ? 'noSpaceAccount'
+                  : code === 'space-account-not-set'
+                    ? 'spaceAccountNotSet'
+                    : code === 'provider-not-used'
+                      ? 'providerNotUsed'
+                      : code === 'personal-space'
+                        ? 'personalSpace'
+                        : error?.status === 404
+                          ? 'notFound'
+                          : 'other'
   return { at: 'panel', reason }
 }
 

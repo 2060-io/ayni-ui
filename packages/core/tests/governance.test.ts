@@ -287,6 +287,7 @@ describe('the stewards (PROF-SPACE-009, agent D136)', () => {
 describe('the approval policy of a tool of a space (PROF-TOOL-036, UI-CONV-049, UI-CONV-067)', () => {
   const tool = (approval: unknown, rule = 'approval') =>
     spaceToolOf({
+      feature: { id: 'social', title: 'Social posting', profile: null },
       source: 'x',
       title: 'Post on X',
       state: 'ready',
@@ -516,6 +517,7 @@ describe('the approval policy of a tool of a space (PROF-TOOL-036, UI-CONV-049, 
       return json(
         {
           tool: {
+            feature: { id: 'social', title: 'Social posting', profile: null },
             source: 'x',
             title: 'Post on X',
             state: 'ready',
