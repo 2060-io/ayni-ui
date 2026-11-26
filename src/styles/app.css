@@ -3649,6 +3649,36 @@ mark.hit.current {
   display: flex;
   flex-direction: column;
 }
+/* the sources of an account that several sources use, under its row, each with Allow or Allow more (UI-CONV-061) */
+.account-access {
+  list-style: none;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.account-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+.account-source-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.account-source-missing {
+  font-size: 13px;
+  color: var(--muted);
+}
 .account-notice {
   align-self: flex-start;
 }

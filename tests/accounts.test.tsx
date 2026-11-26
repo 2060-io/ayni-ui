@@ -103,7 +103,49 @@ const GITHUB_CONNECTED = {
   state: 'connected',
   account: { id: 'acc_2', label: 'ana-rios', connectedAt: '2026-11-21T10:05:00Z', lastUsedAt: null },
 }
+/**
+ * One Google account for Google Drive and Google Calendar (package 3.5.10, §3.13, agent D118), as ayni-agent's
+ * tests/googleAccount.test.ts has the agent list it: before any sign-in, each source not allowed.
+ */
+const GOOGLE = {
+  source: 'google',
+  title: 'Google',
+  description: 'Your files and your calendar at Google, with your own rights there',
+  method: 'oauth',
+  binding: null,
+  usedIn: [{ kind: 'personal' }],
+  state: 'not-connected',
+  reason: null,
+  moreAccess: false,
+  account: null,
+  attempt: null,
+  revokesAtSource: true,
+  features: [
+    { id: 'files', title: 'Files' },
+    { id: 'calendar', title: 'Calendar' },
+  ],
+  access: [
+    { source: 'drive', title: 'Google Drive', allowed: 'none' },
+    { source: 'calendar', title: 'Google Calendar', allowed: 'none' },
+  ],
+}
+/** Ana allowed Google Drive and unticked `drive` at Google's consent: Drive in part, Calendar not yet. */
+const GOOGLE_IN_PART = {
+  ...GOOGLE,
+  state: 'connected',
+  account: { id: 'acc_g', label: 'ana@example.org', connectedAt: '2026-11-22T09:02:00Z', lastUsedAt: null },
+  access: [
+    { source: 'drive', title: 'Google Drive', allowed: 'some', missing: ['Create a file', "Replace a file's content"] },
+    { source: 'calendar', title: 'Google Calendar', allowed: 'none' },
+  ],
+}
+/** Then Google Calendar allowed on the same account. */
+const GOOGLE_CALENDAR = {
+  ...GOOGLE_IN_PART,
+  access: [GOOGLE_IN_PART.access[0], { source: 'calendar', title: 'Google Calendar', allowed: 'all' }],
+}
 const SIGN_IN = 'https://github.com/login/oauth/authorize?client_id=Iv1.x&state=s&code_challenge=c'
+const GOOGLE_SIGN_IN = 'https://accounts.example.org/o/oauth2/v2/auth?client_id=x&state=s'
 const TASK_TOKEN = `tt_${'A1b2C3d4'.repeat(4)}`
 
 /** A tab that the browser opens for a sign-in: what the page did to it. */
@@ -671,5 +713,304 @@ describe('Disconnect (UI-CONV-056)', () => {
       byText(row('Relaticle CRM')?.querySelector('[role="alertdialog"]') as HTMLElement, 'button', 'Disconnect')
     )
     await until(() => row('Relaticle CRM')?.querySelector('.account-notice')?.textContent === 'Disconnected')
+  })
+})
+
+describe('an account that several sources use (UI-CONV-061, UI-CONV-063, PROF-TOOL-028, PROF-TOOL-029)', () => {
+  /** The lines under a row: each source's words, the tools not allowed, its control. */
+  const sources = (row: HTMLElement | undefined) =>
+    [...(row?.querySelectorAll<HTMLElement>('.account-access .account-source') ?? [])].map((line) => ({
+      state: line.querySelector('.account-source-state')?.textContent,
+      missing: line.querySelector('.account-source-missing')?.textContent,
+      control: line.querySelector('button')?.textContent,
+    }))
+  const attempt = (attemptId: string) => ({ attemptId, authorizationUrl: GOOGLE_SIGN_IN, expiresAt: inMinutes(600) })
+  const allow = (row: HTMLElement | undefined, title: string, control: string) => {
+    const line = [...(row?.querySelectorAll<HTMLElement>('.account-source') ?? [])].find((l) =>
+      l.querySelector('.account-source-state')?.textContent?.startsWith(`${title}:`)
+    ) as HTMLElement
+    return byText(line, 'button', control) as HTMLButtonElement
+  }
+
+  it('shows under its row one line per source, allowed in part with the tools not allowed, or not allowed', async () => {
+    const { row } = await accounts([], { list: () => [GOOGLE_IN_PART, GITHUB] })
+    const google = row('Google') as HTMLElement
+    // the account's own row keeps its state and its controls
+    expect(texts(google)).toMatchObject({
+      features: 'For Files, Calendar',
+      used: 'Used in Personal',
+      state: 'Connected as ana@example.org · since Nov 22',
+      controls: ['Disconnect'],
+    })
+    expect(sources(google)).toEqual([
+      {
+        state: 'Google Drive: allowed in part',
+        missing: "Not allowed: Create a file, Replace a file's content",
+        control: 'Allow more',
+      },
+      { state: 'Google Calendar: not allowed', missing: undefined, control: 'Allow' },
+    ])
+    // under the row, after its state and controls
+    const lines = google.querySelector('.account-access') as Element
+    expect(google.querySelector('.account-controls')?.compareDocumentPosition(lines)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
+    // each control is named, for a screen reader, by the line of its source
+    const more = allow(google, 'Google Drive', 'Allow more')
+    expect(document.getElementById(more.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Google Drive: allowed in part'
+    )
+    // an item with no access shows no line
+    expect(sources(row('GitHub'))).toEqual([])
+    expect(row('GitHub')?.querySelector('.account-access')).toBeNull()
+  })
+
+  it('shows a source allowed with no control, and every source not allowed with Allow before any sign-in', async () => {
+    const { row } = await accounts([], {
+      list: () => [GOOGLE_CALENDAR, { ...GOOGLE, source: 'other', title: 'Other' }],
+    })
+    expect(sources(row('Google'))).toEqual([
+      {
+        state: 'Google Drive: allowed in part',
+        missing: "Not allowed: Create a file, Replace a file's content",
+        control: 'Allow more',
+      },
+      { state: 'Google Calendar: allowed', missing: undefined, control: undefined },
+    ])
+    // not connected: the row's Connect, and Allow on each source
+    expect(texts(row('Other'))).toMatchObject({ state: 'Not connected', controls: ['Connect'] })
+    expect(sources(row('Other'))).toEqual([
+      { state: 'Google Drive: not allowed', missing: undefined, control: 'Allow' },
+      { state: 'Google Calendar: not allowed', missing: undefined, control: 'Allow' },
+    ])
+  })
+
+  it("Allow signs in for that source alone, as Connect does, and the row follows the agent's change", async () => {
+    const log: string[] = []
+    const { tab: opened, open } = fakeTab(log)
+    let list: unknown[] = [GOOGLE_IN_PART]
+    const { hub, row, agent } = await accounts(
+      [
+        [
+          'POST /connections/calendar/authorize',
+          () => {
+            log.push('authorize')
+            return json(attempt('att_c'), 202)
+          },
+        ],
+      ],
+      { list: () => list }
+    )
+    await click(allow(row('Google'), 'Google Calendar', 'Allow'))
+    await until(() => opened.location.replace.mock.calls.length === 1)
+    // a new tab at the press, then the agent, then the tab at the sign-in: for Calendar, not for the whole account
+    expect(log).toEqual(['open', 'authorize'])
+    expect(open).toHaveBeenCalledWith('', '_blank')
+    expect(opened.opener).toBeNull()
+    expect(opened.location.replace).toHaveBeenCalledWith(GOOGLE_SIGN_IN)
+    expect(agent.find('POST', '/connections/calendar/authorize')[0]?.body).toEqual({})
+    expect(agent.find('POST', '/connections/google/authorize')).toHaveLength(0)
+    // while it waits, under the row: the time left and Cancel, and no other control
+    await until(() => row('Google')?.querySelector('.account-waiting'))
+    expect(row('Google')?.querySelector('.account-waiting .tool-pending-text')?.textContent).toBe(
+      'Finish in the browser · 10:00 left'
+    )
+    expect(sources(row('Google')).map((s) => s.control)).toEqual([undefined, undefined])
+    expect(texts(row('Google')).controls).toEqual([])
+    // allowed at Google: the same account, Calendar allowed, without a reload
+    list = [GOOGLE_CALENDAR]
+    await announce(hub, {
+      source: 'google',
+      state: 'connected',
+      moreAccess: false,
+      accountId: 'acc_g',
+      label: 'ana@example.org',
+      attemptId: 'att_c',
+      outcome: 'connected',
+    })
+    await until(() => sources(row('Google'))[1]?.state === 'Google Calendar: allowed')
+    expect(row('Google')?.querySelector('.account-notice')?.textContent).toBe('Connected as ana@example.org')
+    expect(sources(row('Google'))).toEqual([
+      {
+        state: 'Google Drive: allowed in part',
+        missing: "Not allowed: Create a file, Replace a file's content",
+        control: 'Allow more',
+      },
+      { state: 'Google Calendar: allowed', missing: undefined, control: undefined },
+    ])
+    expect(row('Google')?.querySelector('.account-waiting')).toBeNull()
+  })
+
+  it("Allow more signs in for that source, and the row's Connect and Reconnect for the account", async () => {
+    fakeTab()
+    const { row, agent } = await accounts(
+      [
+        ['POST /connections/drive/authorize', () => json(attempt('att_d'), 202)],
+        ['POST /connections/calendar/authorize', () => json(attempt('att_s'), 202)],
+        ['DELETE /connections/attempts/att_d', () => json(undefined, 204)],
+      ],
+      {
+        list: () => [
+          GOOGLE_IN_PART,
+          { ...GOOGLE, source: 'gone', title: 'Gone', usedIn: [{ kind: 'space', id: 'spc_alpha', title: 'Alpha' }] },
+        ],
+      }
+    )
+    await click(allow(row('Google'), 'Google Drive', 'Allow more'))
+    await until(() => agent.find('POST', '/connections/drive/authorize').length === 1)
+    await until(() => row('Google')?.querySelector('.account-waiting'))
+    await click(byText(row('Google') as HTMLElement, 'button', 'Cancel'))
+    await until(() => row('Google')?.querySelector('.account-notice')?.textContent === 'Cancelled. Nothing changed.')
+    expect(agent.find('DELETE', '/connections/attempts/att_d')).toHaveLength(1)
+    // an item used in a space only: its Allow sends that space, as its Connect does
+    await click(allow(row('Gone'), 'Google Calendar', 'Allow'))
+    await until(() => agent.find('POST', '/connections/calendar/authorize').length === 1)
+    expect(agent.find('POST', '/connections/calendar/authorize')[0]?.body).toEqual({ spaceId: 'spc_alpha' })
+    teardown()
+    vi.restoreAllMocks()
+    fakeTab()
+    // the row's own Connect, and Reconnect, are for the account: every source not allowed in full
+    const again = await accounts([['POST /connections/google/authorize', () => json(attempt('att_g'), 202)]], {
+      list: () => [
+        GOOGLE,
+        { ...GOOGLE_IN_PART, source: 'google2', title: 'Google 2', state: 'reconnect', reason: 'expired' },
+      ],
+    })
+    await click(byText(again.row('Google') as HTMLElement, '.account-controls button', 'Connect'))
+    await until(() => again.agent.find('POST', '/connections/google/authorize').length === 1)
+    expect(again.agent.find('POST', '/connections/google/authorize')[0]?.body).toEqual({})
+    expect(texts(again.row('Google 2')).controls).toEqual(['Reconnect', 'Disconnect'])
+  })
+
+  it('reads the row again on a change of its access that ends no sign-in', async () => {
+    let list: unknown[] = [GOOGLE_IN_PART]
+    const { agent, hub, row } = await accounts([], { list: () => list })
+    const reads = agent.find('GET', '/connections').length
+    // a refresh whose scopes differ: the agent announces the item, with no attempt and no outcome
+    list = [GOOGLE_CALENDAR]
+    await announce(hub, {
+      source: 'google',
+      state: 'connected',
+      moreAccess: false,
+      accountId: 'acc_g',
+      label: 'ana@example.org',
+    })
+    await until(() => sources(row('Google'))[1]?.state === 'Google Calendar: allowed')
+    expect(agent.find('GET', '/connections').length).toBe(reads + 1)
+    expect(row('Google')?.querySelector('.account-notice')).toBeNull()
+  })
+
+  it('says the outcomes of the sign-in of a source in the words of UI-CONV-058, under the row it names', async () => {
+    fakeTab()
+    let started = 0
+    const { hub, row } = await accounts(
+      [['POST /connections/drive/authorize', () => json(attempt(`att_${++started}`), 202)]],
+      { list: () => [GOOGLE] }
+    )
+    const outcomes: [string, string][] = [
+      // an ID token the agent refused (TOOL-OAUTH-016): not Google's signature, another audience, an expiry passed
+      ['failed', 'Not connected: Google did not complete the sign-in. Try again.'],
+      // an account that is not the person's by the email of the directory, or of another domain
+      ['wrong-person', 'Not connected: this Google account is not yours. Connect again with your own.'],
+    ]
+    for (const [outcome, words] of outcomes) {
+      await click(allow(row('Google'), 'Google Drive', 'Allow'))
+      await until(() => row('Google')?.querySelector('.account-waiting'))
+      await announce(hub, { source: 'google', state: 'not-connected', attemptId: `att_${started}`, outcome })
+      await until(() => row('Google')?.querySelector('.account-notice')?.textContent === words)
+      expect(row('Google')?.querySelector('.account-notice')?.getAttribute('role'), words).toBe('alert')
+      expect(sources(row('Google')).map((s) => s.control)).toEqual(['Allow', 'Allow'])
+    }
+  })
+
+  it('Disconnect asks by the account, and ends it for every source', async () => {
+    let list: unknown[] = [GOOGLE_CALENDAR]
+    const { row, agent } = await accounts(
+      [
+        [
+          'DELETE /connections/accounts/acc_g',
+          () => {
+            list = [GOOGLE]
+            return json({ connection: GOOGLE })
+          },
+        ],
+      ],
+      { list: () => list }
+    )
+    await click(byText(row('Google') as HTMLElement, '.account-controls button', 'Disconnect'))
+    const question = row('Google')?.querySelector('[role="alertdialog"]') as HTMLElement
+    expect(question.querySelector('span')?.textContent).toBe(
+      'Disconnect Google? Fleet support deletes its access to your account.'
+    )
+    await click(byText(question, 'button', 'Disconnect'))
+    await until(() => agent.find('DELETE', '/connections/accounts/acc_g').length === 1)
+    // the agent revokes it at Google: "Disconnected" alone
+    await until(() => row('Google')?.querySelector('.account-notice')?.textContent === 'Disconnected')
+    await until(() => texts(row('Google')).state === 'Not connected')
+    expect(texts(row('Google')).controls).toEqual(['Connect'])
+    expect(sources(row('Google'))).toEqual([
+      { state: 'Google Drive: not allowed', missing: undefined, control: 'Allow' },
+      { state: 'Google Calendar: not allowed', missing: undefined, control: 'Allow' },
+    ])
+  })
+})
+
+describe("the agent's key service (UI-CONV-061, UI-CONV-063, UI-CONV-056, PROF-TOOL-032)", () => {
+  const KEYS_DOWN = 'Not connected: Fleet support cannot keep your account just now. Try again in a few minutes.'
+
+  it('says the outcome unavailable of a sign-in under the row it names', async () => {
+    fakeTab()
+    const { hub, row } = await accounts(
+      [
+        [
+          'POST /connections/drive/authorize',
+          () => json({ attemptId: 'att_k', authorizationUrl: GOOGLE_SIGN_IN, expiresAt: inMinutes(600) }, 202),
+        ],
+      ],
+      { list: () => [GOOGLE] }
+    )
+    const line = row('Google')?.querySelector<HTMLElement>('.account-source') as HTMLElement
+    await click(byText(line, 'button', 'Allow'))
+    await until(() => row('Google')?.querySelector('.account-waiting'))
+    await announce(hub, { source: 'google', state: 'not-connected', attemptId: 'att_k', outcome: 'unavailable' })
+    await until(() => row('Google')?.querySelector('.account-notice')?.textContent === KEYS_DOWN)
+    expect(row('Google')?.querySelector('.account-notice')?.getAttribute('role')).toBe('alert')
+  })
+
+  it('says 503 keys-unavailable in the same words, under the row of an account of fields', async () => {
+    const { row } = await accounts([
+      ['PUT /connections/my_tasks/account', () => json({ error: 'keys-unavailable', message: 'down' }, 503)],
+    ])
+    await click(byText(row('My tasks') as HTMLElement, 'button', 'Connect'))
+    await type(row('My tasks')?.querySelector('input[type="password"]'), TASK_TOKEN)
+    await click(byText(row('My tasks') as HTMLElement, 'button', 'Save'))
+    await until(() => row('My tasks')?.querySelector('.account-notice')?.textContent === KEYS_DOWN)
+    // never at the field
+    expect(row('My tasks')?.querySelector('.field-error')).toBeNull()
+  })
+
+  it('tells the person to remove the access at the service when the agent could not tell it, revokedAtSource false', async () => {
+    const { row } = await accounts(
+      [['DELETE /connections/accounts/acc_g', () => json({ connection: GOOGLE, revokedAtSource: false })]],
+      { list: () => [GOOGLE_CALENDAR] }
+    )
+    await click(byText(row('Google') as HTMLElement, '.account-controls button', 'Disconnect'))
+    await click(byText(row('Google')?.querySelector('[role="alertdialog"]') as HTMLElement, 'button', 'Disconnect'))
+    await until(
+      () =>
+        row('Google')?.querySelector('.account-notice')?.textContent ===
+        'Disconnected. Fleet support could not tell Google: remove its access in your settings there.'
+    )
+    // told, or naming no revocation endpoint: as before
+    teardown()
+    const told = await accounts(
+      [['DELETE /connections/accounts/acc_g', () => json({ connection: GOOGLE, revokedAtSource: true })]],
+      { list: () => [GOOGLE_CALENDAR] }
+    )
+    await click(byText(told.row('Google') as HTMLElement, '.account-controls button', 'Disconnect'))
+    await click(
+      byText(told.row('Google')?.querySelector('[role="alertdialog"]') as HTMLElement, 'button', 'Disconnect')
+    )
+    await until(() => told.row('Google')?.querySelector('.account-notice')?.textContent === 'Disconnected')
   })
 })

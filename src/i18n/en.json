@@ -1041,6 +1041,12 @@
     },
     "binding": "{{label}}: {{value}}",
     "features": "For {{features}}",
+    "access": {
+      "allowed": "{{source}}: allowed",
+      "allowedInPart": "{{source}}: allowed in part",
+      "missing": "Not allowed: {{tools}}",
+      "notAllowed": "{{source}}: not allowed"
+    },
     "state": {
       "notConnected": "Not connected",
       "connected": "Connected as {{label}} · since {{date}}",
@@ -1054,6 +1060,8 @@
     "reconnect": "Reconnect",
     "disconnect": "Disconnect",
     "cancel": "Cancel",
+    "allow": "Allow",
+    "allowMore": "Allow more",
     "waiting": "Finish in the browser · {{time}} left",
     "outcome": {
       "connected": "Connected as {{label}}",
@@ -1064,15 +1072,18 @@
       "cancelled": "Cancelled. Nothing changed.",
       "wrongBinding": "Not connected: this account is for {{chosen}}. Connect again and choose {{expected}}.",
       "wrongPerson": "Not connected: this {{source}} account is not yours. Connect again with your own.",
+      "unavailable": "Not connected: {{agent}} cannot keep your account just now. Try again in a few minutes.",
       "disconnected": "Disconnected. {{source}} may still list {{agent}} in your settings there: you can remove it.",
-      "disconnectedRevoked": "Disconnected"
+      "disconnectedRevoked": "Disconnected",
+      "disconnectedNotTold": "Disconnected. {{agent}} could not tell {{source}}: remove its access in your settings there."
     },
     "unavailable": "{{source}} cannot be connected now. Try again later.",
     "notOffered": "This account is not offered to you.",
     "changed": "This account has changed. Open Your accounts again.",
     "disconnectConfirm": "Disconnect {{source}}? {{agent}} deletes its access to your account.",
     "card": {
-      "connect": "Connect your {{account}} account to use {{feature}}."
+      "connect": "Connect your {{account}} account to use {{feature}}.",
+      "allow": "Allow {{feature}} on your {{account}} account."
     },
     "empty": "{{agent}} offers you no account of your own to connect.",
     "noTab": "The browser did not open a new tab. Allow pop-ups for this page and try again."

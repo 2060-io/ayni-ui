@@ -372,7 +372,7 @@ describe('the endpoints of §3.11 as the client calls them (PROF-TOOL-014..017)'
     expect(set.state).toBe('connected')
     await client.setConnectionAccount('t', 'relaticle', { token: 'v' }, 'spc_sales')
     const gone = await client.disconnectAccount('t', 'acc_9')
-    expect(gone.state).toBe('not-connected')
+    expect(gone.connection.state).toBe('not-connected')
     expect(calls.map((c) => [c.method, c.path, c.body])).toEqual([
       ['PUT', '/connections/my_tasks/account', { values: { token: 'tt_x' } }],
       ['PUT', '/connections/relaticle/account', { values: { token: 'v' }, spaceId: 'spc_sales' }],

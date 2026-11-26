@@ -1162,5 +1162,64 @@
       panel and About in each state with its control; Rename and its refusals; Allow; a member's view and the event that
       reaches it; Members with each reason and the people added outside; the Notifications, their badge and Try again;
       Activity; the release line before Remove and Change).
-56. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+56. **An account that several sources use** (2026-11-25; ayni-spec agent D118, AG-UI profile §3.11, §3.13, PROF-TOOL-017,
+    020, 028, 029, 032; UI-CONV-053, 054, 056, 057, 061, 063, 070; stacked on decisions 54 and 55, built against
+    ayni-agent feat/google-account, its decision 87, not merged yet, whose profile package 3.5.10 is not on npm). Core
+    0.18.0.
+    - **The profile package.** Both `package.json` take `^3.5.10`; the lockfile is regenerated, and committed on its
+      own, once 3.5.10 is on npm. Until then the work was built and tested against the package packed from a copy of the
+      agent's branch, through a local override that is not committed. The core keeps its own tolerant readers: an
+      `access` entry with no `source`, or one said twice, is left out; an `allowed` the profile does not name is `none`;
+      `missing` is read for `some` alone.
+    - **The lines of a source** (UI-CONV-061). Under the row, after its state and its controls, one line per source of
+      `access` in the agent's order: "<source>: allowed"; "<source>: allowed in part", then "Not allowed: <tool>,
+      <tool>" (no second line when the agent names no tool), with Allow more; "<source>: not allowed", with Allow. Each
+      control is described by its source's line for a screen reader. The spec gives the lines in every state of the
+      account: before any sign-in each source reads not allowed with Allow, beside the row's Connect (the walk-through of
+      architecture §10.10 starts with Allow on Google Drive), and to reconnect each line reads as the agent gives it.
+    - **One sign-in per account.** An item holds one attempt (`attempt`), whichever source it is for: Allow and Allow more
+      start the sign-in of UI-CONV-054 for their source (`authorize` with its id, and the item's space as Connect sends
+      it), and while it waits "Finish in the browser" with Cancel is under the row and every control of the row,
+      Allow and Allow more included, is hidden; the outcome the agent announces for the account is said under the row,
+      in the words of UI-CONV-058 with the account's title ("this Google account is not yours"). The row's Connect and
+      Reconnect sign in for the account (every source not allowed in full, PROF-TOOL-029), its Disconnect asks by the
+      account and ends it for every source.
+    - **The Connect card** (`why: "allow"`). Named "<feature> · <account>" as every card; while Your accounts says the
+      source of `allow` is not allowed in full, "Allow <feature> on your <account> account." with Allow. The spec does
+      not say what the card reads afterwards: once that source is allowed it reads as a connected card, "Connected as
+      <label>" with no control (the agent then reads it connected too and offers no card, TOOL-CONN-011); with the
+      account no longer connected it reads as a card to connect, and to reconnect as such a card; every button signs in
+      for the source of `allow`. A card with `why: "allow"` and no `allow` reads as a card to connect the account. A
+      card to connect an account (`why: "connect"`) that is connected in part reads connected: it names no source to
+      allow. `<feature>` is the card's feature, else the title of `allow`.
+    - **The managed folder's Allow** (UI-CONV-070). Decision 55's Allow signed in for the account of the provider
+      (`google`), which asks for every source not allowed in full, Calendar's included, and not for the provider in the
+      space, whose sign-in asks the scopes of the folder's management (ayni-agent decision 87). It now signs in for the
+      provider itself (`authorize` with the provider's `source` and the space's `spaceId`), for `not-connected` and
+      `scope-missing` alike, and hears the outcome on the account's row; its words name the provider's title. The agent
+      answers `404` for a provider that uses another source's account carrying no `access` (decision 87): of the
+      providers of architecture §10.13, Google Drive's folder is managed with the owner's Google account, which carries
+      it, and Nextcloud's (`cloud-team`, `from: cloud`) with the managing account the operator sets (`as: manager`),
+      which no sign-in of the owner's changes. The other
+      sign-ins from a space's tools (Connect your account to choose, the search of a list) sign in for the account, as
+      before.
+    - **The key service** (PROF-TOOL-032, UI-CONV-061's last sentence and three rows of UI-CONV-063): the outcome
+      `unavailable`, `503 keys-unavailable` (under the row, never at a field) and a Disconnect answered
+      `revokedAtSource: false` are built to the profile's shapes; the agent of decision 87 does not serve them yet. The
+      words after that Disconnect are a status, as the other words after Disconnect. `ProfileClient.disconnectAccount`
+      and the hub's answer `DisconnectedAccount`, the item and `revokedAtSource`.
+    - **The change event.** The page is read again on every `ayni.connections.changed`, which the agent also sends when
+      an item's `access` changes with no attempt and no outcome (a refresh whose scopes differ). A change equal to the
+      last one heard is one change (every bound session hears it): two such refreshes in a row with the same values are
+      read once, the list being read again when the tab is in front.
+    - **Words.** `CONNECTIONS_COPY` in the core, the table of UI-CONV-063 as written, in the four languages.
+    - **Tests.** `packages/core/tests/connectionsAccess.test.ts` (the item and its `access` from the agent's bodies, the
+      loose reading, the lines and their controls, the change event, the sign-in for one source, the card's
+      `why: "allow"` and its state, the folder's sign-in, the key service, the words); `tests/accounts.test.tsx` (the
+      lines in each state, Allow and Allow more for their source and their space, the row's Connect for the account,
+      the row after the change event with and without an outcome, `failed` and `wrong-person`, Disconnect of the account,
+      the key service); `tests/personalAccounts.test.tsx` (the card of `why: "allow"`: Allow for the source of `allow`,
+      then connected; not connected; already allowed; the words of UI-CONV-063 in the four languages);
+      `tests/managedFolder.test.tsx` (Allow for the provider, not the account, the outcome on the account's row).
+57. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.

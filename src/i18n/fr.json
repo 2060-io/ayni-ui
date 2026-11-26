@@ -1058,6 +1058,12 @@
     },
     "binding": "{{label}} : {{value}}",
     "features": "Pour {{features}}",
+    "access": {
+      "allowed": "{{source}} : autorisé",
+      "allowedInPart": "{{source}} : autorisé en partie",
+      "missing": "Non autorisé : {{tools}}",
+      "notAllowed": "{{source}} : non autorisé"
+    },
     "state": {
       "notConnected": "Non connecté",
       "connected": "Connecté en tant que {{label}} · depuis le {{date}}",
@@ -1071,6 +1077,8 @@
     "reconnect": "Reconnecter",
     "disconnect": "Déconnecter",
     "cancel": "Annuler",
+    "allow": "Autoriser",
+    "allowMore": "Autoriser davantage",
     "waiting": "Terminez dans le navigateur · reste {{time}}",
     "outcome": {
       "connected": "Connecté en tant que {{label}}",
@@ -1081,15 +1089,18 @@
       "cancelled": "Annulé. Rien n'a changé.",
       "wrongBinding": "Non connecté : ce compte est pour {{chosen}}. Connectez à nouveau et choisissez {{expected}}.",
       "wrongPerson": "Non connecté : ce compte {{source}} n'est pas le vôtre. Connectez à nouveau avec le vôtre.",
+      "unavailable": "Non connecté : {{agent}} ne peut pas conserver votre compte pour le moment. Réessayez dans quelques minutes.",
       "disconnected": "Déconnecté. {{source}} peut encore lister {{agent}} dans vos réglages là-bas : vous pouvez le retirer.",
-      "disconnectedRevoked": "Déconnecté"
+      "disconnectedRevoked": "Déconnecté",
+      "disconnectedNotTold": "Déconnecté. {{agent}} n'a pas pu prévenir {{source}} : retirez son accès dans vos réglages là-bas."
     },
     "unavailable": "Impossible de connecter {{source}} pour le moment. Réessayez plus tard.",
     "notOffered": "Ce compte ne vous est pas proposé.",
     "changed": "Ce compte a changé. Ouvrez Vos comptes à nouveau.",
     "disconnectConfirm": "Déconnecter {{source}} ? {{agent}} supprime son accès à votre compte.",
     "card": {
-      "connect": "Connectez votre compte {{account}} pour utiliser {{feature}}."
+      "connect": "Connectez votre compte {{account}} pour utiliser {{feature}}.",
+      "allow": "Autorisez {{feature}} sur votre compte {{account}}."
     },
     "empty": "{{agent}} ne vous propose aucun compte personnel à connecter.",
     "noTab": "Le navigateur n'a pas ouvert de nouvel onglet. Autorisez les fenêtres pop-up pour cette page et réessayez."

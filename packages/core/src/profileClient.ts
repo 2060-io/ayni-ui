@@ -45,6 +45,8 @@ import {
   connectionAttemptOf,
   connectionOf,
   connectionsOf,
+  type DisconnectedAccount,
+  disconnectedAccountOf,
 } from './connections.js'
 import { type AboutMe, aboutMeOf, type Memories, memoriesOf } from './memories.js'
 import { NOTIFICATIONS_PAGE, type NotificationsPage, notificationsPageOf } from './notifications.js'
@@ -752,11 +754,16 @@ export class ProfileClient {
     )
   }
 
-  /** Disconnects an account, at once: its item, `not-connected` (PROF-TOOL-017). */
-  public async disconnectAccount(token: string, accountId: string): Promise<Connection> {
-    return ProfileClient.connectionIn(
+  /**
+   * Disconnects an account, at once: its item, `not-connected`, and whether the service was told (`revokedAtSource`,
+   * PROF-TOOL-017, PROF-TOOL-032). An account that several sources use ends for all of them (§3.13).
+   */
+  public async disconnectAccount(token: string, accountId: string): Promise<DisconnectedAccount> {
+    const answer = disconnectedAccountOf(
       await this.send(token, 'DELETE', `/connections/accounts/${encodeURIComponent(accountId)}`)
     )
+    if (!answer) throw new ProfileError(502, 'bad-response')
+    return answer
   }
 
   // ---- the Notifications of a space and of the agent (§3.12, agent D114)

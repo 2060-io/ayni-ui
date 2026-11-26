@@ -9,7 +9,6 @@
  */
 import {
   type AgentRecord,
-  accountSourceOf,
   FOLDER_CHECK,
   FOLDER_TITLE_MAX,
   type FolderLine,
@@ -17,6 +16,7 @@ import {
   folderLineOf,
   folderReleaseOf,
   folderRenameOf,
+  folderSignInOf,
   folderStatusOf,
   folderTitleOf,
   membersWithoutAccessOf,
@@ -199,7 +199,8 @@ export function FolderLines({
  * The managed folder in the owner's panel of Files (UI-CONV-070, UI-CONV-052, PROF-TOOL-043), in Settings of the tool,
  * where the panel of a folder that exists has its list: no choice of folder, but its line and "Open in <provider>", its
  * state with its control, the members without access, and Rename folder. Allow starts the sign-in of the owner's
- * account of the provider for the space (UI-CONV-061, UI-CONV-054); Check again and Try again check the folder again
+ * account for the provider in the space (UI-CONV-061, UI-CONV-054, PROF-TOOL-029): `authorize` for the provider itself,
+ * not for every source of an account several sources use; Check again and Try again check the folder again
  * (`folder.check`, answered `202` with the item); Rename folder opens "Name of the folder" with Save and Cancel, which
  * renames it at once (`200`, "Saved"). Rename is offered once the folder is made (ready, or without a manager): before,
  * the agent has none to rename. A refusal of the name is said at its field, any other under the section.
@@ -227,7 +228,15 @@ export function FolderSection({
   const [nameError, setNameError] = useState('')
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const signIn = useSignIn(agent, { source: accountSourceOf(tool), title: tool.title ?? '', spaceId: space.id })
+  // the sign-in for the provider in the space, which asks the scopes of the folder's management; its outcome comes on the
+  // row of the provider's account (`google` for Google Drive)
+  const allow = folderSignInOf(tool)
+  const signIn = useSignIn(agent, {
+    source: allow.account,
+    authorize: allow.source,
+    title: tool.title ?? '',
+    spaceId: space.id,
+  })
   if (!folder || !line || !tool.source) return null
   const source = tool.source
   const status = folderStatusOf(folder)

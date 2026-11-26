@@ -647,6 +647,57 @@ describe("the managed folder on the owner's row and in the panel (UI-CONV-070, U
     }
   })
 
+  it("signs in for the provider alone when its account is one several sources use, its outcome on the account's row (UI-CONV-061, PROF-TOOL-029)", async () => {
+    const tab = { opener: window as unknown, location: { replace: vi.fn() }, close: vi.fn() }
+    vi.spyOn(window, 'open').mockImplementation((() => tab) as never)
+    const signIn = 'https://accounts.example.org/o/oauth2/v2/auth?client_id=x'
+    // Google Drive uses the Google account of Google Drive and Google Calendar (package 3.5.10, agent decision 87)
+    const missing = folderOf(
+      { state: 'creating', reason: 'scope-missing' },
+      { state: 'setup', account: { kind: 'personal', connected: true, source: 'google' } }
+    )
+    const { el, agent, hub } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [missing] })],
+      [
+        'POST /connections/drive/authorize',
+        () =>
+          json(
+            { attemptId: 'att_m', authorizationUrl: signIn, expiresAt: new Date(Date.now() + 600_000).toISOString() },
+            202
+          ),
+      ],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await openFiles(el)
+    await click(byText(section(el) as HTMLElement, 'button', 'Allow'))
+    await until(() => agent.find('POST', '/connections/drive/authorize').length === 1)
+    // the provider in the space: the scopes of its tools and of the folder's management, never Calendar's too
+    expect(agent.find('POST', '/connections/drive/authorize')[0]?.body).toEqual({ spaceId: ALPHA.id })
+    expect(agent.find('POST', '/connections/google/authorize')).toHaveLength(0)
+    await until(() => tab.location.replace.mock.calls.length > 0)
+    await until(() => section(el)?.querySelector('.account-waiting'))
+    // the agent names the account in its event: the section hears it
+    // @ts-expect-error private: the event as the session's stream delivers it
+    await hub.onEvent(
+      's1',
+      {
+        type: 'CUSTOM',
+        name: 'ayni.connections.changed',
+        value: {
+          source: 'google',
+          state: 'connected',
+          label: 'jonas@example.org',
+          attemptId: 'att_m',
+          outcome: 'connected',
+        },
+      },
+      undefined,
+      false
+    )
+    await until(() => section(el)?.querySelector('.account-notice')?.textContent === 'Connected as jonas@example.org')
+    expect(section(el)?.querySelector('.account-waiting')).toBeNull()
+  })
+
   it('says a folder that needs a manager, and Check again checks it again', async () => {
     const needs = folderOf({ state: 'needs-manager', reason: 'manager-gone' })
     const { el, agent } = await alpha([
