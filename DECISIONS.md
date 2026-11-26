@@ -1042,5 +1042,64 @@
       hold and keys; the refusals; the words in four languages; the icons of the table; the person picked by name in
       the three segments, a search only when asked, an empty field for anyone, a name not picked blocking the read, the
       cap of twenty, a refusal of the search, the picker's words in four languages); `forget.test.ts` extended.
-54. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+54. **A space's tools by feature, each with one provider** (2026-11-25; ayni-spec agent D120 to D124, D151, AG-UI
+    profile §3.10 and PROF-TOOL-001 to 006, 022, 023, 033 to 035; UI-CONV-031, 049 to 053, 057 to 060, 064 to 066;
+    built against ayni-agent #135, not merged yet, whose profile package 3.5.8 is not on npm). Core 0.16.0.
+    - **The profile package.** Both `package.json` take `^3.5.8`; the lockfile is regenerated, and committed on its
+      own, once 3.5.8 is on npm. Until then the work was built and tested against the package packed from the agent's
+      branch, through a local override that is not committed. The core keeps its own tolerant readers of the wire.
+    - **Not additive, no compatibility.** `GET …/spaces/{id}/tools` gives one item per feature: an item with no
+      `feature`, and an `ayni.space.tools.changed` with no `feature`, are not read. `SpaceTool` is a feature
+      (`feature`, `providers`, `source`/`title` `null` while no provider is chosen, `conformant`, `capabilities`,
+      `account` `null` and `bindings`, `list`, `tools` empty with no provider).
+    - **The row** (UI-CONV-050, UI-CONV-065). The feature's title, the line of its provider, "<provider> · <bound to> ·
+      <whose account>" (each binding with a value by its value or `valueLabel`, then the line of its list, the
+      account in the words of UI-CONV-049, `none` left out), or "Choose a provider", and its state; the provider's
+      description is in its panel and in About, not on the row, which the spec does not list it on. "Needs setup"
+      names a list with no entry before the account. A provider with `conformant: false` reads its words of UI-CONV-052
+      on the row, as a warning line where the state tag was, and atop its panel, with no tool listed.
+    - **Add** (UI-CONV-065). A row and its Add open the feature's panel. With one provider, that provider's panel; with
+      several, "Choose a provider for <feature>" first: one radio card per provider (title, "Suggested" for the
+      template's default, description, whose account), the default selected, and under it the panel of the one picked,
+      whose Save is Add to <space>. The spec does not name a control that opens the panel after a pick: the panel of
+      the selected provider is shown at once beneath the choice. Add sends `{ source }` alone: the wire gives no
+      bindings, list or tools of a provider not in use (PROF-TOOL-033), so the provider's settings are set in its panel
+      once the phone confirmed (state `setup`), not with the first Save as UI-CONV-065 and the Verify of UI-CONV-050
+      ("he adds it with the X account's handle") describe. The panel is keyed by the feature: the code, then "Saved",
+      stays shown while the provider comes in and the panel turns into its provider's ("<feature> · <provider>").
+    - **The wait.** A change ends on `ayni.space.tools.changed` for its feature and change id, whichever provider the
+      event names (a first choice and a change of provider name another one than the item did). A first choice found
+      waiting names no provider (`source: null`): Withdraw names the feature by its default provider, which the agent
+      takes for any provider of the feature.
+    - **Change provider** (UI-CONV-066). After Who can use it, for a feature whose template allows more than one
+      provider and that has one in use: the other providers shown as Add shows them, then, once one is picked, the
+      question in the page with its three lines and Change and Cancel. Change sends `{ source, replaces }` and becomes
+      the code, the time left and Withdraw. A `400` naming `replaces` (the provider changed elsewhere) reads the tools
+      again, with the agent's message: the spec gives it no words. The change sends no list or bindings of the new
+      provider, which are set once it is in use.
+    - **The list of a location** (UI-CONV-059). In Settings of the tool: Only these or the `anyLabel` (with the amber
+      warning) where the template allows any value, the entries with Remove, Add opening the search field. The search
+      is asked 400 ms after the typing pauses, trimmed, at most 100 characters, an answer to an earlier text dropped,
+      and again once one of the person's accounts changes (a Connect from it). The Save of the settings sends the
+      whole list with the rest. Not built, since the agent serves no list of a category yet (agent D111, its decision
+      85): a typed entry read by the list's shapes, "Add <entry>" with "Not found by the search".
+    - **Activity** (UI-CONV-051). `provider-changed` names the former provider by its id only (`tool.formerSource`,
+      profile §3.7): its title comes from the feature's `providers`, read from the space's tools when the page holds
+      such a line; a provider the template no longer allows reads by its id.
+    - **Your accounts and the Connect card** (UI-CONV-064, UI-CONV-058). "For Files, Calendar" under a row's
+      description; the Connect card reads "Connect your <account> account to use <feature>.", the card's title and its
+      feature's (the card's own title when it names none).
+    - **Left out: the managed folder of a team space** (agent D145 to D150, TOOL-FEAT-024 and after, PROF-TOOL-040 to
+      043; UI-CONV-069, 070, 071, the managed-folder rows of UI-CONV-052, `folder-*` and `access-failed`,
+      `manager-needed` in Activity, a member's access in Members): the agent does not serve them yet.
+    - **Words.** `TOOLS_COPY` and `CONNECTIONS_COPY` in the core, the spec's sentences as written, in the four languages.
+    - **Tests.** `packages/core/tests/tools.test.ts` (the item of a feature, the providers, the provider's line, what
+      is missing, the list form and its search, the refusals, the event), `profileClient34.test.ts` (`replaces`,
+      `list`, the choices), `spaces.test.ts` and `connections35.test.ts`; `tests/spaceTools.test.tsx` (the rows in each
+      state, Add with one and several providers, the wait by feature, Withdraw of a first choice, `conformant: false`,
+      `409 feature-has-provider`, Change provider, the list and its search with its refusals, About by feature,
+      `provider-changed`), `tests/accounts.test.tsx` (the features line), `tests/personalAccounts.test.tsx` (the Connect
+      card's words), `tests/confirmationCard.test.tsx` and `tests/notifications.test.tsx` (a source named by its
+      feature on an approval's card and item); the earlier tests read the wire of 3.5.8.
+55. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
