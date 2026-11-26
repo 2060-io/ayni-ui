@@ -7,7 +7,7 @@
  * nothing of it against a 3.3 agent.
  */
 import type { SpaceInfo } from '@ayni.org/ayni-ui-core'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { SpacePage } from '../src/components/SpacePage.js'
 import type { Hub } from '../src/state/hub.js'
 import {
@@ -20,6 +20,7 @@ import {
   PERSONAL,
   record,
   render,
+  SESSIONS,
   SPACES,
   setup,
   space,
@@ -1133,6 +1134,226 @@ describe('Change provider (UI-CONV-066, PROF-TOOL-034)', () => {
     await click(byText(el, 'button', 'All tools'))
     await open(el, 'Files')
     expect(byText(el, 'button', 'Change provider')).toBeUndefined()
+  })
+})
+
+describe('the list of a location and its search (UI-CONV-059, UI-CONV-066, PROF-TOOL-022, PROF-TOOL-023)', () => {
+  const CHOICES = `${TOOLS_PATH}/nextcloud/list/choices`
+  const choicesRoute: [RegExp, (call: Call) => Response] = [
+    /^GET \/spaces\/spc_sales\/tools\/nextcloud\/list\/choices\?text=/,
+    () =>
+      json({
+        choices: [
+          { values: { root: '48213' }, label: '/Projects/Alpha' },
+          { values: { root: '48214' }, label: '/Projects/Beta' },
+        ],
+      }),
+  ]
+  const editor = (el: HTMLElement) => el.querySelector<HTMLElement>('.tool-list-editor') as HTMLElement
+  const entries = (el: HTMLElement) =>
+    [...el.querySelectorAll('.tool-list-entry .tool-list-entry-label')].map((x) => x.textContent)
+  const choices = (el: HTMLElement) =>
+    [...el.querySelectorAll('.tool-list-choice')].map((c) => [
+      c.querySelector('.tool-list-choice-label')?.textContent,
+      c.querySelector('button')?.textContent ?? c.querySelector('.muted')?.textContent,
+    ])
+  const search = (el: HTMLElement) => el.querySelector<HTMLInputElement>('.tool-list-search input')
+  const searches = (agent: { calls: Call[] }) => agent.calls.filter((c) => c.url.startsWith(`${SESSIONS}${CHOICES}`))
+
+  it('lists the entries, searches the account once the typing pauses, adds a choice and sends the list whole', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      choicesRoute,
+      [`PATCH ${TOOLS_PATH}/nextcloud`, () => json({ tool: pending(FILES_READY, '31 07') }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    // in Settings of the tool, titled by its label; no choice of any where the template allows none
+    expect(
+      el.querySelector('.tool-section[aria-label="Settings of the tool"] .tool-list-editor legend')?.textContent
+    ).toBe('Folders')
+    expect(entries(el)).toEqual(['/Projects/Alpha'])
+    expect(byText(editor(el), 'button', 'Remove')).toBeTruthy()
+    expect(editor(el).textContent).not.toContain('Only these')
+    await click(byText(editor(el), 'button', 'Add'))
+    expect(search(el)?.placeholder).toBe('Search your account to add')
+    await type(search(el), '/Proj')
+    // asked once the typing pauses, not at each letter
+    expect(searches(agent)).toHaveLength(0)
+    await until(() => searches(agent).length === 1, 3000)
+    expect(searches(agent)[0]?.url).toBe(`${SESSIONS}${CHOICES}?text=%2FProj`)
+    await until(() => choices(el).length === 2)
+    expect(choices(el)).toEqual([
+      ['/Projects/Alpha', 'In the list'],
+      ['/Projects/Beta', 'Add'],
+    ])
+    // a location is never typed: what was typed is not offered as an entry (`typed: false`)
+    expect(editor(el).textContent).not.toContain('Add /Proj')
+    await click(byText(el.querySelector('.tool-list-choices') as HTMLElement, 'button', 'Add'))
+    expect(entries(el)).toEqual(['/Projects/Alpha', '/Projects/Beta'])
+    expect(choices(el)).toEqual([
+      ['/Projects/Alpha', 'In the list'],
+      ['/Projects/Beta', 'In the list'],
+    ])
+    // a change of the panel until the Save of the settings, which sends the whole list and waits for the phone
+    expect(agent.find('PATCH', `${TOOLS_PATH}/nextcloud`)).toHaveLength(0)
+    await click(el.querySelector('.settings-save'))
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/nextcloud`).length === 1)
+    expect(agent.find('PATCH', `${TOOLS_PATH}/nextcloud`)[0].body).toEqual({
+      list: { entries: [{ root: '48213' }, { root: '48214' }] },
+    })
+    await until(() => el.querySelector('.tool-pending'))
+    expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 31 07/)
+    // what waits for the phone stays in the list meanwhile
+    expect(entries(el)).toEqual(['/Projects/Alpha', '/Projects/Beta'])
+  })
+
+  it('removes an entry and saves at once a list that only narrows: Saved', async () => {
+    const narrowed = { ...FILES_READY, state: 'setup', list: { ...FOLDERS, entries: [] } }
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      [`PATCH ${TOOLS_PATH}/nextcloud`, () => json({ tool: narrowed }, 200)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(editor(el), 'button', 'Remove'))
+    expect(entries(el)).toEqual([])
+    await click(el.querySelector('.settings-save'))
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/nextcloud`).length === 1)
+    expect(agent.find('PATCH', `${TOOLS_PATH}/nextcloud`)[0].body).toEqual({ list: { entries: [] } })
+    await until(() => el.querySelector('.tool-change-outcome')?.textContent === 'Saved')
+    expect(el.querySelector('.tool-pending')).toBeNull()
+    expect(el.querySelector('.tool-panel .state-tag')?.textContent).toBe('Needs setup: Folders')
+  })
+
+  it('offers "Only these" or any where the template allows it, with the amber warning under any', async () => {
+    const anyList = { ...FILES_READY, list: { ...FOLDERS, anyAllowed: true } }
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [anyList] })],
+      [`PATCH ${TOOLS_PATH}/nextcloud`, () => json({ error: 'any-not-allowed', field: 'list.any' }, 422)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    const modes = [...editor(el).querySelectorAll<HTMLLabelElement>('.tool-list-modes label')]
+    expect(modes.map((m) => [m.textContent, m.querySelector('input')?.checked])).toEqual([
+      ['Only these', true],
+      ['Any folder you can reach', false],
+    ])
+    expect(el.querySelector('.tool-list-any-warning')).toBeNull()
+    await click(modes[1]?.querySelector('input'))
+    expect(el.querySelector('.tool-list-any-warning')?.textContent).toBe(
+      "Each member's calls use their own account, but what Fleet support reads with it goes into this space's conversations, which the other members read once they are shared."
+    )
+    // any holds no entries
+    expect(entries(el)).toEqual([])
+    await click(el.querySelector('.settings-save'))
+    await until(() => agent.find('PATCH', `${TOOLS_PATH}/nextcloud`).length === 1)
+    expect(agent.find('PATCH', `${TOOLS_PATH}/nextcloud`)[0].body).toEqual({ list: { any: true } })
+    // refused at the choice
+    await until(() => el.querySelector('.tool-list-modes .field-error'))
+    expect(el.querySelector('.tool-list-modes .field-error')?.textContent?.trim()).toBe(
+      'Fleet support does not allow this choice in this space.'
+    )
+  })
+
+  it('shows a refusal at the entry it names, and under Add for too many; Add stops at `maxEntries`', async () => {
+    let answer = () => json({ error: 'not-portable', field: 'list.entries.1.root' }, 422)
+    const two = {
+      ...FILES_READY,
+      list: {
+        ...FOLDERS,
+        maxEntries: 2,
+        entries: [...FOLDERS.entries, { values: { root: '48214' }, label: '/Projects/Beta' }],
+      },
+    }
+    const { el } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [two] })],
+      [`PATCH ${TOOLS_PATH}/nextcloud`, () => answer()],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    // at its most entries: Add disabled, with the words of 422 too-many-entries
+    expect(byText(editor(el), 'button', 'Add')?.hasAttribute('disabled')).toBe(true)
+    expect(editor(el).textContent).toContain('A list holds at most 2 entries.')
+    // a change to send: the entries in another order
+    await click(byText(editor(el), 'button', 'Remove'))
+    const save = async () => {
+      await click(el.querySelector('.settings-save'))
+      await until(() => el.querySelector('.tool-list-editor .field-error'))
+    }
+    answer = () => json({ error: 'not-portable', field: 'list.entries.0.root' }, 422)
+    await save()
+    const rows = () => [...el.querySelectorAll('.tool-list-entry')]
+    expect(rows()[0]?.querySelector('.field-error')?.textContent?.trim()).toBe(
+      "Each member would see this place differently. Choose another one, or a provider that uses the space's account."
+    )
+    answer = () => json({ error: 'repeated-entry', field: 'list.entries.0' }, 422)
+    await save()
+    expect(rows()[0]?.querySelector('.field-error')?.textContent?.trim()).toBe('This is already in the list.')
+    answer = () => json({ error: 'too-many-entries', field: 'list.entries' }, 422)
+    await click(el.querySelector('.settings-save'))
+    await until(() => editor(el).querySelector(':scope > .field-error'))
+    expect(editor(el).querySelector(':scope > .field-error')?.textContent?.trim()).toBe(
+      'A list holds at most 2 entries.'
+    )
+  })
+
+  it("says why the search answered nothing: the owner's account to connect, the space's not set, the provider unreachable", async () => {
+    let answer = () => json({ error: 'not-connected' }, 409)
+    const opened = { opener: window as unknown, location: { replace: vi.fn() }, close: vi.fn() }
+    vi.spyOn(window, 'open').mockImplementation((() => opened) as never)
+    const drive = { ...FILES_DRIVE, state: 'ready', list: FOLDERS }
+    const { el, agent } = await ownersTools(
+      [
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [drive] })],
+        [/^GET \/spaces\/spc_sales\/tools\/drive\/list\/choices\?/, () => answer()],
+        [
+          'POST /connections/drive/authorize',
+          () =>
+            json(
+              {
+                attemptId: 'att_9',
+                authorizationUrl: 'https://accounts.google.com/o/oauth2/auth?x',
+                expiresAt: new Date(Date.now() + 600_000).toISOString(),
+              },
+              202
+            ),
+        ],
+        ['GET /connections', () => json({ connections: [] })],
+      ],
+      { features: { tools: true, connections: true } }
+    )
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(editor(el), 'button', 'Add'))
+    await type(search(el), 'Proj')
+    await until(() => editor(el).textContent?.includes('Connect your account to choose'), 3000)
+    // Connect starts the sign-in of Your accounts for the space (UI-CONV-054)
+    await click(byText(editor(el), 'button', 'Connect'))
+    await until(() => agent.find('POST', '/connections/drive/authorize').length === 1)
+    expect(agent.find('POST', '/connections/drive/authorize')[0]?.body).toEqual({ spaceId: 'spc_sales' })
+    answer = () => json({ error: 'space-account-not-set' }, 409)
+    await type(search(el), 'Proje')
+    await until(() => el.querySelector('.tool-list-search .tool-error')?.textContent?.includes('ask its owner'), 3000)
+    expect(el.querySelector('.tool-list-search .tool-error')?.textContent).toBe(
+      "This space's account isn't set up yet; ask its owner."
+    )
+    // no control with these words
+    expect(el.querySelector('.tool-list-search .tool-error button')).toBeNull()
+    answer = () => json({ error: 'source-unavailable' }, 502)
+    await type(search(el), 'Projec')
+    await until(
+      () => el.querySelector('.tool-list-search .tool-error')?.textContent?.includes('cannot be searched'),
+      3000
+    )
+    expect(el.querySelector('.tool-list-search .tool-error')?.textContent).toBe(
+      'Google Drive cannot be searched now. Try again later.'
+    )
+    // a blank text asks nothing
+    const asked = agent.calls.filter((c) => c.url.includes('/list/choices')).length
+    await type(search(el), '   ')
+    await new Promise((r) => setTimeout(r, 600))
+    expect(agent.calls.filter((c) => c.url.includes('/list/choices')).length).toBe(asked)
   })
 })
 

@@ -3755,6 +3755,61 @@ mark.hit.current {
   gap: 6px;
   font-weight: 600;
 }
+/* the list of a provider, a feature's location, in Settings of the tool (UI-CONV-059) */
+.tool-list-editor {
+  border: 0;
+  margin: 0 0 10px;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.tool-list-editor legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+.tool-list-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tool-list-entries,
+.tool-list-choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tool-list-entry,
+.tool-list-choice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.tool-list-entry-label,
+.tool-list-choice-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tool-list-entry .field-error {
+  flex-basis: 100%;
+}
+.tool-list-search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* Change provider and its question (UI-CONV-066) */
 .tool-change-provider {
   display: flex;

@@ -12,7 +12,10 @@
  * (profile 3.5) has no account of the space; the binding its accounts are for is chosen from the owner's own accounts,
  * never typed, and an owner who holds none connects one to choose (UI-CONV-050, PROF-TOOL-021). Each tool whose rule is
  * `approval` shows its approval policy under its rule (UI-CONV-067, profile 3.5.4), sent with the settings; a policy
- * that needs attention says so on the tool's line and on its source's row.
+ * that needs attention says so on the tool's line and on its source's row. A provider's list, for a feature with a
+ * contract its location (UI-CONV-059, PROF-TOOL-022, PROF-TOOL-023), is edited in Settings of the tool: its entries
+ * with Remove, Add with a search of the owner's account, each choice added or "In the list", and, where the template
+ * allows it, "Only these" or any; the Save of the settings sends it whole.
  */
 import {
   type AgentRecord,
@@ -20,14 +23,26 @@ import {
   accountSourceOf,
   accountValuesOf,
   bindingValueFits,
+  CHOICES_PAUSE_MS,
+  CHOICES_TEXT_MAX,
+  type ChoicesRefusal,
   canAdd,
   canChangeProvider,
   changeOutcomeKeyOf,
+  choiceInList,
+  choicesRefusalOf,
+  choicesTextOf,
   choosesProvider,
   concernsFeature,
   defaultProviderOf,
   isAdded,
   isConformant,
+  type ListChoice,
+  type ListForm,
+  listChanged,
+  listFormOf,
+  listInputOf,
+  listIsFull,
   loosens,
   missingPartsOf,
   otherProvidersOf,
@@ -46,6 +61,7 @@ import {
   type SpaceToolAccountField,
   type SpaceToolAnswer,
   type SpaceToolBinding,
+  type SpaceToolList,
   type SpaceToolProvider,
   sourceNameOf,
   type ToolRule,
@@ -53,6 +69,8 @@ import {
   toolRefusalOf,
   toolRowStateOf,
   toolsNeedingAttention,
+  withListEntry,
+  withoutListEntry,
 } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, ChevronRight, CircleAlert, Smartphone, TriangleAlert } from 'lucide-react'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
@@ -296,6 +314,225 @@ function BindingFromAccount({
   )
 }
 
+/** Where the agent refused a list (UI-CONV-059): at an entry's row, under Add, or at the choice of any. */
+interface ListErrors {
+  entries: Record<number, string>
+  add?: string
+  any?: string
+}
+
+/**
+ * The list of a provider (UI-CONV-059, UI-CONV-066), for a feature with a contract its location, titled by its label:
+ * "Only these" or its `anyLabel` where the template allows any value, the second with its amber warning while it is
+ * selected; under "Only these" each entry with Remove, then Add, which shows a search field. Once the typing pauses the
+ * agent is asked for the choices of the owner's account (PROF-TOOL-023), each listed by its label with Add, or "In the
+ * list" when an entry equals or covers it. A location takes no typed entry (`typed: false`): only a choice. At
+ * `maxEntries` entries Add is disabled with the words of `422 too-many-entries`. What changes here is the panel's until
+ * the Save of the settings sends the whole list; while a change waits, only what narrows can be done (Remove, Only
+ * these).
+ */
+function ListEditor({
+  agent,
+  space,
+  tool,
+  list,
+  form,
+  locked,
+  errors,
+  onChange,
+}: {
+  agent: AgentRecord
+  space: SpaceInfo
+  tool: SpaceTool
+  list: SpaceToolList
+  form: ListForm
+  /** a change waits: what grants (an entry, any) would be refused */
+  locked: boolean
+  errors: ListErrors
+  onChange: (form: ListForm) => void
+}) {
+  const hub = useHub()
+  const snap = useSnapshot()
+  const { t } = useTranslation()
+  const [searching, setSearching] = useState(false)
+  const [text, setText] = useState('')
+  const [found, setFound] = useState<ListChoice[] | null>(null)
+  const [refusal, setRefusal] = useState<ChoicesRefusal | null>(null)
+  const asked = useRef(0)
+  const full = listIsFull(form, list)
+  // the owner's own account connected or ended: the search is asked again (UI-CONV-059)
+  const accounts = snap.connectionChanges.filter((c) => c.agentDid === agent.did)
+  const lastAccount = accounts[accounts.length - 1]?.n ?? 0
+  const signIn = useSignIn(agent, { source: accountSourceOf(tool), title: tool.title ?? '', spaceId: space.id })
+  const source = tool.source
+
+  // the choices, once the typing pauses; an answer to an earlier text is dropped
+  useEffect(() => {
+    const query = choicesTextOf(text)
+    if (!searching || !query || !source) {
+      setFound(null)
+      setRefusal(null)
+      return
+    }
+    const n = ++asked.current
+    const timer = setTimeout(() => {
+      hub
+        .spaceToolChoices(agent.did, space.id, source, query)
+        .then((choices) => {
+          if (n !== asked.current) return
+          setFound(choices)
+          setRefusal(null)
+        })
+        .catch((e) => {
+          if (n !== asked.current) return
+          setFound(null)
+          setRefusal(choicesRefusalOf(e instanceof ProfileError ? e : undefined))
+        })
+    }, CHOICES_PAUSE_MS)
+    return () => clearTimeout(timer)
+  }, [text, searching, source, agent.did, space.id, hub, lastAccount])
+
+  const refusalWords =
+    refusal === 'spaceAccountNotSet'
+      ? t('tools.spaceAccountNotSet')
+      : refusal === 'unavailable'
+        ? t('tools.list.unavailable', { source: tool.title ?? '' })
+        : refusal === 'notOwner'
+          ? t('tools.notOwner')
+          : refusal === 'notFound'
+            ? t('tools.notFound')
+            : refusal === 'other'
+              ? t('tools.list.unavailable', { source: tool.title ?? '' })
+              : ''
+  const error = (text: string | undefined) =>
+    text ? (
+      <span className="field-error" role="alert">
+        <CircleAlert size={13} aria-hidden="true" className="field-error-icon" /> {text}
+      </span>
+    ) : null
+
+  return (
+    <fieldset className="field tool-list-editor">
+      <legend>{list.label}</legend>
+      {list.anyAllowed ? (
+        <div className="tool-list-modes">
+          <label className="tool-choice-option">
+            <input
+              type="radio"
+              name={`list-${tool.feature.id}`}
+              checked={!form.any}
+              onChange={() => onChange({ ...form, any: false })}
+            />
+            {t('tools.list.onlyThese')}
+          </label>
+          <label className="tool-choice-option">
+            <input
+              type="radio"
+              name={`list-${tool.feature.id}`}
+              checked={form.any}
+              disabled={locked && !list.any}
+              onChange={() => onChange({ ...form, any: true })}
+            />
+            {list.anyLabel}
+          </label>
+          {form.any ? (
+            <div className="untrusted-notice tool-list-any-warning" role="note">
+              <TriangleAlert size={15} aria-hidden="true" className="untrusted-icon" />
+              <span>{t('tools.list.anyWarning', { agent: agent.name })}</span>
+            </div>
+          ) : null}
+          {error(errors.any)}
+        </div>
+      ) : null}
+      {form.any ? null : (
+        <>
+          {form.entries.length ? (
+            <ul className="tool-list-entries">
+              {form.entries.map((e, i) => (
+                <li key={JSON.stringify(e.values)} className="tool-list-entry">
+                  <span className="tool-list-entry-label">{e.label}</span>
+                  <button type="button" className="btn small" onClick={() => onChange(withoutListEntry(form, i))}>
+                    {t('tools.list.remove')}
+                  </button>
+                  {error(errors.entries[i])}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {list.choices ? (
+            searching ? (
+              <div className="tool-list-search">
+                <input
+                  className="input"
+                  type="search"
+                  value={text}
+                  maxLength={CHOICES_TEXT_MAX}
+                  placeholder={t('tools.list.search')}
+                  aria-label={t('tools.list.search')}
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={locked || full}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                {refusal === 'notConnected' ? (
+                  <div className="tool-actions">
+                    <span className="muted small">{t('tools.connectToChoose')}</span>
+                    {signIn.attempt ? null : (
+                      <button type="button" className="btn small" disabled={signIn.busy} onClick={signIn.start}>
+                        {t('accounts.connect')}
+                      </button>
+                    )}
+                  </div>
+                ) : refusalWords ? (
+                  <div className="tool-error" role="alert">
+                    {refusalWords}
+                  </div>
+                ) : null}
+                <SignInWaiting signIn={signIn} />
+                <AccountNoticeLine notice={signIn.notice} />
+                {found?.length ? (
+                  <ul className="tool-list-choices">
+                    {found.map((c) => (
+                      <li key={JSON.stringify(c.values)} className="tool-list-choice">
+                        <span className="tool-list-choice-label">{c.label}</span>
+                        {choiceInList(form, c) ? (
+                          <span className="muted small">{t('tools.list.inList')}</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn small"
+                            disabled={locked || full}
+                            onClick={() => onChange(withListEntry(form, c, list))}
+                          >
+                            {t('tools.add')}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : (
+              <div className="tool-actions">
+                <button
+                  type="button"
+                  className="btn small tool-list-add"
+                  disabled={locked || full}
+                  onClick={() => setSearching(true)}
+                >
+                  {t('tools.add')}
+                </button>
+              </div>
+            )
+          ) : null}
+          {full ? <span className="muted small">{t('tools.list.tooMany', { max: list.maxEntries })}</span> : null}
+          {error(errors.add)}
+        </>
+      )}
+    </fieldset>
+  )
+}
+
 /** What waits, what was answered, or why it was refused, under the control the request came from. */
 interface PanelState {
   /**
@@ -309,6 +546,7 @@ interface PanelState {
     rules?: Record<string, ToolRule>
     values?: Record<string, string>
     policies?: Record<string, PolicyForm>
+    list?: ListForm
   } | null
   outcome: { from: From; key: 'saved' | 'declined' | 'expired' | 'withdrawn' } | null
   error: { from: From; text: string } | null
@@ -364,6 +602,10 @@ function FeaturePanel({
   const [policies, setPolicies] = useState<Record<string, PolicyForm>>(toolPolicies)
   const [policyError, setPolicyError] = useState<PolicyRefusal | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  // the list of the provider, as the owner changes it until the Save of the settings (UI-CONV-059)
+  const toolList = () => (tool.list ? listFormOf(tool.list) : null)
+  const [listForm, setListForm] = useState<ListForm | null>(toolList)
+  const [listErrors, setListErrors] = useState<ListErrors>({ entries: {} })
   const [state, setState] = useState<PanelState>({
     waiting: tool.pending ? { change: tool.pending, from: 'loaded', since: heardLast() } : null,
     outcome: null,
@@ -389,6 +631,7 @@ function FeaturePanel({
     setValues({ ...ownerValues(), ...(kept?.values ?? {}) })
     setRules({ ...toolRules(), ...(kept?.rules ?? {}) })
     setPolicies({ ...toolPolicies(), ...(kept?.policies ?? {}) })
+    setListForm(kept?.list ?? toolList())
   }, [tool])
 
   // the change that waits for the phone ends when the agent says so, for this feature (`ayni.space.tools.changed`,
@@ -417,6 +660,7 @@ function FeaturePanel({
       rules?: Record<string, ToolRule>
       values?: Record<string, string>
       policies?: Record<string, PolicyForm>
+      list?: ListForm
     } = {}
   ) => {
     if (answer.status === 202 && answer.tool.pending)
@@ -447,7 +691,19 @@ function FeaturePanel({
       setPolicyError(r.refusal)
       return
     }
-    if (r.at === 'binding')
+    if (r.at === 'entry') {
+      // at that entry's row (UI-CONV-059, UI-CONV-066)
+      const words =
+        r.reason === 'badBinding'
+          ? t('tools.badValue', { agent: agent.name })
+          : r.reason === 'repeatedEntry'
+            ? t('tools.list.repeated')
+            : t('tools.notPortable')
+      setListErrors({ entries: { [r.index]: words } })
+    } else if (r.at === 'entries')
+      setListErrors({ entries: {}, add: t('tools.list.tooMany', { max: tool.list?.maxEntries ?? '' }) })
+    else if (r.at === 'any') setListErrors({ entries: {}, any: t('tools.list.anyNotAllowed', { agent: agent.name }) })
+    else if (r.at === 'binding')
       setFieldErrors({
         [r.name]:
           r.reason === 'notYourAccount'
@@ -482,10 +738,16 @@ function FeaturePanel({
   const send = async (
     from: From,
     request: () => Promise<SpaceToolAnswer>,
-    sent?: { rules?: Record<string, ToolRule>; values?: Record<string, string>; policies?: Record<string, PolicyForm> }
+    sent?: {
+      rules?: Record<string, ToolRule>
+      values?: Record<string, string>
+      policies?: Record<string, PolicyForm>
+      list?: ListForm
+    }
   ) => {
     setBusy(true)
     setFieldErrors({})
+    setListErrors({ entries: {} })
     setPolicyError(null)
     setState((s) => ({ ...s, outcome: null, error: null }))
     try {
@@ -547,7 +809,10 @@ function FeaturePanel({
     void send('settings', () => hub.addSpaceTool(agent.did, space.id, { source: provider.source }))
   }
 
-  /** The Save of the settings (UI-CONV-050): the bindings, the rules and the approval policies in one request. */
+  /**
+   * The Save of the settings (UI-CONV-050): the bindings, the list (whole, UI-CONV-059), the rules and the approval
+   * policies in one request; one that only narrows applies at once ("Saved"), one that grants waits for the phone.
+   */
   const saveSettings = () => {
     const source = tool.source
     if (!source) return
@@ -555,13 +820,15 @@ function FeaturePanel({
     if (!bindings) return
     const calls = changedRules()
     const { approvals, forms } = changedPolicies()
-    const sent = { rules: calls, values: bindings, policies: forms }
-    if (!Object.keys(bindings).length && !Object.keys(calls).length && !Object.keys(approvals).length) return
+    const list = tool.list && listForm && listChanged(listForm, tool.list) ? listForm : null
+    const sent = { rules: calls, values: bindings, policies: forms, ...(list ? { list } : {}) }
+    if (!Object.keys(bindings).length && !Object.keys(calls).length && !Object.keys(approvals).length && !list) return
     void send(
       'settings',
       () =>
         hub.patchSpaceTool(agent.did, space.id, source, {
           ...(Object.keys(bindings).length ? { bindings } : {}),
+          ...(list ? { list: listInputOf(list) } : {}),
           ...(Object.keys(calls).length ? { calls } : {}),
           ...(Object.keys(approvals).length ? { approvals } : {}),
         }),
@@ -770,7 +1037,7 @@ function FeaturePanel({
   const grantsLocked = waiting
   const conformant = isConformant(tool)
   const toolsShown = conformant ? tool.tools : []
-  const hasSettings = ownerBindings.length > 0 || toolsShown.some((x) => x.name)
+  const hasSettings = ownerBindings.length > 0 || toolsShown.some((x) => x.name) || !!tool.list
   const settingsSave = hasSettings ? (
     <div className="tool-actions">
       {state.waiting?.from === 'settings' ? null : (
@@ -794,7 +1061,7 @@ function FeaturePanel({
       </div>
       {status('loaded')}
 
-      {tool.bindings.length ? (
+      {tool.bindings.length || tool.list ? (
         <section className="space-section tool-section" aria-label={t('tools.settings')}>
           <h4 className="section-label">{t('tools.settings')}</h4>
           {tool.bindings.map((b) =>
@@ -832,6 +1099,22 @@ function FeaturePanel({
               </label>
             )
           )}
+          {/* the list, in place of the fields of the bindings it names (UI-CONV-059) */}
+          {tool.list && listForm ? (
+            <ListEditor
+              agent={agent}
+              space={space}
+              tool={tool}
+              list={tool.list}
+              form={listForm}
+              locked={grantsLocked}
+              errors={listErrors}
+              onChange={(next) => {
+                setListErrors({ entries: {} })
+                setListForm(next)
+              }}
+            />
+          ) : null}
           {toolsShown.length ? null : settingsSave}
         </section>
       ) : null}
@@ -1016,7 +1299,7 @@ function FeaturePanel({
           </ul>
           {settingsSave}
         </section>
-      ) : tool.bindings.length ? null : (
+      ) : tool.bindings.length || tool.list ? null : (
         settingsSave
       )}
 

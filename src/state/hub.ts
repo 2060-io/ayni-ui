@@ -42,6 +42,7 @@ import {
   hasIssuedCredential,
   IndexedDbStore,
   isAppLink,
+  type ListChoice,
   mergeHistory,
   type NotificationsChange,
   type NotificationsPage,
@@ -2816,6 +2817,14 @@ export class Hub {
     patch: SpaceToolPatchInput
   ): Promise<SpaceToolAnswer> {
     return this.withAgent(agentDid, (client, token) => client.patchSpaceTool(token, spaceId, source, patch))
+  }
+
+  /**
+   * The owner's search of a provider's list (PROF-TOOL-023, UI-CONV-059): the choices read with the account the owner's
+   * own calls would use in the space, at most fifty. Nothing of it is kept.
+   */
+  public spaceToolChoices(agentDid: string, spaceId: string, source: string, text: string): Promise<ListChoice[]> {
+    return this.withAgent(agentDid, (client, token) => client.spaceToolChoices(token, spaceId, source, text))
   }
 
   /**
