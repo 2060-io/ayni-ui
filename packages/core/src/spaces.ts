@@ -14,6 +14,7 @@ import type {
   SpaceActivityKind,
   StewardedSpace,
 } from '@ayni.org/ayni-agui-profile'
+import { addedOutsideOf, type MemberFolderAccess, memberFolderAccessOf } from './managedFolder.js'
 
 export type SpaceKind = 'personal' | 'team' | 'organization'
 export type SpaceRole = 'owner' | 'member' | 'guest'
@@ -118,11 +119,21 @@ export interface SpaceMember {
   organization: string | null
   state: 'active' | 'invited' | 'left'
   role: SpaceRole
+  /**
+   * to the owner of a space whose Files has a managed folder: the member's access to it (package 3.5.9, PROF-SPACE-003,
+   * PROF-TOOL-041)
+   */
+  folderAccess?: MemberFolderAccess
 }
 
 /** `GET {sessions}/spaces/{id}`: the space and, for an active member of a list space, its members. */
 export interface SpaceDetail extends SpaceInfo {
   members?: SpaceMember[]
+  /**
+   * to the owner of a space whose Files has a managed folder: the people it holds that the agent did not add, by the
+   * name the store gives them (package 3.5.9, PROF-SPACE-003)
+   */
+  addedOutside?: { name: string }[]
 }
 
 /** `PATCH {sessions}/spaces/{id}` (PROF-SPACE-004). */
@@ -159,6 +170,12 @@ export const SPACE_ACTIVITY_KINDS: readonly SpaceActivityKind[] = [
   'provider-changed',
   'account-set',
   'account-cleared',
+  // a team space's managed folder (package 3.5.9, PROF-TOOL-043)
+  'folder-created',
+  'folder-renamed',
+  'folder-released',
+  'access-failed',
+  'manager-needed',
 ]
 
 /** One line of a space's activity, newest first (PROF-SPACE-006). */
@@ -338,16 +355,19 @@ export function spaceDetailOf(body: unknown): SpaceDetail | null {
   const members = raw
     .map((m) => obj(m))
     .filter((m) => typeof m.memberId === 'string')
-    .map(
-      (m): SpaceMember => ({
+    .map((m): SpaceMember => {
+      const folderAccess = memberFolderAccessOf(m.folderAccess)
+      return {
         memberId: m.memberId as string,
         name: str(m.name),
         organization: strOrNull(m.organization),
         state: m.state === 'invited' || m.state === 'left' ? m.state : 'active',
         role: m.role === 'owner' || m.role === 'guest' ? m.role : 'member',
-      })
-    )
-  return { ...space, members }
+        ...(folderAccess ? { folderAccess } : {}),
+      }
+    })
+  const addedOutside = addedOutsideOf(obj(body).addedOutside)
+  return { ...space, members, ...(addedOutside ? { addedOutside } : {}) }
 }
 
 /** The source a line of activity names: its id, its title and, for a change of provider, the former one's id. */

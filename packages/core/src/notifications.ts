@@ -9,7 +9,11 @@
  * rules a screen follows (what an item offers, the words of its status, which card a conversation draws) are here too,
  * so that the browser and the Ayni app apply the same ones.
  */
-import type { GovernanceNoticeBody, GovernanceNoticeKind, NotificationKind } from '@ayni.org/ayni-agui-profile'
+import type {
+  GovernanceNoticeBody,
+  NotificationKind,
+  GovernanceNoticeKind as ProfileNoticeKind,
+} from '@ayni.org/ayni-agui-profile'
 import {
   type ApprovalPolicyView,
   type ApprovalProgress,
@@ -19,6 +23,7 @@ import {
   type ProgressLine,
   progressLineOf,
 } from './approvalPolicy.js'
+import { type FolderAccessNotice, folderAccessNoticeOf } from './managedFolder.js'
 import type { OwnerChange } from './spaces.js'
 import { type ApprovalStatus, isConfirmation, type ToolAction, toolActionOf } from './tools.js'
 
@@ -26,11 +31,16 @@ import { type ApprovalStatus, isConfirmation, type ToolAction, toolActionOf } fr
 export const NOTIFICATIONS_CHANGED = 'ayni.space.notifications.changed'
 
 /**
- * The notices of a space's governance (`GovernanceNoticeKind`, profile 3.5.4, PROF-TOOL-038; agent D142) and the kinds
- * of notification, an approval or a notice (`NotificationKind`, agent D114, D142), are the profile package's; the
- * package lists no notice kinds, so the list is here.
+ * The notices of a space's governance (profile 3.5.4, PROF-TOOL-038; agent D142), each carrying a `notice`, and the
+ * kinds of notification, an approval, a notice or a member's access to the managed folder (`NotificationKind`, agent
+ * D114, D142, package 3.5.9), are the profile package's; the package lists no notice kinds, so the list is here. The
+ * package's `GovernanceNoticeKind` takes in `folder-access` (3.5.9), whose item carries `folderAccess` and no `notice`:
+ * it is left out of this one.
  */
-export type { GovernanceNoticeKind, NotificationKind }
+export type GovernanceNoticeKind = Exclude<ProfileNoticeKind, 'folder-access'>
+export type { NotificationKind }
+/** A member whose access to the space's managed folder failed, to its owner (package 3.5.9, PROF-TOOL-042). */
+export const FOLDER_ACCESS = 'folder-access'
 export const GOVERNANCE_NOTICE_KINDS: readonly GovernanceNoticeKind[] = [
   'owner-changed',
   'policy-attention',
@@ -94,10 +104,29 @@ export type GovernanceNotice = GovernanceNoticeBody
 export type NotificationItem =
   | { id: string; kind: 'approval'; at: string; waiting: boolean; approval: NotificationApproval }
   | { id: string; kind: GovernanceNoticeKind; at: string; waiting: boolean; notice: GovernanceNotice }
+  /** a member whose access to the managed folder failed, to the owner, `waiting` while it is not in place (3.5.9) */
+  | { id: string; kind: typeof FOLDER_ACCESS; at: string; waiting: boolean; folderAccess: FolderAccessNotice }
 
 /** Whether an item is an approval, which carries `approval`. */
 export function isApprovalItem(item: NotificationItem): item is Extract<NotificationItem, { kind: 'approval' }> {
   return item.kind === 'approval'
+}
+
+/** Whether an item is a member's access to the managed folder, which carries `folderAccess` (PROF-TOOL-042). */
+export function isFolderAccessItem(
+  item: NotificationItem
+): item is Extract<NotificationItem, { kind: typeof FOLDER_ACCESS }> {
+  return item.kind === FOLDER_ACCESS
+}
+
+/**
+ * The control an item `folder-access` offers (UI-CONV-071): Try again while it waits, which checks the folder again
+ * (`folder.check`, PROF-TOOL-043); none once the access is in place or no longer needed.
+ */
+export function folderAccessControlOf(
+  item: Extract<NotificationItem, { kind: typeof FOLDER_ACCESS }>
+): 'tryAgain' | null {
+  return item.waiting ? 'tryAgain' : null
 }
 
 /** A page of a list, newest first; `waiting` counts what waits for the person in the whole place: the badge. */
@@ -221,6 +250,11 @@ export function governanceNoticeOf(value: unknown): GovernanceNotice | null {
 /** An item as the agent gives it; null for one this client does not know how to show. */
 export function notificationOf(value: unknown): NotificationItem | null {
   const n = obj(value)
+  if (n.kind === FOLDER_ACCESS) {
+    const folderAccess = folderAccessNoticeOf(n.folderAccess)
+    if (!folderAccess || typeof n.id !== 'string' || !n.id) return null
+    return { id: n.id, kind: FOLDER_ACCESS, at: str(n.at), waiting: n.waiting === true, folderAccess }
+  }
   if (GOVERNANCE_NOTICE_KINDS.includes(n.kind as GovernanceNoticeKind)) {
     const notice = governanceNoticeOf(n.notice)
     if (!notice || typeof n.id !== 'string' || !n.id) return null
@@ -258,9 +292,12 @@ export function notificationsChangeOf(value: unknown): NotificationsChange | nul
   return {
     spaceId: v.spaceId,
     id: str(v.id),
-    kind: GOVERNANCE_NOTICE_KINDS.includes(v.kind as GovernanceNoticeKind)
-      ? (v.kind as GovernanceNoticeKind)
-      : 'approval',
+    kind:
+      v.kind === FOLDER_ACCESS
+        ? FOLDER_ACCESS
+        : GOVERNANCE_NOTICE_KINDS.includes(v.kind as GovernanceNoticeKind)
+          ? (v.kind as GovernanceNoticeKind)
+          : 'approval',
     waiting: v.waiting === true,
     count: count(v.count),
   }

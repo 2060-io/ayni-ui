@@ -8,6 +8,15 @@
  * Change provider and its question, a provider that does not offer its feature, the list of a location and its search,
  * and `provider-changed` in Activity (UI-CONV-051). `tools.boundTo` is the "<label>: <value>" of a binding and of a
  * list in a provider's line, the parts of which a screen joins with " · " (UI-CONV-065).
+ *
+ * With a team space's managed folder (package 3.5.9, UI-CONV-051, UI-CONV-052, UI-CONV-069 to 071): the two modes of
+ * Files, the folder's line, its states and their controls, the members without access and the reasons of a member's
+ * access, the people added outside the agent, a member's own Files, the Rename, the item `folder-access`, the refusals
+ * `409 managed-location` and `409 cannot-manage`, the line a removal or a change of provider adds to its question, and
+ * the five kinds of the folder in Activity. `tools.folder.kind.*` is the kind of folder those words name, the article
+ * included where a language needs it. Two texts are this client's own, for what the table does not word:
+ * `notices.folderAccessNoReason` (the item of a reason the table does not word, the words of `access-failed`) and
+ * `tools.folder.choice` (the name of the choice of the two modes, for a screen reader).
  */
 export const TOOLS_COPY = {
   'spaces.segments.tools': 'Tools',
@@ -17,6 +26,11 @@ export const TOOLS_COPY = {
   'spaces.activity.provider-changed': '{{by}} changed the provider of {{feature}} from {{former}} to {{tool}}',
   'spaces.activity.account-set': '{{by}} set the account of {{tool}}',
   'spaces.activity.account-cleared': '{{by}} removed the account of {{tool}}',
+  'spaces.activity.folder-created': '{{agent}} made the folder {{folder}} at {{tool}}',
+  'spaces.activity.folder-renamed': '{{by}} renamed the folder to {{folder}}',
+  'spaces.activity.folder-released': '{{agent}} stopped managing the folder {{folder}}',
+  'spaces.activity.access-failed': '{{member}} has no access to the folder {{folder}} yet',
+  'spaces.activity.manager-needed': '{{agent}} can no longer manage the folder {{folder}}',
   'approval.asksYou': '{{requester}} asks for your approval',
   'approval.waitingFor': "Waiting for {{approver}}'s approval",
   'approval.waiting': 'Waiting for approval',
@@ -110,6 +124,45 @@ export const TOOLS_COPY = {
   'tools.list.repeated': 'This is already in the list.',
   'tools.list.anyNotAllowed': '{{agent}} does not allow this choice in this space.',
   'tools.list.unavailable': '{{source}} cannot be searched now. Try again later.',
+  'tools.folder.choice': 'The folder of {{feature}}',
+  'tools.folder.managed': 'A new folder for this space',
+  'tools.folder.managedLine':
+    "{{agent}} makes it at {{provider}}, owned by your organization, and gives the space's members access to it.",
+  'tools.folder.existing': 'A folder that already exists',
+  'tools.folder.existingLine': "You choose it; {{agent}} changes nobody's access to it.",
+  'tools.folder.line': 'Folder: {{folder}} · Managed by {{agent}}',
+  'tools.folder.open': 'Open in {{provider}}',
+  'tools.folder.creating': 'Making the folder at {{provider}}…',
+  'tools.folder.needsManager':
+    '{{agent}} can no longer manage this folder. Ask a Google Workspace administrator to make you a manager of the shared drive {{folder}}, then press Check again.',
+  'tools.folder.checkAgain': 'Check again',
+  'tools.folder.failed':
+    '{{provider}} did not let {{agent}} make this folder. Your organization may not allow it; ask its administrator.',
+  'tools.folder.tryAgain': 'Try again',
+  'tools.folder.allow': "Allow {{provider}} to manage this space's folder",
+  'tools.folder.allowButton': 'Allow',
+  'tools.folder.withoutAccess_one': '{{count}} member has no access yet',
+  'tools.folder.withoutAccess_other': '{{count}} members have no access yet',
+  'tools.folder.noAccess': 'No access yet',
+  'tools.folder.noAccessBecause': 'No access yet: {{reason}}',
+  'tools.folder.reason.no-address': 'their directory entry has no email',
+  'tools.folder.reason.no-account': 'they have no account at {{provider}}',
+  'tools.folder.reason.not-allowed': 'your organization does not let this folder take people outside it',
+  'tools.folder.reason.too-many': 'the folder holds as many people as {{provider}} allows',
+  'tools.folder.reason.permission-denied': '{{provider}} refused it',
+  'tools.folder.reason.unavailable': '{{provider}} did not answer; {{agent}} is trying again',
+  'tools.folder.addedOutside': 'Added outside {{agent}}: {{names}}',
+  'tools.folder.myAccess': "No access yet. {{agent}} is giving you access to this space's folder.",
+  'tools.folder.rename': 'Rename folder',
+  'tools.folder.name': 'Name of the folder',
+  'tools.folder.managedLocation': '{{agent}} manages this folder: it cannot be changed.',
+  'tools.folder.cannotManage': '{{agent}} cannot make a folder at {{provider}}. Choose a folder that already exists.',
+  'tools.folder.release':
+    '{{agent}} stops managing the {{kind}} {{folder}}. It stays at {{provider}} with its members and its files.',
+  'tools.folder.kind.sharedDrive': 'shared drive',
+  'tools.folder.kind.teamFolder': 'team folder',
+  'notices.folderAccess': '{{member}} has no access to the folder {{folder}} yet: {{reason}}',
+  'notices.folderAccessNoReason': '{{member}} has no access to the folder {{folder}} yet',
   'tools.card.label': 'Confirmation: {{title}}, {{source}}',
   'tools.card.accountSpace': 'With the account of {{space}}',
   'tools.card.accountAgent': "With {{agent}}'s account",

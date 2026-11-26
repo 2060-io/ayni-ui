@@ -255,7 +255,40 @@ additive: an item with no `feature`, and a `ayni.space.tools.changed` with no `f
 The English words are in `TOOLS_COPY` (the feature with no provider, the providers, Change provider and its question,
 a provider that does not offer its feature, the list and its search, `provider-changed`) and `CONNECTIONS_COPY`
 (`accounts.features`, "For Files, Calendar"; the Connect card's "Connect your <account> account to use <feature>.").
-The managed folder of a team space (agent D145 to D150, PROF-TOOL-040 to 043) is not read yet.
+
+## Package 3.5.9: a team space's managed folder (agent D145 to D150)
+
+In a team space Files has two modes: a folder the agent makes at the provider when the owner adds Files, owned by the
+organization (a Google shared drive, a Nextcloud team folder), whose members it keeps in step with the space's people;
+or a folder that already exists, whose members it never changes. The rules are in `managedFolder.ts`.
+
+- `SpaceTool` carries `locations` (the owner's: the modes the template allows for the provider in use, or for the
+  default while none is chosen, managed first; empty for another feature), `location` (the mode in use, `null`
+  otherwise) and `folder` (`SpaceToolFolder`: the owner's view, `view: "owner"`, with `title`, `webUrl`, `state`,
+  `reason`, `managedWith`, `access` and `addedOutside`; a member's, `view: "member"`, with `title`, `webUrl` and
+  `myAccess`; `null` outside the managed mode). Each `SpaceToolProvider` carries its own `locations`.
+- `AddSpaceToolInput` takes `location`; `SpaceToolPatchInput` takes `folder` (`{ title }` renames at once, `200`;
+  `{ check: true }` checks again, `202` with no `pending`).
+- `SpaceMember` carries `folderAccess` (`MemberFolderAccess`) and `SpaceDetail` `addedOutside`, to the owner.
+- `NotificationItem` has the kind `folder-access` (`FOLDER_ACCESS`), which carries `folderAccess`
+  (`FolderAccessNotice`) and no `notice`: `GovernanceNoticeKind` leaves it out. `isFolderAccessItem`,
+  `folderAccessControlOf` (Try again while it waits).
+- `SPACE_ACTIVITY_KINDS` holds `folder-created`, `folder-renamed`, `folder-released`, `access-failed` and
+  `manager-needed`; a line names no folder, so `activityFolderOf` takes it from the space's tools, else the space's
+  title.
+
+| Surface | Functions |
+| --- | --- |
+| Add and Change provider (UI-CONV-069) | `locationsFor` (a provider's modes), `choosesLocation` (both: the choice shows), `defaultLocationOf` (managed first and selected), `addInputOf` (`{ source, location? }`), `providerChangeInputOf(tool, source, location)` |
+| The folder (UI-CONV-070) | `isManaged`, `ownerFolderOf`, `folderLineOf` ("Folder: <folder> · Managed by <agent>", `webUrl` for "Open in <provider>"), `folderStatusOf` (`allow`, `creating`, `needsManager`, `failed`, `ready`), `folderCheckOf` (Check again, Try again), `membersWithoutAccessOf`, `myAccessWaits` (a member's "No access yet."), `toolRowStateOf` (`makingFolder`), `missingOf` (no list of a managed folder) |
+| Rename and Check again (PROF-TOOL-043) | `folderTitleOf`, `folderRenameOf`, `FOLDER_CHECK`, `FOLDER_TITLE_MAX` |
+| Members (UI-CONV-070) | `memberAccessLineOf` (`noAccess`, `noAccessBecause` with a reason UI-CONV-052 words), `isWordedReason` |
+| The Notifications (UI-CONV-071) | `folderAccessWordsOf`, `folderAccessControlOf` |
+| Removing Files, changing its provider (UI-CONV-052) | `folderReleaseOf` (the kind of folder, its name, its provider), `folderKindOf` |
+| Activity (UI-CONV-051) | `isFolderActivity`, `FOLDER_ACTIVITY_KINDS`, `activityFolderOf` |
+| The refusals (UI-CONV-052) | `toolRefusalOf`: `location` (`locationNotAllowed`, `cannotManage`, `badRequest` for a `400` naming `location` or `list`), `folderTitle` (`badName`), the panel's `managedLocation` |
+
+The English words are in `TOOLS_COPY` (`tools.folder.*`, `notices.folderAccess`, and the five kinds of Activity).
 
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

@@ -154,9 +154,12 @@ describe("a space's tools as the agent gives them (PROF-TOOL-001)", () => {
         description: "The sales team's accounts, contacts and notes",
         account: { kind: 'space' },
         default: true,
+        // a feature other than Files has no modes (package 3.5.9)
+        locations: [],
       },
     ])
     expect([crm.source, crm.title]).toEqual(['relaticle', 'Relaticle CRM'])
+    expect([crm.locations, crm.location, crm.folder]).toEqual([[], null, null])
     expect(crm.state).toBe('ready')
     expect(crm.add).toBe('auto')
     // a category: no contract, no capability, no conformance, no list
