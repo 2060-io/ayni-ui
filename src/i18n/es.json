@@ -1058,6 +1058,12 @@
     },
     "binding": "{{label}}: {{value}}",
     "features": "Para {{features}}",
+    "access": {
+      "allowed": "{{source}}: permitido",
+      "allowedInPart": "{{source}}: permitido en parte",
+      "missing": "No permitido: {{tools}}",
+      "notAllowed": "{{source}}: no permitido"
+    },
     "state": {
       "notConnected": "No conectada",
       "connected": "Conectada como {{label}} · desde el {{date}}",
@@ -1071,6 +1077,8 @@
     "reconnect": "Volver a conectar",
     "disconnect": "Desconectar",
     "cancel": "Cancelar",
+    "allow": "Permitir",
+    "allowMore": "Permitir más",
     "waiting": "Termina en el navegador · quedan {{time}}",
     "outcome": {
       "connected": "Conectada como {{label}}",
@@ -1081,15 +1089,18 @@
       "cancelled": "Cancelado. No cambió nada.",
       "wrongBinding": "No conectada: esta cuenta es para {{chosen}}. Conecta de nuevo y elige {{expected}}.",
       "wrongPerson": "No conectada: esta cuenta de {{source}} no es tuya. Conecta de nuevo con la tuya.",
+      "unavailable": "No conectada: {{agent}} no puede guardar tu cuenta en este momento. Inténtalo de nuevo en unos minutos.",
       "disconnected": "Desconectada. {{source}} puede seguir mostrando a {{agent}} en tus ajustes allí: puedes quitarlo.",
-      "disconnectedRevoked": "Desconectada"
+      "disconnectedRevoked": "Desconectada",
+      "disconnectedNotTold": "Desconectada. {{agent}} no pudo avisar a {{source}}: quita su acceso en tus ajustes allí."
     },
     "unavailable": "No se puede conectar {{source}} ahora. Inténtalo más tarde.",
     "notOffered": "Esta cuenta no se te ofrece.",
     "changed": "Esta cuenta cambió. Abre Tus cuentas de nuevo.",
     "disconnectConfirm": "¿Desconectar {{source}}? {{agent}} borra su acceso a tu cuenta.",
     "card": {
-      "connect": "Conecta tu cuenta de {{account}} para usar {{feature}}."
+      "connect": "Conecta tu cuenta de {{account}} para usar {{feature}}.",
+      "allow": "Permite {{feature}} en tu cuenta de {{account}}."
     },
     "empty": "{{agent}} no te ofrece ninguna cuenta propia que conectar.",
     "noTab": "El navegador no abrió una pestaña nueva. Permite las ventanas emergentes en esta página e inténtalo de nuevo."

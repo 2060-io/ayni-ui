@@ -1108,6 +1108,42 @@ describe("the words of each person's own accounts (UI-CONV-058)", () => {
   })
 })
 
+describe('the words of an account that several sources use (UI-CONV-063)', () => {
+  /** The table of UI-CONV-063, each row as the spec writes it, with the path of its words here. */
+  const TABLE: [string, string][] = [
+    ['accounts.access.allowed', '{{source}}: allowed'],
+    ['accounts.access.allowedInPart', '{{source}}: allowed in part'],
+    // "then on the next line"
+    ['accounts.access.missing', 'Not allowed: {{tools}}'],
+    ['accounts.access.notAllowed', '{{source}}: not allowed'],
+    ['accounts.allow', 'Allow'],
+    ['accounts.allowMore', 'Allow more'],
+    ['accounts.card.allow', 'Allow {{feature}} on your {{account}} account.'],
+    [
+      'accounts.outcome.unavailable',
+      'Not connected: {{agent}} cannot keep your account just now. Try again in a few minutes.',
+    ],
+    [
+      'accounts.outcome.disconnectedNotTold',
+      'Disconnected. {{agent}} could not tell {{source}}: remove its access in your settings there.',
+    ],
+  ]
+
+  it('says each row of the table as the spec writes it, as the core gives it to the app, in the four languages', () => {
+    const names = (text: string) => [...text.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort()
+    for (const [path, words] of TABLE) {
+      expect(at$(en as Tree, path), path).toBe(words)
+      expect(CONNECTIONS_COPY[path as keyof typeof CONNECTIONS_COPY], path).toBe(words)
+      for (const [lang, tree] of Object.entries({ es, fr, pt })) {
+        const other = at$(tree as Tree, path) as string
+        expect(other, `${lang}.${path}`).toBeTruthy()
+        expect(other, `${lang}.${path}`).not.toBe(words)
+        expect(names(other), `${lang}.${path}`).toEqual(names(words))
+      }
+    }
+  })
+})
+
 // ---------------------------------------------------------------------------------------------------- the colours
 
 /** The relative luminance and contrast of WCAG 2.2, from the stylesheet's tokens. */
