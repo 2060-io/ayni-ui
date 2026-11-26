@@ -1101,5 +1101,66 @@
       `provider-changed`), `tests/accounts.test.tsx` (the features line), `tests/personalAccounts.test.tsx` (the Connect
       card's words), `tests/confirmationCard.test.tsx` and `tests/notifications.test.tsx` (a source named by its
       feature on an approval's card and item); the earlier tests read the wire of 3.5.8.
-55. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+55. **A team space's managed folder** (2026-11-25; ayni-spec agent D145 to D150, AG-UI profile §3.7, §3.10, §3.12,
+    PROF-SPACE-003, PROF-TOOL-040 to 043; UI-CONV-051, UI-CONV-052, UI-CONV-069 to 071; the second of the two changes of
+    decision 54, built against ayni-agent feat/files-managed-mode, not merged yet, whose profile package 3.5.9 is not on
+    npm). Core 0.17.0.
+    - **The profile package.** Both `package.json` take `^3.5.9`; the lockfile is regenerated, and committed on its
+      own, once 3.5.9 is on npm. Until then the work was built and tested against the package packed from the agent's
+      branch, through a local override that is not committed. The core keeps its own tolerant readers of the wire
+      (`managedFolder.ts`).
+    - **The modes of Files** (UI-CONV-069). Add shows, under the providers, "A new folder for this space" and "A folder
+      that already exists" with their lines, the managed one first and selected, where the provider picked has both;
+      with one it sends that one and shows no choice. The modes are each provider's (`providers[].locations`, which the
+      agent gives and the 3.5.9 type does not declare; profile.md documents only the item's), the item's for the
+      provider it describes: the item's `locations` alone cannot say the modes of a provider other than the one in use or
+      the default. Change provider shows the modes of the new provider too and sends the one chosen with `replaces`: the
+      agent requires `location` there (`400`), which UI-CONV-066 does not say.
+    - **The question of the managed mode.** "The page showing the question of UI-CONV-052" is the change's `summary`,
+      shown under the code while it waits: the page cannot write the question before it sends, since whether "with you
+      as its manager" belongs in it (`managedWith`) is known only once the folder exists. A change found waiting when the
+      panel opens shows no question (its mode is not on the wire).
+    - **The folder** (UI-CONV-070). Its line, "Open in <provider>" (beside the row's button, which a link cannot be in),
+      its state and, to the owner, "<n> member(s) has/have no access yet", counting the members whose access waits or
+      failed. While it is made, "Making the folder at <provider>…" stands in place of the row's state
+      (`makingFolder`), and the managed list is not what "Needs setup" names. The owner's panel shows the folder in
+      Settings of the tool, in place of the list; Rename folder is offered once the folder is made (`ready` or
+      `needs-manager`), the agent answering `409 not-managed` before; Check again and Try again send `folder.check` and
+      take the item answered, with no words of their own. Allow starts the sign-in of the owner's account of the
+      provider for the space (Your accounts' Allow, PROF-TOOL-028/029, is not built in this UI; the reason is shown for
+      `not-connected` and `scope-missing` whichever account manages the folder). The provider's line keeps the line of
+      its list, which names the folder too. The Tools segment keeps a stream open while a folder is made, as while a
+      change waits, so that its row follows the agent's events.
+    - **A member** reads the folder's line and "Open in <provider>" in About, and while `myAccess` is not `in-place`
+      (`pending` or `failed`) the member's line of UI-CONV-052.
+    - **Members.** Each member's access beside their state; a `pending` access reads "No access yet" whatever reason the
+      agent gives it; `not-connected` (the 3.5.9 type's, not in UI-CONV-052's table) reads "No access yet". The members
+      are read again on `ayni.space.tools.changed`, and the space's tools are read only for a space whose answer carries
+      `folderAccess` or `addedOutside`, for the provider's title the reasons name.
+    - **The Notifications** (UI-CONV-071). The item `folder-access`, with Try again while it waits (`folder.check` for
+      the item's source, then the list read again); a reason the table does not word ends the words at "yet", as
+      `access-failed` does. `GovernanceNoticeKind` leaves `folder-access` out: its item carries `folderAccess`, no
+      `notice`. The badge is the agent's count, as for any item.
+    - **Activity** (UI-CONV-051). A line names no folder (profile §3.7): the folder of its feature as the space's tools
+      name it now, else the space's title, after which the agent names the folder it makes (D149); an earlier name, or
+      the folder of a released one, is not on the wire.
+    - **Removing Files, changing its provider** (TOOL-FEAT-032). The release line is added to both questions before
+      anything is sent; the kind of folder is "shared drive" for `managedWith: "owner"` and "team folder" for
+      `"manager"`, as the agent words its phone's text by its `manage.as`.
+    - **Refusals with no words in the table:** `422 location-not-allowed` reads the words of `422 any-not-allowed`
+      ("<agent> does not allow this choice in this space."); `422 bad-name` those of `422 bad-binding`, at "Name of the
+      folder"; a `400` naming `location` or `list`, `409 not-managed`, `502 source-unavailable` and a `400` of `folder`,
+      the agent's message. A refusal of the mode is said under the choice of the modes while it shows, and reads the
+      modes again.
+    - **Words.** `TOOLS_COPY` in the core, the spec's sentences as written, in the four languages; the kind of folder
+      carries its article in Spanish, French and Portuguese. Two texts are this client's: the accessible name of the
+      choice of the modes ("The folder of Files") and `notices.folderAccessNoReason`.
+    - **Tests.** `packages/core/tests/managedFolder.test.ts` (the item, the modes and Add's request in each case of the
+      template, the folder's state and control, the kind and the release, a member's access, the item `folder-access`,
+      the activity, the refusals, the client's calls); `tests/managedFolder.test.tsx` (Add with the modes, a provider
+      that cannot manage, a template of one mode, the refusals of the mode; Change provider with the modes; the row, the
+      panel and About in each state with its control; Rename and its refusals; Allow; a member's view and the event that
+      reaches it; Members with each reason and the people added outside; the Notifications, their badge and Try again;
+      Activity; the release line before Remove and Change).
+56. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
