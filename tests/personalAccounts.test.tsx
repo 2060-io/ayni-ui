@@ -287,6 +287,113 @@ describe('the Connect card (UI-CONV-057, PROF-TOOL-020)', () => {
     expect([...page.querySelectorAll('input')]).toHaveLength(1)
   })
 
+  describe('a card that asks to allow one more source of an account, why: "allow" (UI-CONV-061, PROF-TOOL-029)', () => {
+    /** The agent's card of ayni-agent's tests/googleAccount.test.ts, once Google Drive is allowed in part. */
+    const ALLOW_CARD = {
+      source: 'google',
+      title: 'Google',
+      description: 'Your files and your calendar at Google, with your own rights there',
+      method: 'oauth',
+      why: 'allow',
+      allow: { source: 'calendar', title: 'Google Calendar' },
+      feature: { id: 'calendar', title: 'Calendar' },
+    }
+    const GOOGLE = {
+      source: 'google',
+      title: 'Google',
+      description: 'Your files and your calendar at Google, with your own rights there',
+      method: 'oauth',
+      binding: null,
+      usedIn: [{ kind: 'personal' }],
+      state: 'not-connected',
+      reason: null,
+      moreAccess: false,
+      account: null,
+      attempt: null,
+      revokesAtSource: true,
+      features: [
+        { id: 'files', title: 'Files' },
+        { id: 'calendar', title: 'Calendar' },
+      ],
+      access: [
+        { source: 'drive', title: 'Google Drive', allowed: 'none' },
+        { source: 'calendar', title: 'Google Calendar', allowed: 'none' },
+      ],
+    }
+    const IN_PART = {
+      ...GOOGLE,
+      state: 'connected',
+      account: { id: 'acc_g', label: 'ana@example.org', connectedAt: '2026-11-22T09:02:00Z', lastUsedAt: null },
+      access: [
+        { source: 'drive', title: 'Google Drive', allowed: 'some', missing: ['Create a file'] },
+        { source: 'calendar', title: 'Google Calendar', allowed: 'none' },
+      ],
+    }
+    const CALENDAR = {
+      ...IN_PART,
+      access: [IN_PART.access[0], { source: 'calendar', title: 'Google Calendar', allowed: 'all' }],
+    }
+    const GOOGLE_SIGN_IN = 'https://accounts.example.org/o/oauth2/v2/auth?client_id=x'
+    const started = () => json({ attemptId: 'att_c', authorizationUrl: GOOGLE_SIGN_IN, expiresAt: at(-10) }, 202)
+
+    it('reads "Allow <feature> on your <account> account." with Allow, which signs in for the source of allow', async () => {
+      const opened = fakeTab()
+      let list: unknown[] = [IN_PART]
+      const { card, agent, hub } = await conversation(
+        [asked, connectCard(ALLOW_CARD)],
+        [['POST /connections/calendar/authorize', started]],
+        () => list
+      )
+      await until(() => card()?.querySelector('.connect-state'))
+      const c = card() as HTMLElement
+      // the account, named by the feature of the source to allow (UI-CONV-064)
+      expect(c.querySelector('.connect-title')?.textContent).toBe('Calendar · Google')
+      expect(c.querySelector('.connect-description')?.textContent).toBe(
+        'Your files and your calendar at Google, with your own rights there'
+      )
+      expect(c.querySelector('.connect-state')?.textContent).toBe('Allow Calendar on your Google account.')
+      expect([...c.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Allow'])
+      await click(byText(c, 'button', 'Allow'))
+      await until(() => opened.location.replace.mock.calls.length === 1)
+      expect(opened.location.replace).toHaveBeenCalledWith(GOOGLE_SIGN_IN)
+      expect(agent.find('POST', '/connections/calendar/authorize')[0]?.body).toEqual({})
+      expect(agent.find('POST', '/connections/google/authorize')).toHaveLength(0)
+      await until(() => card()?.querySelector('.account-waiting'))
+      // allowed: the card reads as a connected one, with no control
+      list = [CALENDAR]
+      await announce(hub, {
+        source: 'google',
+        state: 'connected',
+        accountId: 'acc_g',
+        label: 'ana@example.org',
+        attemptId: 'att_c',
+        outcome: 'connected',
+      })
+      await until(() => card()?.querySelector('.connect-state')?.textContent === 'Connected as ana@example.org')
+      expect(card()?.querySelector('button')).toBeNull()
+    })
+
+    it('reads as a card to connect once the account is not connected, its Connect still for the source of allow', async () => {
+      fakeTab()
+      const { card, agent } = await conversation(
+        [asked, connectCard(ALLOW_CARD)],
+        [['POST /connections/calendar/authorize', started]],
+        () => [GOOGLE]
+      )
+      await until(() => card()?.querySelector('button'))
+      expect(card()?.querySelector('.connect-state')?.textContent).toBe('Connect your Google account to use Calendar.')
+      await click(byText(card() as HTMLElement, 'button', 'Connect'))
+      await until(() => agent.find('POST', '/connections/calendar/authorize').length === 1)
+    })
+
+    it('reads as a connected card when the source of allow is already allowed', async () => {
+      const { card } = await conversation([asked, connectCard(ALLOW_CARD)], [], () => [CALENDAR])
+      await until(() => card()?.querySelector('.connect-state'))
+      expect(card()?.querySelector('.connect-state')?.textContent).toBe('Connected as ana@example.org')
+      expect(card()?.querySelector('button')).toBeNull()
+    })
+  })
+
   it('is not shown in a conversation shared with its space', async () => {
     fakeAgent([
       [

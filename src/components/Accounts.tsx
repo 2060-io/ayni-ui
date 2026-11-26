@@ -18,6 +18,7 @@ import {
   type ConnectionNotice,
   type ConnectionRef,
   connectCardOf,
+  connectCardStateOf,
   connectionControlsOf,
   connectionFor,
   connectionKeyOf,
@@ -27,6 +28,7 @@ import {
   outcomeNoticeOf,
   ProfileError,
   type SpaceToolAccountField,
+  signInSourceOfCard,
   signInUrlAllowed,
   sinceDateOf,
   sourceNameOf,
@@ -690,7 +692,10 @@ function AccountRow({
  * source's title, its description, the binding; then the person's account as Your accounts gives it: to connect, the
  * sentence and Connect; to connect again, the words of its reason and Reconnect; once connected, "Connected as
  * <label>" and no control. Connect opens the sign-in of an account of OAuth, or Your accounts at the row of an
- * account of fields; the card never holds a field.
+ * account of fields; the card never holds a field. A card that asks to allow one more source of a connected account
+ * (`why: "allow"`, package 3.5.10) reads "Allow <feature> on your <account> account." with Allow while that source is
+ * not allowed in full, then as any connected card; each of its buttons signs in for the source of `allow`
+ * (UI-CONV-061, UI-CONV-063, PROF-TOOL-029).
  */
 export function ConnectCard({ agentDid, content }: { agentDid: string; content: Record<string, unknown> }) {
   const snap = useSnapshot()
@@ -726,6 +731,8 @@ function ConnectCardBody({ agent, card }: { agent: AgentRecord; card: NonNullabl
   const row = connections ? connectionFor(connections, ref) : undefined
   const signIn = useSignIn(agent, {
     source: card.source,
+    // a card that allows one more source of the account signs in for that source (PROF-TOOL-029)
+    authorize: signInSourceOfCard(card),
     title: card.title,
     bindingValue: card.binding?.value,
     spaceId: card.spaceId,
@@ -734,8 +741,10 @@ function ConnectCardBody({ agent, card }: { agent: AgentRecord; card: NonNullabl
   const names = { agent: agent.name, source: card.title }
   // the state of the account, from Your accounts; while they are read, nothing is claimed
   const known = !!row || connections !== undefined || unreadable
-  const connected = row?.state === 'connected' && !row.moreAccess
-  const reconnect = row ? row.state === 'reconnect' || row.moreAccess : card.why === 'reconnect'
+  const state = connectCardStateOf(card, row)
+  const connected = state === 'connected'
+  const reconnect = state === 'reconnect'
+  const allowing = state === 'allow'
   const method = row?.method ?? card.method
   const press = () => {
     if (method === 'oauth') signIn.start()
@@ -774,14 +783,20 @@ function ConnectCardBody({ agent, card }: { agent: AgentRecord; card: NonNullabl
                       names
                     )
                   : t('accounts.state.changed', names)
-                : // the account, by the card's title, and the feature of the card (UI-CONV-057, UI-CONV-058)
-                  t('accounts.card.connect', { account: card.title, feature: card.feature?.title ?? card.title })}
+                : allowing
+                  ? // the feature of the source to allow, and the account by the card's title (UI-CONV-063)
+                    t('accounts.card.allow', {
+                      feature: card.feature?.title ?? card.allow?.title ?? card.title,
+                      account: card.title,
+                    })
+                  : // the account, by the card's title, and the feature of the card (UI-CONV-057, UI-CONV-058)
+                    t('accounts.card.connect', { account: card.title, feature: card.feature?.title ?? card.title })}
             </span>
           </div>
           {signIn.attempt ? null : (
             <div className="actions">
               <button type="button" className="btn primary" disabled={signIn.busy} onClick={press}>
-                {reconnect ? t('accounts.reconnect') : t('accounts.connect')}
+                {reconnect ? t('accounts.reconnect') : allowing ? t('accounts.allow') : t('accounts.connect')}
               </button>
             </div>
           )}
