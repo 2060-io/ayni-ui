@@ -732,7 +732,8 @@
       "successor-set": "{{by}} named {{member}} successor",
       "successor-cleared": "{{member}} is no longer the successor",
       "ownerSuccession": "{{member}} became the owner as successor",
-      "ownerSteward": "{{by}}, a steward, named {{member}} owner: {{reason}}"
+      "ownerSteward": "{{by}}, a steward, named {{member}} owner: {{reason}}",
+      "provider-changed": "{{by}} changed the provider of {{feature}} from {{former}} to {{tool}}"
     },
     "create": {
       "title": "New space",
@@ -959,7 +960,31 @@
     "accountPersonal": "Each person connects their own account, in Your accounts.",
     "useValue": "Use {{value}}",
     "connectToChoose": "Connect your account to choose",
-    "notYourAccount": "Choose one of your own accounts of {{source}}."
+    "notYourAccount": "Choose one of your own accounts of {{source}}.",
+    "featureHasProvider": "{{feature}} already has a provider in this space. Change it instead.",
+    "notConformant": "{{provider}} does not offer {{feature}} as {{agent}} expects. Choose another provider.",
+    "notPortable": "Each member would see this place differently. Choose another one, or a provider that uses the space's account.",
+    "chooseProvider": "Choose a provider",
+    "chooseProviderFor": "Choose a provider for {{feature}}",
+    "suggested": "Suggested",
+    "changeProvider": "Change provider",
+    "changeQuestion": "Use {{next}} for {{feature}} in {{space}}, in place of {{former}}?",
+    "changeStops": "{{agent}} stops using {{former}} in this space.",
+    "changeNothingCopied": "Nothing is copied from {{former}} to {{next}}.",
+    "changeReadStays": "What earlier conversations read from {{former}} stays in them.",
+    "change": "Change",
+    "boundTo": "{{label}}: {{value}}",
+    "list": {
+      "onlyThese": "Only these",
+      "anyWarning": "Each member's calls use their own account, but what {{agent}} reads with it goes into this space's conversations, which the other members read once they are shared.",
+      "search": "Search your account to add",
+      "inList": "In the list",
+      "remove": "Remove",
+      "tooMany": "A list holds at most {{max}} entries.",
+      "repeated": "This is already in the list.",
+      "anyNotAllowed": "{{agent}} does not allow this choice in this space.",
+      "unavailable": "{{source}} cannot be searched now. Try again later."
+    }
   },
   "accounts": {
     "menu": "Your accounts",

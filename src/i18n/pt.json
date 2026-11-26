@@ -732,7 +732,8 @@
       "successor-set": "{{by}} nomeou {{member}} sucessor",
       "successor-cleared": "{{member}} não é mais o sucessor",
       "ownerSuccession": "{{member}} passou a ser proprietário como sucessor",
-      "ownerSteward": "{{by}}, como responsável, nomeou {{member}} proprietário: {{reason}}"
+      "ownerSteward": "{{by}}, como responsável, nomeou {{member}} proprietário: {{reason}}",
+      "provider-changed": "{{by}} mudou o fornecedor de {{feature}} de {{former}} para {{tool}}"
     },
     "create": {
       "title": "Novo espaço",
@@ -976,7 +977,31 @@
     "accountPersonal": "Cada pessoa conecta a própria conta, em Suas contas.",
     "useValue": "Usar {{value}}",
     "connectToChoose": "Conecte sua conta para escolher",
-    "notYourAccount": "Escolha uma das suas próprias contas de {{source}}."
+    "notYourAccount": "Escolha uma das suas próprias contas de {{source}}.",
+    "featureHasProvider": "{{feature}} já tem um fornecedor neste espaço. Mude-o em vez disso.",
+    "notConformant": "{{provider}} não oferece {{feature}} como {{agent}} espera. Escolha outro fornecedor.",
+    "notPortable": "Cada membro veria este local de forma diferente. Escolha outro, ou um fornecedor que use a conta do espaço.",
+    "chooseProvider": "Escolha um fornecedor",
+    "chooseProviderFor": "Escolha um fornecedor para {{feature}}",
+    "suggested": "Sugerido",
+    "changeProvider": "Mudar de fornecedor",
+    "changeQuestion": "Usar {{next}} para {{feature}} em {{space}}, no lugar de {{former}}?",
+    "changeStops": "{{agent}} deixa de usar {{former}} neste espaço.",
+    "changeNothingCopied": "Nada é copiado de {{former}} para {{next}}.",
+    "changeReadStays": "O que as conversas anteriores leram de {{former}} permanece nelas.",
+    "change": "Mudar",
+    "boundTo": "{{label}}: {{value}}",
+    "list": {
+      "onlyThese": "Apenas estes",
+      "anyWarning": "As chamadas de cada membro usam a própria conta, mas o que {{agent}} lê com ela vai para as conversas deste espaço, que os outros membros leem depois de compartilhadas.",
+      "search": "Pesquise na sua conta para adicionar",
+      "inList": "Na lista",
+      "remove": "Remover",
+      "tooMany": "Uma lista tem no máximo {{max}} entradas.",
+      "repeated": "Isto já está na lista.",
+      "anyNotAllowed": "{{agent}} não permite esta escolha neste espaço.",
+      "unavailable": "Não é possível pesquisar em {{source}} agora. Tente mais tarde."
+    }
   },
   "accounts": {
     "menu": "Suas contas",
