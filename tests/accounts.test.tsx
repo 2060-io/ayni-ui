@@ -954,3 +954,63 @@ describe('an account that several sources use (UI-CONV-061, UI-CONV-063, PROF-TO
     ])
   })
 })
+
+describe("the agent's key service (UI-CONV-061, UI-CONV-063, UI-CONV-056, PROF-TOOL-032)", () => {
+  const KEYS_DOWN = 'Not connected: Fleet support cannot keep your account just now. Try again in a few minutes.'
+
+  it('says the outcome unavailable of a sign-in under the row it names', async () => {
+    fakeTab()
+    const { hub, row } = await accounts(
+      [
+        [
+          'POST /connections/drive/authorize',
+          () => json({ attemptId: 'att_k', authorizationUrl: GOOGLE_SIGN_IN, expiresAt: inMinutes(600) }, 202),
+        ],
+      ],
+      { list: () => [GOOGLE] }
+    )
+    const line = row('Google')?.querySelector<HTMLElement>('.account-source') as HTMLElement
+    await click(byText(line, 'button', 'Allow'))
+    await until(() => row('Google')?.querySelector('.account-waiting'))
+    await announce(hub, { source: 'google', state: 'not-connected', attemptId: 'att_k', outcome: 'unavailable' })
+    await until(() => row('Google')?.querySelector('.account-notice')?.textContent === KEYS_DOWN)
+    expect(row('Google')?.querySelector('.account-notice')?.getAttribute('role')).toBe('alert')
+  })
+
+  it('says 503 keys-unavailable in the same words, under the row of an account of fields', async () => {
+    const { row } = await accounts([
+      ['PUT /connections/my_tasks/account', () => json({ error: 'keys-unavailable', message: 'down' }, 503)],
+    ])
+    await click(byText(row('My tasks') as HTMLElement, 'button', 'Connect'))
+    await type(row('My tasks')?.querySelector('input[type="password"]'), TASK_TOKEN)
+    await click(byText(row('My tasks') as HTMLElement, 'button', 'Save'))
+    await until(() => row('My tasks')?.querySelector('.account-notice')?.textContent === KEYS_DOWN)
+    // never at the field
+    expect(row('My tasks')?.querySelector('.field-error')).toBeNull()
+  })
+
+  it('tells the person to remove the access at the service when the agent could not tell it, revokedAtSource false', async () => {
+    const { row } = await accounts(
+      [['DELETE /connections/accounts/acc_g', () => json({ connection: GOOGLE, revokedAtSource: false })]],
+      { list: () => [GOOGLE_CALENDAR] }
+    )
+    await click(byText(row('Google') as HTMLElement, '.account-controls button', 'Disconnect'))
+    await click(byText(row('Google')?.querySelector('[role="alertdialog"]') as HTMLElement, 'button', 'Disconnect'))
+    await until(
+      () =>
+        row('Google')?.querySelector('.account-notice')?.textContent ===
+        'Disconnected. Fleet support could not tell Google: remove its access in your settings there.'
+    )
+    // told, or naming no revocation endpoint: as before
+    teardown()
+    const told = await accounts(
+      [['DELETE /connections/accounts/acc_g', () => json({ connection: GOOGLE, revokedAtSource: true })]],
+      { list: () => [GOOGLE_CALENDAR] }
+    )
+    await click(byText(told.row('Google') as HTMLElement, '.account-controls button', 'Disconnect'))
+    await click(
+      byText(told.row('Google')?.querySelector('[role="alertdialog"]') as HTMLElement, 'button', 'Disconnect')
+    )
+    await until(() => told.row('Google')?.querySelector('.account-notice')?.textContent === 'Disconnected')
+  })
+})

@@ -67,6 +67,8 @@ type Names = {
   agent: string
   source: string
   revokesAtSource?: boolean
+  /** Disconnect's answer: `false` when the agent could not tell the service (PROF-TOOL-032) */
+  revokedAtSource?: boolean
 }
 
 /** The words of an outcome (UI-CONV-058). */
@@ -79,11 +81,11 @@ export function noticeWords(n: ConnectionNotice, names: Names, t: T): AccountNot
       }
     case 'cancelled':
       return { text: t('accounts.outcome.cancelled'), alert: false }
-    case 'disconnected':
-      return {
-        text: t(`accounts.outcome.${disconnectedKeyOf({ revokesAtSource: names.revokesAtSource === true })}`, names),
-        alert: false,
-      }
+    case 'disconnected': {
+      // and when the agent could not tell the service, the person is told to remove its access there (UI-CONV-063)
+      const key = disconnectedKeyOf({ revokesAtSource: names.revokesAtSource === true }, names.revokedAtSource)
+      return { text: t(`accounts.outcome.${key}`, names), alert: false }
+    }
     case 'wrongBinding':
       return { text: t('accounts.outcome.wrongBinding', { expected: n.expected, chosen: n.chosen }), alert: true }
     default:
@@ -103,6 +105,9 @@ export function refusalWords(error: unknown, names: Names, t: T): AccountNotice 
       return { text: t('accounts.outcome.wrongPerson', names), alert: true }
     case 'unavailable':
       return { text: t('accounts.unavailable', names), alert: true }
+    case 'keysUnavailable':
+      // `503 keys-unavailable`: the words of the outcome `unavailable` (UI-CONV-063)
+      return { text: t('accounts.outcome.unavailable', names), alert: true }
     case 'notOffered':
       return { text: t('accounts.notOffered'), alert: true }
     case 'changed':
@@ -494,9 +499,13 @@ function AccountRow({
     setBusy(true)
     signIn.setNotice(null)
     try {
-      const { connection } = await hub.disconnectAccount(agent.did, c.account.id)
+      const { connection, revokedAtSource } = await hub.disconnectAccount(agent.did, c.account.id)
       signIn.setNotice(
-        noticeWords({ key: 'disconnected' }, { ...names, revokesAtSource: connection.revokesAtSource }, t)
+        noticeWords(
+          { key: 'disconnected' },
+          { ...names, revokesAtSource: connection.revokesAtSource, revokedAtSource },
+          t
+        )
       )
     } catch (e) {
       signIn.setNotice(refusalWords(e, names, t))
