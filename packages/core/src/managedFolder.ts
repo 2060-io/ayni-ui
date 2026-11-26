@@ -128,13 +128,26 @@ export function locationOf(value: unknown): SpaceToolLocation | null {
 }
 
 /**
+ * The address of a folder, kept only when it is an `https` one: it is opened as a link, and it comes from a store
+ * (UI-CONV-070).
+ */
+export function httpsUrlOf(value: unknown): string | null {
+  if (typeof value !== 'string' || !value) return null
+  try {
+    return new URL(value).protocol === 'https:' ? value : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * The managed folder as the agent gives it (PROF-TOOL-041); null for a value with no title. An answer with a `state` is
  * the owner's; any other, a member's.
  */
 export function spaceToolFolderOf(value: unknown): SpaceToolFolder | null {
   const f = obj(value)
   if (typeof f.title !== 'string') return null
-  const webUrl = typeof f.webUrl === 'string' && f.webUrl ? f.webUrl : null
+  const webUrl = httpsUrlOf(f.webUrl)
   if (STATES.includes(f.state as FolderState)) {
     const access = obj(f.access)
     return {
