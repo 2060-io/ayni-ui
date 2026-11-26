@@ -16,7 +16,7 @@
     "check-types": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@ayni.org/ayni-agui-profile": "^3.5.4",
+    "@ayni.org/ayni-agui-profile": "^3.5.8",
     "idb": "^8.0.4"
   },
   "devDependencies": {
