@@ -830,3 +830,133 @@ describe('the managed folder in About (UI-CONV-070)', () => {
     expect(el.querySelector('.tool-folder-my-access')).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------------------------- Members
+
+/** Project Alpha as `GET /spaces/{id}` gives it to Jonas: each member's access to the folder (PROF-SPACE-003). */
+const alphaDetail = (members: Record<string, unknown>[], addedOutside?: { name: string }[]) => ({
+  ...ALPHA,
+  createdAt: '2026-11-20T09:00:00Z',
+  updatedAt: '2026-11-25T09:00:00Z',
+  members: [
+    {
+      memberId: 'mem_jonas',
+      name: 'Jonas Weber',
+      organization: 'Northwind Logistics',
+      state: 'active',
+      role: 'owner',
+      folderAccess: { state: 'in-place', role: 'manager' },
+    },
+    ...members,
+  ],
+  ...(addedOutside ? { addedOutside } : {}),
+})
+const member = (name: string, folderAccess: Record<string, unknown> | undefined, role = 'member') => ({
+  memberId: `mem_${name.split(' ')[0]?.toLowerCase()}`,
+  name,
+  organization: role === 'guest' ? 'Partner BV' : 'Northwind Logistics',
+  state: 'active',
+  role,
+  ...(folderAccess ? { folderAccess } : {}),
+})
+const memberRows = (el: HTMLElement) =>
+  [...el.querySelectorAll('.members-table tbody tr')].map((r) => [
+    r.querySelector('.member-name b')?.textContent,
+    r.querySelector('.member-folder-access')?.textContent ?? null,
+  ])
+
+describe("each member's access to the managed folder, and the people added outside, in Members (UI-CONV-070)", () => {
+  it('reads nothing in place, "No access yet" while it waits, and each reason once it failed', async () => {
+    const reasons: [string, string][] = [
+      ['no-address', 'their directory entry has no email'],
+      ['no-account', 'they have no account at Google Drive'],
+      ['not-allowed', 'your organization does not let this folder take people outside it'],
+      ['too-many', 'the folder holds as many people as Google Drive allows'],
+      ['permission-denied', 'Google Drive refused it'],
+      ['unavailable', 'Google Drive did not answer; Fleet support is trying again'],
+    ]
+    const names = ['Tom Berg', 'Lena Fischer', 'Piet de Vries', 'Kim Ito', 'Zoe Laan', 'Noa Smit']
+    const { el } = await alpha(
+      [
+        [
+          'GET /spaces/spc_alpha',
+          () =>
+            json(
+              alphaDetail(
+                [
+                  member('Ana Ríos', { state: 'in-place', role: 'editor' }),
+                  member('Max Roth', { state: 'pending', role: 'editor', reason: 'unavailable' }),
+                  member('Eva Kok', { state: 'none' }, 'guest'),
+                  member('Ivo Dam', { state: 'failed', role: 'editor', reason: 'not-connected' }),
+                  ...reasons.map(([reason], i) =>
+                    member(
+                      names[i] as string,
+                      { state: 'failed', role: 'editor', reason },
+                      i === 2 ? 'guest' : 'member'
+                    )
+                  ),
+                ],
+                [{ name: 'Marta Kova' }, { name: 'a person' }]
+              )
+            ),
+        ],
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })],
+      ],
+      { segment: 'members' }
+    )
+    await until(() => el.querySelector('.member-folder-access'))
+    expect(memberRows(el)).toEqual([
+      ['Jonas Weber', null],
+      ['Ana Ríos', null],
+      // a member that waits reads no reason
+      ['Max Roth', 'No access yet'],
+      // given no access: nothing
+      ['Eva Kok', null],
+      // a reason UI-CONV-052 does not word
+      ['Ivo Dam', 'No access yet'],
+      ...reasons.map(([, words], i) => [names[i], `No access yet: ${words}`]),
+    ])
+    expect(el.querySelector('.members-added-outside')?.textContent).toBe(
+      'Added outside Fleet support: Marta Kova, a person'
+    )
+  })
+
+  it('reads none of it for a space whose folder the agent does not manage, and asks no tools', async () => {
+    const { el, agent } = await alpha(
+      [
+        [
+          'GET /spaces/spc_alpha',
+          () => json({ ...alphaDetail([member('Ana Ríos', undefined)]), members: [member('Ana Ríos', undefined)] }),
+        ],
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [EXISTING] })],
+      ],
+      { segment: 'members' }
+    )
+    await until(() => el.querySelectorAll('.members-table tbody tr').length === 1)
+    expect(el.querySelector('.member-folder-access')).toBeNull()
+    expect(el.querySelector('.members-added-outside')).toBeNull()
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(0)
+  })
+
+  it("reads the members again when the agent says a member's access changed", async () => {
+    let piet: Record<string, unknown> = { state: 'failed', role: 'editor', reason: 'not-allowed' }
+    const { el, hub, agent } = await alpha(
+      [
+        ['GET /spaces/spc_alpha', () => json(alphaDetail([member('Piet de Vries', piet, 'guest')]))],
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [MANAGED] })],
+      ],
+      { segment: 'members' }
+    )
+    await until(() => el.querySelector('.member-folder-access'))
+    piet = { state: 'in-place', role: 'editor' }
+    await toolsChanged(hub, {
+      spaceId: ALPHA.id,
+      feature: 'files',
+      source: 'drive',
+      state: 'ready',
+      outcome: 'applied',
+    })
+    await until(() => !el.querySelector('.member-folder-access'))
+    expect(agent.find('GET', '/spaces/spc_alpha').length).toBeGreaterThanOrEqual(2)
+  })
+})

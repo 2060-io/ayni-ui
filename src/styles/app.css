@@ -3911,6 +3911,18 @@ mark.hit.current {
 .about-tool-open {
   align-self: flex-start;
 }
+/* a member's access to the managed folder, beside their state in Members, and the people added outside the agent */
+.member-folder-access {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.members-added-outside {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
 
 /* ---- the Notifications of a space and of the agent (UI-APPR-001, 002, 006..009; agent D114) ---------------------- */
 
