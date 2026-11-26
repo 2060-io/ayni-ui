@@ -3755,6 +3755,18 @@ mark.hit.current {
   gap: 6px;
   font-weight: 600;
 }
+/* Change provider and its question (UI-CONV-066) */
+.tool-change-provider {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tool-confirm p {
+  margin: 0 0 6px;
+}
+.tool-confirm .tool-confirm-question {
+  font-weight: 600;
+}
 /* a provider that does not offer its feature as its contract says, in place of its state (UI-CONV-065) */
 .tool-not-conformant {
   display: inline-flex;

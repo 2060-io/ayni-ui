@@ -21,6 +21,7 @@ import {
   accountValuesOf,
   bindingValueFits,
   canAdd,
+  canChangeProvider,
   changeOutcomeKeyOf,
   choosesProvider,
   concernsFeature,
@@ -29,6 +30,7 @@ import {
   isConformant,
   loosens,
   missingPartsOf,
+  otherProvidersOf,
   type PendingToolChange,
   type PolicyForm,
   type PolicyRefusal,
@@ -36,6 +38,8 @@ import {
   policyChanged,
   policyFormOf,
   policyInputOf,
+  providerChangeInputOf,
+  providerChangeOf,
   ruleChoicesFor,
   type SpaceInfo,
   type SpaceTool,
@@ -63,10 +67,10 @@ type T = (key: string, options?: Record<string, unknown>) => string
 
 /**
  * The control a request came from, under which its answer, its wait and its refusal are shown (UI-CONV-052): the Save
- * of the settings (Add, for a source not added), the Save of the account, Remove; `loaded` for a change found waiting
- * when the panel opened.
+ * of the settings (Add, for a feature with no provider), the Save of the account, Change provider, Remove; `loaded`
+ * for a change found waiting when the panel opened.
  */
-type From = 'settings' | 'account' | 'remove' | 'loaded'
+type From = 'settings' | 'account' | 'provider' | 'remove' | 'loaded'
 
 /** A row's state in words (UI-CONV-050, UI-CONV-052): "Needs setup: Folders, account". */
 function stateWords(tool: SpaceTool, t: T): string {
@@ -314,9 +318,9 @@ interface PanelState {
  * A feature's panel (UI-CONV-050, UI-CONV-065). With no provider in use, what Add opens: the providers to choose among
  * when the template allows several, then the panel of the one picked, whose Save is Add to <space>; with one, the
  * panel of its provider, in this order: Settings of the tool, Account (once the provider is added), What each tool
- * asks, Who can use it, Remove from <space>. The Save of the settings, after what each tool asks, sends the bindings
- * and the rules together. The panel is the feature's: a change that waits, then its outcome, stays shown when its
- * provider comes in.
+ * asks, Who can use it, Change provider (for a feature of several providers, UI-CONV-066), Remove from <space>. The
+ * Save of the settings, after what each tool asks, sends the bindings and the rules together. The panel is the
+ * feature's: a change that waits, then its outcome, stays shown when its provider comes in or is replaced.
  */
 function FeaturePanel({
   agent,
@@ -367,6 +371,9 @@ function FeaturePanel({
   })
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState<'account' | 'remove' | null>(null)
+  // Change provider (UI-CONV-066): the other providers shown, and the one the owner picked, asked about in the page
+  const [changing, setChanging] = useState(false)
+  const [next, setNext] = useState('')
   // the values of the account: never in React state, a draft or a store; read once at Save, the fields emptied as the
   // request leaves and gone with the panel. Only whether each field holds something is kept, for the Save.
   const accountRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -432,6 +439,8 @@ function FeaturePanel({
       setState((s) => ({ ...s, error: { from, text: String((e as Error).message) } }))
       return
     }
+    // the provider in use is no longer the one this page read (`400`, `field: "replaces"`): the list is read again
+    if (e.field === 'replaces') onReload()
     const r = toolRefusalOf(e)
     if (r.at === 'policy') {
       // at the entry, the number needed or the switch the agent names (UI-CONV-067, UI-CONV-052)
@@ -558,6 +567,17 @@ function FeaturePanel({
         }),
       sent
     )
+  }
+
+  /**
+   * Change (UI-CONV-066, PROF-TOOL-034): the provider picked, with the one in use as `replaces`; it waits for the phone,
+   * the provider in use staying in force, and in the row and the panel, until the change applies.
+   */
+  const changeProvider = () => {
+    if (!next || !tool.source) return
+    setChanging(false)
+    setNext('')
+    void send('provider', () => hub.addSpaceTool(agent.did, space.id, providerChangeInputOf(tool, next)))
   }
 
   /** Empties every field of the account: nothing typed in them is ever shown back. */
@@ -1002,6 +1022,29 @@ function FeaturePanel({
 
       {who}
 
+      {canChangeProvider(tool) ? (
+        <ChangeProvider
+          agent={agent}
+          tool={tool}
+          space={title}
+          changing={changing}
+          next={next}
+          disabled={busy || (waiting && state.waiting?.from !== 'provider')}
+          status={status('provider')}
+          shown={state.waiting?.from !== 'provider'}
+          onOpen={() => {
+            setChanging(true)
+            setNext('')
+          }}
+          onPick={setNext}
+          onCancel={() => {
+            setChanging(false)
+            setNext('')
+          }}
+          onChange={changeProvider}
+        />
+      ) : null}
+
       {added ? (
         <div className="tool-actions">
           <button type="button" className="btn tool-remove" disabled={busy} onClick={() => setConfirming('remove')}>
@@ -1026,6 +1069,95 @@ function FeaturePanel({
             </button>
           </div>
         </div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Change provider (UI-CONV-066, UI-CONV-052), in the panel of a feature whose template allows several: the other
+ * providers, shown as Add shows them; once the owner picks one, the question in the page, "Use <new> for <feature> in
+ * <space>, in place of <former>?" with its three lines, and Change and Cancel. Change becomes the code, the time left
+ * and Withdraw, as any change (UI-CONV-050); Cancel changes nothing.
+ */
+function ChangeProvider({
+  agent,
+  tool,
+  space,
+  changing,
+  next,
+  disabled,
+  status,
+  shown,
+  onOpen,
+  onPick,
+  onCancel,
+  onChange,
+}: {
+  agent: AgentRecord
+  tool: SpaceTool
+  /** the space's title, as the question names it */
+  space: string
+  changing: boolean
+  next: string
+  disabled: boolean
+  /** the code and the time left of the change, then its outcome or its refusal */
+  status: ReactNode
+  /** false while the change waits: the code stands in place of the control */
+  shown: boolean
+  onOpen: () => void
+  onPick: (source: string) => void
+  onCancel: () => void
+  onChange: () => void
+}) {
+  const { t } = useTranslation()
+  const change = next ? providerChangeOf(tool, next) : null
+  const cancel = (
+    <button type="button" className="btn" onClick={onCancel}>
+      {t('app.cancel')}
+    </button>
+  )
+  return (
+    <div className="tool-change-provider">
+      <div className="tool-actions">
+        {shown && !changing ? (
+          <button type="button" className="btn change-provider" disabled={disabled} onClick={onOpen}>
+            {t('tools.changeProvider')}
+          </button>
+        ) : null}
+        {status}
+      </div>
+      {changing ? (
+        <>
+          <ProviderChoice
+            agent={agent}
+            tool={tool}
+            providers={otherProvidersOf(tool)}
+            value={next}
+            disabled={disabled}
+            onChoose={onPick}
+          />
+          {change ? (
+            <div
+              className="box tool-confirm"
+              role="alertdialog"
+              aria-label={t('tools.changeQuestion', { ...change, space })}
+            >
+              <p className="tool-confirm-question">{t('tools.changeQuestion', { ...change, space })}</p>
+              <p>{t('tools.changeStops', { agent: agent.name, former: change.former })}</p>
+              <p>{t('tools.changeNothingCopied', { former: change.former, next: change.next })}</p>
+              <p>{t('tools.changeReadStays', { former: change.former })}</p>
+              <div className="tool-actions">
+                {cancel}
+                <button type="button" className="btn primary" disabled={disabled} onClick={onChange}>
+                  {t('tools.change')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="tool-actions">{cancel}</div>
+          )}
+        </>
       ) : null}
     </div>
   )

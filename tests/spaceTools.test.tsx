@@ -963,6 +963,179 @@ describe('Add among the providers of a feature (UI-CONV-065, PROF-TOOL-002, PROF
   })
 })
 
+/** Files once Google Drive replaced Nextcloud: nothing of the former provider, `setup` (PROF-TOOL-034). */
+const FILES_DRIVE = {
+  ...FILES,
+  source: 'drive',
+  title: 'Google Drive',
+  description: DRIVE.description,
+  state: 'setup',
+  capabilities: [],
+  account: { kind: 'personal', connected: false },
+  bindings: [],
+  list: { ...FOLDERS, entries: [] },
+  tools: FILES_READY.tools,
+}
+
+describe('Change provider (UI-CONV-066, PROF-TOOL-034)', () => {
+  const question = (el: HTMLElement) =>
+    [...(el.querySelector('.tool-change-provider .tool-confirm')?.querySelectorAll('p') ?? [])].map(
+      (p) => p.textContent
+    )
+
+  it('shows the other providers, asks in the page, and sends the change with `replaces`; Cancel changes nothing', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(FILES_READY) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(el, 'button', 'Change provider'))
+    // the others, as Add shows them: Nextcloud, in use, is not among them
+    expect(el.querySelector('.tool-change-provider legend')?.textContent).toBe('Choose a provider for Files')
+    expect(providerTexts(el)).toEqual([
+      {
+        title: 'Google Drive',
+        suggested: false,
+        checked: false,
+        lines: [DRIVE.description, 'Each person uses their own account'],
+      },
+    ])
+    expect(question(el)).toEqual([])
+    await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+    expect(question(el)).toEqual([
+      'Use Google Drive for Files in Sales EU, in place of Nextcloud?',
+      'Fleet support stops using Nextcloud in this space.',
+      'Nothing is copied from Nextcloud to Google Drive.',
+      'What earlier conversations read from Nextcloud stays in them.',
+    ])
+    expect([...el.querySelectorAll('.tool-change-provider .tool-confirm button')].map((b) => b.textContent)).toEqual([
+      'Cancel',
+      'Change',
+    ])
+    // Cancel changes nothing
+    await click(byText(el, '.tool-change-provider .tool-confirm button', 'Cancel'))
+    expect(el.querySelector('.tool-change-provider .tool-confirm')).toBeNull()
+    expect(el.querySelector('.tool-change-provider .tool-providers')).toBeNull()
+    expect(agent.find('POST', TOOLS_PATH)).toHaveLength(0)
+    await click(byText(el, 'button', 'Change provider'))
+    await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+    await click(byText(el, '.tool-change-provider .tool-confirm button', 'Change'))
+    await until(() => agent.find('POST', TOOLS_PATH).length === 1)
+    expect(agent.find('POST', TOOLS_PATH)[0].body).toEqual({ source: 'drive', replaces: 'nextcloud' })
+    // the control becomes the code, with the time left and Withdraw
+    await until(() => el.querySelector('.tool-change-provider .tool-pending'))
+    expect(el.querySelector('.tool-change-provider .tool-pending-text')?.textContent).toMatch(
+      /^Confirm on your phone · Code 48 21 [45]:\d\d left$/
+    )
+    expect(byText(el, '.tool-change-provider button', 'Change provider')).toBeUndefined()
+    expect(byText(el, '.tool-change-provider .tool-pending button', 'Withdraw')).toBeTruthy()
+  })
+
+  it("keeps the provider in use on the row and the panel until the change applies, then the new one's panel", async () => {
+    let tools: unknown[] = [FILES_READY]
+    const { el, hub, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(FILES_READY) }, 202)],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(el, 'button', 'Change provider'))
+    await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+    await click(byText(el, '.tool-change-provider .tool-confirm button', 'Change'))
+    await until(() => el.querySelector('.tool-change-provider .tool-pending'))
+    // meanwhile Nextcloud is the provider, and no other granting change is offered
+    expect(el.querySelector('.tool-panel-title')?.textContent).toBe('Files · Nextcloud')
+    tools = [pending(FILES_READY)]
+    await click(byText(el, 'button', 'All tools'))
+    expect(rowTexts(el)[0]).toEqual({
+      title: 'Files',
+      provider: "Nextcloud · Folders: /Projects/Alpha · Uses the space's account",
+      state: 'Waiting for your phone',
+      add: false,
+    })
+    await open(el, 'Files')
+    expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 48 21/)
+    // confirmed: the event names the new provider and the former one
+    tools = [FILES_DRIVE]
+    const reads = agent.find('GET', TOOLS_PATH).length
+    await announce(hub, {
+      spaceId: SALES.id,
+      feature: 'files',
+      source: 'drive',
+      formerSource: 'nextcloud',
+      state: 'setup',
+      changeId: 'chg_1',
+      outcome: 'applied',
+    })
+    await until(() => agent.find('GET', TOOLS_PATH).length > reads)
+    await until(() => el.querySelector('.tool-panel-title')?.textContent === 'Files · Google Drive')
+    expect(el.querySelector('.tool-change-outcome')?.textContent).toBe('Saved')
+    expect(el.querySelector('.tool-panel .state-tag')?.textContent).toBe('Needs setup: Folders')
+    expect(el.querySelector('.tool-section[aria-label="Account"] .rule-line')?.textContent).toBe(
+      'Each person connects their own account, in Your accounts.'
+    )
+    // Nextcloud is now the other provider
+    await click(byText(el, 'button', 'Change provider'))
+    expect(providerTexts(el).map((p) => [p.title, p.suggested])).toEqual([['Nextcloud', true]])
+  })
+
+  it('withdraws a change of provider by the provider in use', async () => {
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: pending(FILES_READY) }, 202)],
+      [`DELETE ${TOOLS_PATH}/nextcloud/pending`, () => new Response(null, { status: 204 })],
+    ])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await click(byText(el, 'button', 'Change provider'))
+    await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+    await click(byText(el, '.tool-change-provider .tool-confirm button', 'Change'))
+    await until(() => el.querySelector('.tool-change-provider .tool-pending'))
+    await click(byText(el, '.tool-change-provider .tool-pending button', 'Withdraw'))
+    await until(() => agent.find('DELETE', `${TOOLS_PATH}/nextcloud/pending`).length === 1)
+    await until(
+      () =>
+        el.querySelector('.tool-change-provider .tool-change-outcome')?.textContent === 'Withdrawn. Nothing changed.'
+    )
+    expect(byText(el, '.tool-change-provider button', 'Change provider')).toBeTruthy()
+  })
+
+  it('says why a change was refused under its control, and reads the tools again when the provider in use changed', async () => {
+    let answer = () => json({ error: 'change-pending' }, 409)
+    const { el, agent } = await ownersTools([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [FILES_READY] })],
+      [`POST ${TOOLS_PATH}`, () => answer()],
+    ])
+    const change = async () => {
+      await click(byText(el, 'button', 'Change provider'))
+      await click(el.querySelector('.tool-change-provider .tool-provider-option input'))
+      await click(byText(el, '.tool-change-provider .tool-confirm button', 'Change'))
+    }
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Files')
+    await change()
+    await until(() => el.querySelector('.tool-change-provider .tool-error'))
+    expect(el.querySelector('.tool-change-provider .tool-error')?.textContent).toBe(
+      'A change of this tool is already waiting for your phone.'
+    )
+    answer = () => json({ error: 'bad-request', field: 'replaces', message: 'replaces names the provider in use' }, 400)
+    const reads = agent.find('GET', TOOLS_PATH).length
+    await change()
+    await until(() => agent.find('GET', TOOLS_PATH).length > reads)
+  })
+
+  it('is not offered for a feature with one provider, nor before a provider is in use', async () => {
+    const { el } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ tools: [READY, FILES] })]])
+    await until(() => el.querySelectorAll('.tool-row').length === 2)
+    await open(el, 'CRM')
+    expect(byText(el, 'button', 'Change provider')).toBeUndefined()
+    await click(byText(el, 'button', 'All tools'))
+    await open(el, 'Files')
+    expect(byText(el, 'button', 'Change provider')).toBeUndefined()
+  })
+})
+
 /** X needs four keys: one masked field each, in the agent's order (PROF-TOOL-001, PROF-TOOL-004). */
 const X_FIELDS = [
   { name: 'api_key', label: 'API key', pattern: '^[A-Za-z0-9]{10,64}$' },
