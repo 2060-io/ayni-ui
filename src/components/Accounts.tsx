@@ -1,12 +1,15 @@
 /**
  * Each person's own accounts (profile 3.5 §3.11, §6; agent D104 to D110): Your accounts of an agent (UI-CONV-053),
  * the sign-in of an account of OAuth in a new tab (UI-CONV-054), the fields of an account of fields (UI-CONV-055),
- * Disconnect (UI-CONV-056) and the Connect card of a conversation (UI-CONV-057), in the words of UI-CONV-058. The page
- * and the cards draw what the agent says of each account, read again on `ayni.connections.changed` and when the tab is
- * in front again; nothing is ever taken from the link the agent sends the browser back to.
+ * Disconnect (UI-CONV-056) and the Connect card of a conversation (UI-CONV-057), in the words of UI-CONV-058; an
+ * account that several sources use, each source allowed, allowed in part or not allowed (UI-CONV-061), in the words of
+ * UI-CONV-063 (package 3.5.10, agent D118). The page and the cards draw what the agent says of each account, read
+ * again on `ayni.connections.changed` and when the tab is in front again; nothing is ever taken from the link the agent
+ * sends the browser back to.
  */
 import {
   type AgentRecord,
+  accessLinesOf,
   accountValuesOf,
   attemptWaits,
   CONVERSATION_DESIGN,
@@ -32,7 +35,7 @@ import {
   usageOfConnection,
 } from '@ayni.org/ayni-ui-core'
 import { ArrowLeft, CircleAlert, CircleCheck, ExternalLink, TriangleAlert } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHub, useSnapshot } from '../state/useHub.js'
 
@@ -149,7 +152,10 @@ export interface SignIn {
   notice: AccountNotice | null
   setNotice: (notice: AccountNotice | null) => void
   busy: boolean
+  /** the sign-in for the source the target signs in for */
   start: () => void
+  /** the sign-in for one source of the account's `access`: its Allow or Allow more (UI-CONV-061, PROF-TOOL-029) */
+  startFor: (source: string) => void
   cancel: () => void
 }
 
@@ -157,12 +163,15 @@ export interface SignIn {
  * One account's sign-in (UI-CONV-054): Connect opens the tab, sends `authorize` and points the tab at the service;
  * while it waits, a stream of one of the person's sessions stays open so that `ayni.connections.changed` reaches this
  * page (PROF-TOOL-019), and the time left is counted every second; the outcome the agent announces for this attempt,
- * or for this account, is said in the words of UI-CONV-058.
+ * or for this account, is said in the words of UI-CONV-058. `source` is the row of Your accounts the agent's events
+ * name; `authorize`, when it is not that row's own, the source the sign-in is for: one source of an account that
+ * several sources use (the source of a Connect card's `allow`, a managed folder's provider; PROF-TOOL-029).
  */
 export function useSignIn(
   agent: AgentRecord,
   target: {
     source: string
+    authorize?: string
     title: string
     bindingValue?: string
     spaceId?: string
@@ -208,12 +217,12 @@ export function useSignIn(
     if (said) setNotice(noticeWords(said, names, t))
   }, [heard?.n])
 
-  const start = async () => {
+  const start = async (source: string) => {
     setBusy(true)
     setNotice(null)
     setSince(heardLast())
     const result = await openSignIn(
-      () => hub.authorizeConnection(agent.did, target.source, target.spaceId),
+      () => hub.authorizeConnection(agent.did, source, target.spaceId),
       (dropped) => void hub.cancelConnectionAttempt(agent.did, dropped.attemptId).catch(() => undefined)
     )
     setBusy(false)
@@ -250,7 +259,8 @@ export function useSignIn(
     notice,
     setNotice,
     busy,
-    start: () => void start(),
+    start: () => void start(target.authorize ?? target.source),
+    startFor: (source: string) => void start(source),
     cancel: () => void cancel(),
   }
 }
@@ -377,7 +387,11 @@ export function stateWords(c: Connection, agentName: string, locale: string, t: 
  * One account (UI-CONV-053): its title, description, the features it serves (UI-CONV-064), binding, where it serves
  * and its state, with its controls; a
  * screen reader reads it as its title, its binding, its state and its controls. Connect and Reconnect of an account
- * of fields open its fields in the row (UI-CONV-055); Disconnect asks in the page (UI-CONV-056).
+ * of fields open its fields in the row (UI-CONV-055); Disconnect asks in the page (UI-CONV-056). An account that
+ * several sources use, or a source whose tools declare their scopes, shows one line per source under the row, each
+ * allowed, allowed in part (with the tools not allowed) or not allowed, with Allow more or Allow, which sign in for that
+ * source alone (UI-CONV-061, PROF-TOOL-029); the row's Connect and Reconnect sign in for the account, every source
+ * not allowed in full, and its Disconnect ends it for all of them.
  */
 function AccountRow({
   agent,
@@ -408,6 +422,8 @@ function AccountRow({
   const refs = useRef<Record<string, HTMLInputElement | null>>({})
   const [filled, setFilled] = useState<Record<string, boolean>>({})
   const rowRef = useRef<HTMLLIElement>(null)
+  // names each Allow by the line of its source, for a screen reader
+  const lineId = useId()
   useEffect(() => {
     if (!focused) return
     rowRef.current?.scrollIntoView?.({ block: 'center' })
@@ -490,6 +506,7 @@ function AccountRow({
   const waiting = !!signIn.attempt
   const controls = connectionControlsOf(c).filter((x) => x !== 'disconnect' || !!c.account)
   const reconnecting = stateKey !== 'notConnected' && stateKey !== 'connected'
+  const sources = accessLinesOf(c)
   return (
     <li ref={rowRef} className="account-item">
       <article
@@ -618,6 +635,36 @@ function AccountRow({
             )}
           </div>
         )}
+        {sources.length ? (
+          // under the row, one line per source of the account, with Allow or Allow more (UI-CONV-061, UI-CONV-063)
+          <ul className="account-access">
+            {sources.map((line) => (
+              <li key={line.source} className="account-source" data-allowed={line.key}>
+                <span className="account-source-text">
+                  <span className="account-source-state" id={`${lineId}-${line.source}`}>
+                    {t(`accounts.access.${line.key}`, { source: line.title })}
+                  </span>
+                  {line.missing.length ? (
+                    <span className="account-source-missing">
+                      {t('accounts.access.missing', { tools: line.missing.join(', ') })}
+                    </span>
+                  ) : null}
+                </span>
+                {line.control && !waiting && !typing ? (
+                  <button
+                    type="button"
+                    className="btn small account-allow"
+                    aria-describedby={`${lineId}-${line.source}`}
+                    disabled={busy || signIn.busy}
+                    onClick={() => signIn.startFor(line.source)}
+                  >
+                    {t(`accounts.${line.control}`)}
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <SignInWaiting signIn={signIn} />
         {confirming ? (
           <div className="box tool-confirm" role="alertdialog" aria-label={t('accounts.disconnect')}>
