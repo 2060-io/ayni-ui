@@ -733,7 +733,12 @@
       "successor-cleared": "{{member}} ya no es el sucesor",
       "ownerSuccession": "{{member}} pasó a ser propietario como sucesor",
       "ownerSteward": "{{by}}, como responsable, nombró propietario a {{member}}: {{reason}}",
-      "provider-changed": "{{by}} cambió el proveedor de {{feature}} de {{former}} a {{tool}}"
+      "provider-changed": "{{by}} cambió el proveedor de {{feature}} de {{former}} a {{tool}}",
+      "folder-created": "{{agent}} creó la carpeta {{folder}} en {{tool}}",
+      "folder-renamed": "{{by}} cambió el nombre de la carpeta a {{folder}}",
+      "folder-released": "{{agent}} dejó de gestionar la carpeta {{folder}}",
+      "access-failed": "{{member}} aún no tiene acceso a la carpeta {{folder}}",
+      "manager-needed": "{{agent}} ya no puede gestionar la carpeta {{folder}}"
     },
     "create": {
       "title": "Nuevo espacio",
@@ -1001,6 +1006,45 @@
       "repeated": "Esto ya está en la lista.",
       "anyNotAllowed": "{{agent}} no permite esta opción en este espacio.",
       "unavailable": "No se puede buscar en {{source}} ahora. Inténtalo más tarde."
+    },
+    "folder": {
+      "choice": "La carpeta de {{feature}}",
+      "managed": "Una carpeta nueva para este espacio",
+      "managedLine": "{{agent}} la crea en {{provider}}, propiedad de tu organización, y da acceso a ella a los miembros del espacio.",
+      "existing": "Una carpeta que ya existe",
+      "existingLine": "Tú la eliges; {{agent}} no cambia el acceso de nadie.",
+      "line": "Carpeta: {{folder}} · Gestionada por {{agent}}",
+      "open": "Abrir en {{provider}}",
+      "creating": "Creando la carpeta en {{provider}}…",
+      "needsManager": "{{agent}} ya no puede gestionar esta carpeta. Pide a un administrador de Google Workspace que te haga gestor de la unidad compartida {{folder}} y luego pulsa Comprobar de nuevo.",
+      "checkAgain": "Comprobar de nuevo",
+      "failed": "{{provider}} no dejó que {{agent}} creara esta carpeta. Puede que tu organización no lo permita; consulta a su administrador.",
+      "tryAgain": "Reintentar",
+      "allow": "Permitir que {{provider}} gestione la carpeta de este espacio",
+      "allowButton": "Permitir",
+      "withoutAccess_one": "{{count}} miembro aún no tiene acceso",
+      "withoutAccess_other": "{{count}} miembros aún no tienen acceso",
+      "noAccess": "Aún sin acceso",
+      "noAccessBecause": "Aún sin acceso: {{reason}}",
+      "reason": {
+        "no-address": "su entrada del directorio no tiene correo",
+        "no-account": "no tiene cuenta en {{provider}}",
+        "not-allowed": "tu organización no permite que esta carpeta acoja a personas de fuera",
+        "too-many": "la carpeta ya tiene tantas personas como permite {{provider}}",
+        "permission-denied": "{{provider}} lo rechazó",
+        "unavailable": "{{provider}} no respondió; {{agent}} lo está reintentando"
+      },
+      "addedOutside": "Añadidas fuera de {{agent}}: {{names}}",
+      "myAccess": "Aún sin acceso. {{agent}} te está dando acceso a la carpeta de este espacio.",
+      "rename": "Cambiar el nombre de la carpeta",
+      "name": "Nombre de la carpeta",
+      "managedLocation": "{{agent}} gestiona esta carpeta: no se puede cambiar.",
+      "cannotManage": "{{agent}} no puede crear una carpeta en {{provider}}. Elige una carpeta que ya exista.",
+      "release": "{{agent}} deja de gestionar {{kind}} {{folder}}. Se queda en {{provider}} con sus miembros y sus archivos.",
+      "kind": {
+        "sharedDrive": "la unidad compartida",
+        "teamFolder": "la carpeta de equipo"
+      }
     }
   },
   "accounts": {
@@ -1108,7 +1152,9 @@
     "openTool": "Abrir la herramienta",
     "noApprover": "Se rechazó la solicitud de {{requester}} para {{tool}}: ningún otro aprobador podía decidirla.",
     "spaceWithoutOwner": "{{space}} no tiene propietario",
-    "nameOwner": "Nombrar al propietario"
+    "nameOwner": "Nombrar al propietario",
+    "folderAccess": "{{member}} aún no tiene acceso a la carpeta {{folder}}: {{reason}}",
+    "folderAccessNoReason": "{{member}} aún no tiene acceso a la carpeta {{folder}}"
   },
   "steward": {
     "title": "Espacios a tu cargo",

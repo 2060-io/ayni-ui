@@ -733,7 +733,12 @@
       "successor-cleared": "{{member}} n'est plus le successeur",
       "ownerSuccession": "{{member}} est devenu propriétaire en tant que successeur",
       "ownerSteward": "{{by}}, en tant que responsable, a nommé {{member}} propriétaire : {{reason}}",
-      "provider-changed": "{{by}} a changé le fournisseur de {{feature}}, de {{former}} à {{tool}}"
+      "provider-changed": "{{by}} a changé le fournisseur de {{feature}}, de {{former}} à {{tool}}",
+      "folder-created": "{{agent}} a créé le dossier {{folder}} dans {{tool}}",
+      "folder-renamed": "{{by}} a renommé le dossier en {{folder}}",
+      "folder-released": "{{agent}} ne gère plus le dossier {{folder}}",
+      "access-failed": "{{member}} n'a pas encore accès au dossier {{folder}}",
+      "manager-needed": "{{agent}} ne peut plus gérer le dossier {{folder}}"
     },
     "create": {
       "title": "Nouvel espace",
@@ -1001,6 +1006,45 @@
       "repeated": "Ceci est déjà dans la liste.",
       "anyNotAllowed": "{{agent}} n'autorise pas ce choix dans cet espace.",
       "unavailable": "Impossible de chercher dans {{source}} pour l'instant. Réessayez plus tard."
+    },
+    "folder": {
+      "choice": "Le dossier de {{feature}}",
+      "managed": "Un nouveau dossier pour cet espace",
+      "managedLine": "{{agent}} le crée dans {{provider}}, propriété de votre organisation, et y donne accès aux membres de l'espace.",
+      "existing": "Un dossier qui existe déjà",
+      "existingLine": "Vous le choisissez ; {{agent}} ne change l'accès de personne.",
+      "line": "Dossier : {{folder}} · Géré par {{agent}}",
+      "open": "Ouvrir dans {{provider}}",
+      "creating": "Création du dossier dans {{provider}}…",
+      "needsManager": "{{agent}} ne peut plus gérer ce dossier. Demandez à un administrateur Google Workspace de vous nommer gestionnaire du Drive partagé {{folder}}, puis appuyez sur Vérifier à nouveau.",
+      "checkAgain": "Vérifier à nouveau",
+      "failed": "{{provider}} n'a pas laissé {{agent}} créer ce dossier. Votre organisation ne l'autorise peut-être pas ; demandez à son administrateur.",
+      "tryAgain": "Réessayer",
+      "allow": "Autoriser {{provider}} à gérer le dossier de cet espace",
+      "allowButton": "Autoriser",
+      "withoutAccess_one": "{{count}} membre n'a pas encore accès",
+      "withoutAccess_other": "{{count}} membres n'ont pas encore accès",
+      "noAccess": "Pas encore d'accès",
+      "noAccessBecause": "Pas encore d'accès : {{reason}}",
+      "reason": {
+        "no-address": "son entrée d'annuaire n'a pas d'adresse e-mail",
+        "no-account": "cette personne n'a pas de compte {{provider}}",
+        "not-allowed": "votre organisation ne permet pas à ce dossier d'accueillir des personnes extérieures",
+        "too-many": "le dossier compte autant de personnes que {{provider}} le permet",
+        "permission-denied": "{{provider}} l'a refusé",
+        "unavailable": "{{provider}} n'a pas répondu ; {{agent}} réessaie"
+      },
+      "addedOutside": "Ajoutées en dehors de {{agent}} : {{names}}",
+      "myAccess": "Pas encore d'accès. {{agent}} vous donne accès au dossier de cet espace.",
+      "rename": "Renommer le dossier",
+      "name": "Nom du dossier",
+      "managedLocation": "{{agent}} gère ce dossier : il ne peut pas être modifié.",
+      "cannotManage": "{{agent}} ne peut pas créer de dossier dans {{provider}}. Choisissez un dossier qui existe déjà.",
+      "release": "{{agent}} cesse de gérer {{kind}} {{folder}}. Il reste dans {{provider}} avec ses membres et ses fichiers.",
+      "kind": {
+        "sharedDrive": "le Drive partagé",
+        "teamFolder": "le dossier d'équipe"
+      }
     }
   },
   "accounts": {
@@ -1108,7 +1152,9 @@
     "openTool": "Ouvrir l'outil",
     "noApprover": "La demande de {{requester}} pour {{tool}} a été refusée : aucun autre approbateur ne pouvait en décider.",
     "spaceWithoutOwner": "{{space}} n'a pas de propriétaire",
-    "nameOwner": "Nommer le propriétaire"
+    "nameOwner": "Nommer le propriétaire",
+    "folderAccess": "{{member}} n'a pas encore accès au dossier {{folder}} : {{reason}}",
+    "folderAccessNoReason": "{{member}} n'a pas encore accès au dossier {{folder}}"
   },
   "steward": {
     "title": "Espaces dont vous êtes responsable",

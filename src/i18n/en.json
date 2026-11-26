@@ -733,7 +733,12 @@
       "successor-cleared": "{{member}} is no longer the successor",
       "ownerSuccession": "{{member}} became the owner as successor",
       "ownerSteward": "{{by}}, a steward, named {{member}} owner: {{reason}}",
-      "provider-changed": "{{by}} changed the provider of {{feature}} from {{former}} to {{tool}}"
+      "provider-changed": "{{by}} changed the provider of {{feature}} from {{former}} to {{tool}}",
+      "folder-created": "{{agent}} made the folder {{folder}} at {{tool}}",
+      "folder-renamed": "{{by}} renamed the folder to {{folder}}",
+      "folder-released": "{{agent}} stopped managing the folder {{folder}}",
+      "access-failed": "{{member}} has no access to the folder {{folder}} yet",
+      "manager-needed": "{{agent}} can no longer manage the folder {{folder}}"
     },
     "create": {
       "title": "New space",
@@ -984,6 +989,45 @@
       "repeated": "This is already in the list.",
       "anyNotAllowed": "{{agent}} does not allow this choice in this space.",
       "unavailable": "{{source}} cannot be searched now. Try again later."
+    },
+    "folder": {
+      "choice": "The folder of {{feature}}",
+      "managed": "A new folder for this space",
+      "managedLine": "{{agent}} makes it at {{provider}}, owned by your organization, and gives the space's members access to it.",
+      "existing": "A folder that already exists",
+      "existingLine": "You choose it; {{agent}} changes nobody's access to it.",
+      "line": "Folder: {{folder}} · Managed by {{agent}}",
+      "open": "Open in {{provider}}",
+      "creating": "Making the folder at {{provider}}…",
+      "needsManager": "{{agent}} can no longer manage this folder. Ask a Google Workspace administrator to make you a manager of the shared drive {{folder}}, then press Check again.",
+      "checkAgain": "Check again",
+      "failed": "{{provider}} did not let {{agent}} make this folder. Your organization may not allow it; ask its administrator.",
+      "tryAgain": "Try again",
+      "allow": "Allow {{provider}} to manage this space's folder",
+      "allowButton": "Allow",
+      "withoutAccess_one": "{{count}} member has no access yet",
+      "withoutAccess_other": "{{count}} members have no access yet",
+      "noAccess": "No access yet",
+      "noAccessBecause": "No access yet: {{reason}}",
+      "reason": {
+        "no-address": "their directory entry has no email",
+        "no-account": "they have no account at {{provider}}",
+        "not-allowed": "your organization does not let this folder take people outside it",
+        "too-many": "the folder holds as many people as {{provider}} allows",
+        "permission-denied": "{{provider}} refused it",
+        "unavailable": "{{provider}} did not answer; {{agent}} is trying again"
+      },
+      "addedOutside": "Added outside {{agent}}: {{names}}",
+      "myAccess": "No access yet. {{agent}} is giving you access to this space's folder.",
+      "rename": "Rename folder",
+      "name": "Name of the folder",
+      "managedLocation": "{{agent}} manages this folder: it cannot be changed.",
+      "cannotManage": "{{agent}} cannot make a folder at {{provider}}. Choose a folder that already exists.",
+      "release": "{{agent}} stops managing the {{kind}} {{folder}}. It stays at {{provider}} with its members and its files.",
+      "kind": {
+        "sharedDrive": "shared drive",
+        "teamFolder": "team folder"
+      }
     }
   },
   "accounts": {
@@ -1091,7 +1135,9 @@
     "openTool": "Open the tool",
     "noApprover": "{{requester}}'s request for {{tool}} was refused: no other approver could decide it.",
     "spaceWithoutOwner": "{{space}} has no owner",
-    "nameOwner": "Name the owner"
+    "nameOwner": "Name the owner",
+    "folderAccess": "{{member}} has no access to the folder {{folder}} yet: {{reason}}",
+    "folderAccessNoReason": "{{member}} has no access to the folder {{folder}} yet"
   },
   "steward": {
     "title": "Spaces you steward",
