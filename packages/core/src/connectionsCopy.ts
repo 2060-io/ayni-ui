@@ -6,7 +6,11 @@
  * in. The Info of a message held back for a credential is `conversation.withheldCredentialInfo`, followed, for an
  * agent that declares `features.connections`, by `conversation.withheldCredentialAccounts` (UI-SEC-006). With features
  * (package 3.5.8, UI-CONV-064): `accounts.features`, the features an account serves, "For Files, Calendar"; and the
- * Connect card names the account and its feature, "Connect your Google account to use Calendar." (UI-CONV-057).
+ * Connect card names the account and its feature, "Connect your Google account to use Calendar." (UI-CONV-057). With an
+ * account that several sources use (package 3.5.10, UI-CONV-061): the table of UI-CONV-063, `accounts.access.*` for the
+ * line of each source ("Google Drive: allowed in part", then "Not allowed: Create a file"), `accounts.allow` and
+ * `accounts.allowMore`, the card's `accounts.card.allow`, and, for the agent's key service, `accounts.outcome.unavailable`
+ * (also `503 keys-unavailable`) and `accounts.outcome.disconnectedNotTold`.
  */
 export const CONNECTIONS_COPY = {
   'accounts.menu': 'Your accounts',
@@ -46,6 +50,19 @@ export const CONNECTIONS_COPY = {
   'accounts.changed': 'This account has changed. Open Your accounts again.',
   'accounts.disconnectConfirm': 'Disconnect {{source}}? {{agent}} deletes its access to your account.',
   'accounts.card.connect': 'Connect your {{account}} account to use {{feature}}.',
+  // an account several sources use (package 3.5.10, UI-CONV-061, UI-CONV-063)
+  'accounts.access.allowed': '{{source}}: allowed',
+  'accounts.access.allowedInPart': '{{source}}: allowed in part',
+  'accounts.access.missing': 'Not allowed: {{tools}}',
+  'accounts.access.notAllowed': '{{source}}: not allowed',
+  'accounts.allow': 'Allow',
+  'accounts.allowMore': 'Allow more',
+  'accounts.card.allow': 'Allow {{feature}} on your {{account}} account.',
+  // the agent's key service did not answer (PROF-TOOL-032, UI-CONV-063)
+  'accounts.outcome.unavailable':
+    'Not connected: {{agent}} cannot keep your account just now. Try again in a few minutes.',
+  'accounts.outcome.disconnectedNotTold':
+    'Disconnected. {{agent}} could not tell {{source}}: remove its access in your settings there.',
   'accounts.empty': '{{agent}} offers you no account of your own to connect.',
   'accounts.noTab': 'The browser did not open a new tab. Allow pop-ups for this page and try again.',
   'tools.card.accountYours': 'With your account {{label}}',

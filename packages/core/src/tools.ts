@@ -679,6 +679,16 @@ export function accountSourceOf(tool: Pick<SpaceTool, 'source' | 'account'>): st
   return (tool.account?.kind === 'personal' ? tool.account.source : undefined) ?? tool.source ?? ''
 }
 
+/**
+ * The sign-in of a managed folder's Allow (UI-CONV-070, UI-CONV-061; package 3.5.10, PROF-TOOL-029; agent decision 87):
+ * `authorize` for the provider itself (`source`), with the space's `spaceId`, which asks the scopes of its tools and of
+ * the folder's management alone, and not those of every source of its account; its outcome is told on the row of Your
+ * accounts the provider's account is under (`account`: `google` for Google Drive).
+ */
+export function folderSignInOf(tool: Pick<SpaceTool, 'source' | 'account'>): { source: string; account: string } {
+  return { source: tool.source ?? '', account: accountSourceOf(tool) }
+}
+
 /** Whether the feature has a provider in the space: added, ready or still missing something. */
 export function isAdded(tool: Pick<SpaceTool, 'state'>): boolean {
   return tool.state === 'setup' || tool.state === 'ready'

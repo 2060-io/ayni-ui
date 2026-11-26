@@ -476,7 +476,7 @@ function AccountRow({
     setBusy(true)
     signIn.setNotice(null)
     try {
-      const connection = await hub.disconnectAccount(agent.did, c.account.id)
+      const { connection } = await hub.disconnectAccount(agent.did, c.account.id)
       signIn.setNotice(
         noticeWords({ key: 'disconnected' }, { ...names, revokesAtSource: connection.revokesAtSource }, t)
       )

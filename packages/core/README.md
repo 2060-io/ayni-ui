@@ -290,5 +290,31 @@ or a folder that already exists, whose members it never changes. The rules are i
 
 The English words are in `TOOLS_COPY` (`tools.folder.*`, `notices.folderAccess`, and the five kinds of Activity).
 
+## Package 3.5.10: an account that several sources use (agent D118)
+
+One Google account serves Google Drive and Google Calendar; a person allows each source when they first need it, and
+may untick a scope at Google's consent. Your accounts lists the account once (`source` is the account's id, `google`),
+with one line per source under its row, each allowed, allowed in part or not allowed. The rules are in
+`connections.ts`.
+
+- `Connection` carries `access` (`ConnectionAccess`: `source`, `title`, `allowed` of `CONNECTION_ALLOWED`, `all`,
+  `some` or `none`, and `missing`, the titles of the tools not allowed, for `some` alone); empty for an item that
+  carries none. A source of its own sign-in whose tools declare their scopes carries `access` with itself alone.
+- `ConnectCard.why` may be `allow`, with `allow` (`{ source, title }`), the source to allow; the card's `source`,
+  `title` and `description` are then the account's, and `feature` that of the source of `allow`.
+- `ConnectionOutcome` has `unavailable` (the agent's key service did not answer, PROF-TOOL-032), and
+  `ProfileClient.disconnectAccount` answers `DisconnectedAccount` (`{ connection, revokedAtSource? }`).
+
+| Surface | Functions |
+| --- | --- |
+| The lines of a source (UI-CONV-061) | `accessLinesOf` (`AccessLine`: `key` of `AccessStateKey`, `allowed`, `allowedInPart` or `notAllowed`; `missing`; `control`, `allow`, `allowMore` or none), each control's sign-in being `authorize` for that line's `source` |
+| The Connect card (UI-CONV-057, UI-CONV-061) | `connectCardStateOf(card, row)` (`connect`, `reconnect`, `allow`, `connected`), `signInSourceOfCard` (the source of `allow`, else the account) |
+| A managed folder's Allow (UI-CONV-070) | `folderSignInOf(tool)`: `authorize` for the provider (`source`) with the space's `spaceId`, its outcome on the row of `account` |
+| The key service (UI-CONV-056, UI-CONV-063) | `outcomeNoticeOf` (`unavailable`), `connectionRefusalOf` (`keysUnavailable` for `503 keys-unavailable`), `disconnectedKeyOf(c, revokedAtSource)` (`disconnectedNotTold`), `disconnectedAccountOf` |
+
+The English words are in `CONNECTIONS_COPY` (`accounts.access.*`, `accounts.allow`, `accounts.allowMore`,
+`accounts.card.allow`, `accounts.outcome.unavailable`, `accounts.outcome.disconnectedNotTold`): the table of
+UI-CONV-063.
+
 Published to npm from this repository by the `npm-publish` workflow whenever `package.json` carries a version that is
 not on npm yet.

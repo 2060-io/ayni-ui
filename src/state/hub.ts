@@ -32,6 +32,7 @@ import {
   addAgent as coreAddAgent,
   countOccurrences,
   type DeviceStore,
+  type DisconnectedAccount,
   deletionIdOf,
   deletionRefusalOf,
   deletionWindowOf,
@@ -3042,11 +3043,14 @@ export class Hub {
     return connection
   }
 
-  /** Disconnects an account, at once (PROF-TOOL-017, UI-CONV-056). */
-  public async disconnectAccount(agentDid: string, accountId: string): Promise<Connection> {
-    const connection = await this.withAgent(agentDid, (client, token) => client.disconnectAccount(token, accountId))
-    this.keepConnection(agentDid, connection)
-    return connection
+  /**
+   * Disconnects an account, at once (PROF-TOOL-017, UI-CONV-056): for every source of an account that several sources
+   * use (§3.13); the answer says whether the service was told (`revokedAtSource`, PROF-TOOL-032).
+   */
+  public async disconnectAccount(agentDid: string, accountId: string): Promise<DisconnectedAccount> {
+    const answer = await this.withAgent(agentDid, (client, token) => client.disconnectAccount(token, accountId))
+    this.keepConnection(agentDid, answer.connection)
+    return answer
   }
 
   /**
