@@ -996,6 +996,7 @@
       "none": "Not used now"
     },
     "binding": "{{label}}: {{value}}",
+    "features": "For {{features}}",
     "state": {
       "notConnected": "Not connected",
       "connected": "Connected as {{label}} · since {{date}}",
@@ -1027,7 +1028,7 @@
     "changed": "This account has changed. Open Your accounts again.",
     "disconnectConfirm": "Disconnect {{source}}? {{agent}} deletes its access to your account.",
     "card": {
-      "connect": "Connect your {{source}} account so that {{agent}} can use it with your rights."
+      "connect": "Connect your {{account}} account to use {{feature}}."
     },
     "empty": "{{agent}} offers you no account of your own to connect.",
     "noTab": "The browser did not open a new tab. Allow pop-ups for this page and try again."

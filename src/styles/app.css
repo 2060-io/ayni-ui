@@ -3621,6 +3621,11 @@ mark.hit.current {
   font-size: 13px;
   color: var(--muted);
 }
+/* the features an account serves, under its description (UI-CONV-064) */
+.account-features {
+  font-size: 13px;
+  color: var(--muted);
+}
 .account-state {
   display: inline-flex;
   align-items: center;

@@ -53,6 +53,7 @@ const RELATICLE = {
   },
   attempt: null,
   revokesAtSource: false,
+  features: [{ id: 'crm', title: 'CRM' }],
 }
 const GITHUB = {
   source: 'github',
@@ -67,6 +68,7 @@ const GITHUB = {
   account: null,
   attempt: null,
   revokesAtSource: false,
+  features: [{ id: 'code', title: 'Code and issues' }],
 }
 const TASKS = {
   source: 'my_tasks',
@@ -82,6 +84,19 @@ const TASKS = {
   account: null,
   attempt: null,
   revokesAtSource: false,
+  features: [],
+}
+/** The organization's cloud: one account that serves two features (package 3.5.8, PROF-TOOL-035). */
+const CLOUD = {
+  ...GITHUB,
+  source: 'cloud',
+  title: "The organization's cloud",
+  description: 'Files and calendars of the organization',
+  usedIn: [{ kind: 'space', id: 'spc_alpha', title: 'Project Alpha' }],
+  features: [
+    { id: 'files', title: 'Files' },
+    { id: 'calendar', title: 'Calendar' },
+  ],
 }
 const GITHUB_CONNECTED = {
   ...GITHUB,
@@ -133,6 +148,7 @@ async function announce(hub: Hub, value: Record<string, unknown>) {
 const texts = (row: HTMLElement | undefined) => ({
   title: row?.querySelector('.account-title')?.textContent,
   description: row?.querySelector('.account-description')?.textContent,
+  features: row?.querySelector('.account-features')?.textContent,
   binding: row?.querySelector('.account-binding')?.textContent,
   used: row?.querySelector('.account-used')?.textContent,
   state: row?.querySelector('.account-state')?.textContent,
@@ -149,6 +165,7 @@ describe('Your accounts of an agent (UI-CONV-053)', () => {
     expect(texts(row('Relaticle CRM'))).toEqual({
       title: 'Relaticle CRM',
       description: "The companies, people, notes and tasks of the space's workspace",
+      features: 'For CRM',
       binding: 'Workspace: ayni-dev-agent',
       used: 'Used in Sales EU',
       state: 'Connected as ana@2060.io · ayni-dev-agent · since Nov 21',
@@ -170,6 +187,20 @@ describe('Your accounts of an agent (UI-CONV-053)', () => {
       'Relaticle CRM, Workspace: ayni-dev-agent, Connected as ana@2060.io · ayni-dev-agent · since Nov 21'
     )
     expect(row('GitHub')?.getAttribute('aria-label')).toBe('GitHub, Not connected')
+  })
+
+  it('names the features each account serves, under its description: "For Files, Calendar" (UI-CONV-064)', async () => {
+    const { row } = await accounts([], { list: () => [CLOUD, TASKS] })
+    const cloud = row("The organization's cloud") as HTMLElement
+    expect(texts(cloud)).toMatchObject({
+      description: 'Files and calendars of the organization',
+      features: 'For Files, Calendar',
+    })
+    // under the description
+    const description = cloud.querySelector('.account-description') as Element
+    expect(description.nextElementSibling?.classList.contains('account-features')).toBe(true)
+    // an account that serves no feature says none
+    expect(texts(row('My tasks')).features).toBeUndefined()
   })
 
   it('says why an account must be connected again, and where an account serves everywhere or nowhere', async () => {

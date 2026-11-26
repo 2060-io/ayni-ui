@@ -1013,6 +1013,7 @@
       "none": "Não usada agora"
     },
     "binding": "{{label}}: {{value}}",
+    "features": "Para {{features}}",
     "state": {
       "notConnected": "Não conectada",
       "connected": "Conectada como {{label}} · desde {{date}}",
@@ -1044,7 +1045,7 @@
     "changed": "Esta conta mudou. Abra Suas contas de novo.",
     "disconnectConfirm": "Desconectar {{source}}? {{agent}} apaga o acesso dele à sua conta.",
     "card": {
-      "connect": "Conecte sua conta de {{source}} para que {{agent}} possa usá-la com os seus direitos."
+      "connect": "Conecte sua conta de {{account}} para usar {{feature}}."
     },
     "empty": "{{agent}} não oferece nenhuma conta sua para conectar.",
     "noTab": "O navegador não abriu uma nova aba. Permita pop-ups nesta página e tente de novo."

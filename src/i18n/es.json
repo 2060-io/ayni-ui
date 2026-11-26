@@ -1013,6 +1013,7 @@
       "none": "No se usa ahora"
     },
     "binding": "{{label}}: {{value}}",
+    "features": "Para {{features}}",
     "state": {
       "notConnected": "No conectada",
       "connected": "Conectada como {{label}} · desde el {{date}}",
@@ -1044,7 +1045,7 @@
     "changed": "Esta cuenta cambió. Abre Tus cuentas de nuevo.",
     "disconnectConfirm": "¿Desconectar {{source}}? {{agent}} borra su acceso a tu cuenta.",
     "card": {
-      "connect": "Conecta tu cuenta de {{source}} para que {{agent}} pueda usarla con tus derechos."
+      "connect": "Conecta tu cuenta de {{account}} para usar {{feature}}."
     },
     "empty": "{{agent}} no te ofrece ninguna cuenta propia que conectar.",
     "noTab": "El navegador no abrió una pestaña nueva. Permite las ventanas emergentes en esta página e inténtalo de nuevo."
