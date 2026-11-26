@@ -259,3 +259,248 @@ const MANAGED = {
   tools: [{ name: 'files_read', title: 'Read a file', effect: 'read', rule: 'none', packRule: 'none', stepUp: null }],
   pending: null,
 }
+
+/** Files of Project Alpha offered and not added: each provider with its modes, the default's on the item. */
+const OFFERED = {
+  feature: FILES_FEATURE,
+  providers: [DRIVE, CLOUD, WEBDAV],
+  source: null,
+  title: null,
+  state: 'available',
+  add: 'owner',
+  guests: true,
+  locations: ['managed', 'existing'],
+  pending: null,
+}
+const SUMMARY =
+  'Use Google Drive for Files in Project Alpha. Fleet support makes a shared drive named Project Alpha, owned by your organization, with you as its manager, and gives each member of the space access to it. People outside your organization included.'
+const waitingFor = (tool: Record<string, unknown>, summary = SUMMARY, code = '48 21') => ({
+  ...tool,
+  pending: { changeId: 'chg_1', summary, code, expiresAt: new Date(Date.now() + 300_000).toISOString() },
+})
+const modeTexts = (el: HTMLElement) =>
+  [...el.querySelectorAll('.tool-locations .tool-location-option')].map((o) => ({
+    title: o.querySelector('.tool-provider-title')?.textContent,
+    line: o.querySelector('.muted')?.textContent,
+    checked: (o.querySelector('input') as HTMLInputElement).checked,
+  }))
+const mode = (el: HTMLElement, i: number) =>
+  el.querySelectorAll<HTMLInputElement>('.tool-locations .tool-location-option input')[i]
+const providerInput = (el: HTMLElement, title: string) =>
+  [...el.querySelectorAll<HTMLElement>('.tool-providers:not(.tool-locations) .tool-provider-option')]
+    .find((o) => o.querySelector('.tool-provider-title')?.textContent?.startsWith(title))
+    ?.querySelector('input')
+const openFiles = async (el: HTMLElement) => {
+  await until(() => el.querySelector('.tool-row'))
+  await click(el.querySelector('.tool-row-main'))
+}
+
+describe('Add with the two modes of Files (UI-CONV-069, PROF-TOOL-040)', () => {
+  it('shows the two modes, the managed one first and selected; Add sends it, with the code and the question of the phone', async () => {
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [OFFERED] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: waitingFor(OFFERED) }, 202)],
+    ])
+    await openFiles(el)
+    expect(el.querySelector('.tool-locations legend')?.textContent).toBe('The folder of Files')
+    expect(modeTexts(el)).toEqual([
+      {
+        title: 'A new folder for this space',
+        line: "Fleet support makes it at Google Drive, owned by your organization, and gives the space's members access to it.",
+        checked: true,
+      },
+      {
+        title: 'A folder that already exists',
+        line: "You choose it; Fleet support changes nobody's access to it.",
+        checked: false,
+      },
+    ])
+    // in the managed mode the panel shows no choice of folder
+    expect(el.querySelector('.tool-list-editor')).toBeNull()
+    await click(byText(el, 'button', 'Add to Project Alpha'))
+    await until(() => el.querySelector('.tool-pending'))
+    expect(agent.find('POST', TOOLS_PATH)[0]?.body).toEqual({ source: 'drive', location: 'managed' })
+    expect(el.querySelector('.tool-pending-text')?.textContent).toMatch(/^Confirm on your phone · Code 48 21/)
+    // the page shows the question the phone asks (UI-CONV-052)
+    expect(el.querySelector('.tool-pending-question')?.textContent).toBe(SUMMARY)
+    // while it waits, neither the providers nor the modes can be picked
+    expect(el.querySelector('.tool-locations')).toBeNull()
+  })
+
+  it('sends the existing mode once picked, and shows no question of the managed mode', async () => {
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [OFFERED] })],
+      [
+        `POST ${TOOLS_PATH}`,
+        () => json({ tool: waitingFor(OFFERED, 'Use Google Drive for Files in Project Alpha') }, 202),
+      ],
+    ])
+    await openFiles(el)
+    await click(mode(el, 1))
+    expect(modeTexts(el).map((m) => m.checked)).toEqual([false, true])
+    await click(byText(el, 'button', 'Add to Project Alpha'))
+    await until(() => el.querySelector('.tool-pending'))
+    expect(agent.find('POST', TOOLS_PATH)[0]?.body).toEqual({ source: 'drive', location: 'existing' })
+    expect(el.querySelector('.tool-pending-question')).toBeNull()
+  })
+
+  it('shows the modes of the provider picked: none for one the agent cannot manage, which sends the existing mode', async () => {
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [OFFERED] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: waitingFor(OFFERED, 'Use WebDAV for Files in Project Alpha') }, 202)],
+    ])
+    await openFiles(el)
+    await click(providerInput(el, 'WebDAV'))
+    expect(el.querySelector('.tool-locations')).toBeNull()
+    // another provider with both modes: its own, the managed one selected, its line naming it
+    await click(providerInput(el, 'Nextcloud'))
+    expect(modeTexts(el)[0]).toMatchObject({
+      line: "Fleet support makes it at Nextcloud, owned by your organization, and gives the space's members access to it.",
+      checked: true,
+    })
+    await click(providerInput(el, 'WebDAV'))
+    await click(byText(el, 'button', 'Add to Project Alpha'))
+    await until(() => agent.find('POST', TOOLS_PATH).length === 1)
+    expect(agent.find('POST', TOOLS_PATH)[0]?.body).toEqual({ source: 'webdav', location: 'existing' })
+  })
+
+  it('sends the one mode of a template that allows one, with no choice: managed only, existing only', async () => {
+    const only = (locations: string[]) => ({ ...OFFERED, locations, providers: [{ ...DRIVE, locations }] })
+    for (const locations of [['managed'], ['existing']]) {
+      const { el, agent } = await alpha([
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [only(locations)] })],
+        [`POST ${TOOLS_PATH}`, () => json({ tool: waitingFor(only(locations)) }, 202)],
+      ])
+      await openFiles(el)
+      expect(el.querySelector('.tool-locations'), locations[0]).toBeNull()
+      await click(byText(el, 'button', 'Add to Project Alpha'))
+      await until(() => el.querySelector('.tool-pending'))
+      expect(agent.find('POST', TOOLS_PATH)[0]?.body).toEqual({ source: 'drive', location: locations[0] })
+      expect(!!el.querySelector('.tool-pending-question'), locations[0]).toBe(locations[0] === 'managed')
+      teardown()
+    }
+  })
+
+  it('says each refusal of the mode under the choice, and reads the modes again', async () => {
+    const refusals: [Response, string][] = [
+      [
+        json({ error: 'cannot-manage', message: 'Fleet support cannot make a folder at Google Drive' }, 409),
+        'Fleet support cannot make a folder at Google Drive. Choose a folder that already exists.',
+      ],
+      [
+        json({ error: 'location-not-allowed', field: 'location', message: 'the template allows existing' }, 422),
+        'Fleet support does not allow this choice in this space.',
+      ],
+      [
+        json(
+          { error: 'bad-request', field: 'location', message: 'choose a folder the agent makes, or one that exists' },
+          400
+        ),
+        'choose a folder the agent makes, or one that exists',
+      ],
+      [
+        json(
+          {
+            error: 'bad-request',
+            field: 'list',
+            message: 'a folder the agent makes is the one location: send no list',
+          },
+          400
+        ),
+        'a folder the agent makes is the one location: send no list',
+      ],
+    ]
+    for (const [answer, words] of refusals) {
+      const { el, agent } = await alpha([
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [OFFERED] })],
+        [`POST ${TOOLS_PATH}`, () => answer],
+      ])
+      await openFiles(el)
+      await click(byText(el, 'button', 'Add to Project Alpha'))
+      await until(() => el.querySelector('.tool-locations .field-error'))
+      expect(el.querySelector('.tool-locations .field-error')?.textContent?.trim(), words).toBe(words)
+      // said once, at the choice, not under Add
+      expect(el.querySelector('.tool-panel > .tool-actions .tool-error'), words).toBeNull()
+      await until(() => agent.find('GET', TOOLS_PATH).length === 2)
+      teardown()
+    }
+  })
+
+  it('says cannot-manage under Add once the modes read again hold the existing one alone', async () => {
+    let tools: unknown[] = [OFFERED]
+    const { el } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools })],
+      [
+        `POST ${TOOLS_PATH}`,
+        () => {
+          tools = [{ ...OFFERED, locations: ['existing'], providers: [{ ...DRIVE, locations: ['existing'] }, CLOUD] }]
+          return json({ error: 'cannot-manage' }, 409)
+        },
+      ],
+    ])
+    await openFiles(el)
+    await click(byText(el, 'button', 'Add to Project Alpha'))
+    await until(() => !el.querySelector('.tool-locations') && el.querySelector('.tool-error'))
+    expect(el.querySelector('.tool-error')?.textContent).toBe(
+      'Fleet support cannot make a folder at Google Drive. Choose a folder that already exists.'
+    )
+  })
+})
+
+/** Files of Project Alpha with WebDAV, a folder that exists, in use (PROF-TOOL-040). */
+const EXISTING = {
+  ...MANAGED,
+  source: 'webdav',
+  title: 'WebDAV',
+  description: WEBDAV.description,
+  locations: ['existing'],
+  location: 'existing',
+  folder: undefined,
+  account: { kind: 'space', fields: [{ name: 'token', label: 'Token' }], set: true, setAt: null, setBy: null },
+  list: { ...MANAGED.list, entries: [{ values: { root: '/alpha' }, label: '/alpha' }], choices: true, maxEntries: 10 },
+}
+
+describe('Change provider to a provider of two modes (UI-CONV-069, UI-CONV-066, PROF-TOOL-040)', () => {
+  it('shows the modes of the new provider, and sends the one chosen with the change', async () => {
+    const summary =
+      'Use Google Drive for Files in Project Alpha, in place of WebDAV. Fleet support makes a shared drive named Project Alpha.'
+    const { el, agent } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [EXISTING] })],
+      [`POST ${TOOLS_PATH}`, () => json({ tool: waitingFor(EXISTING, summary) }, 202)],
+    ])
+    await openFiles(el)
+    await click(byText(el, 'button', 'Change provider'))
+    expect(el.querySelector('.tool-change-provider .tool-locations')).toBeNull()
+    await click(providerInput(el, 'Google Drive'))
+    expect(modeTexts(el).map((m) => [m.title, m.checked])).toEqual([
+      ['A new folder for this space', true],
+      ['A folder that already exists', false],
+    ])
+    await click(byText(el, '.tool-change-provider button', 'Change'))
+    await until(() => agent.find('POST', TOOLS_PATH).length === 1)
+    expect(agent.find('POST', TOOLS_PATH)[0]?.body).toEqual({
+      source: 'drive',
+      replaces: 'webdav',
+      location: 'managed',
+    })
+    await until(() => el.querySelector('.tool-pending-question'))
+    expect(el.querySelector('.tool-pending-question')?.textContent).toBe(summary)
+  })
+
+  it('says a refusal of the mode under the modes of the new provider', async () => {
+    const { el } = await alpha([
+      [`GET ${TOOLS_PATH}`, () => json({ tools: [EXISTING] })],
+      [`POST ${TOOLS_PATH}`, () => json({ error: 'cannot-manage' }, 409)],
+    ])
+    await openFiles(el)
+    await click(byText(el, 'button', 'Change provider'))
+    await click(providerInput(el, 'Nextcloud'))
+    await click(mode(el, 0))
+    await click(byText(el, '.tool-change-provider button', 'Change'))
+    // the question closes as the request leaves; the refusal is said under Change provider
+    await until(() => el.querySelector('.tool-change-provider .tool-error'))
+    expect(el.querySelector('.tool-change-provider .tool-error')?.textContent).toBe(
+      'Fleet support cannot make a folder at Nextcloud. Choose a folder that already exists.'
+    )
+  })
+})
