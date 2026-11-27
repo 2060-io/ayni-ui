@@ -101,6 +101,48 @@ const READY = crm({
     { name: 'region', label: 'Region', value: 'eu-1', setBy: 'pack' },
   ],
 })
+/**
+ * The CRM ready, its tools with each kind of step-up (profile 3.5.6, PROF-TOOL-001): none, the methods of a
+ * re-authentication by their types (`credential` for a badge, agent D127), and a check on the phone.
+ */
+const STEP_UPS = {
+  ...READY,
+  tools: [
+    { name: 'get-company', title: 'Get company', effect: 'read', rule: 'none', packRule: 'none', stepUp: null },
+    {
+      name: 'create-note',
+      title: 'Add a note',
+      effect: 'write',
+      rule: 'confirm',
+      packRule: 'confirm',
+      stepUp: ['face-match'],
+    },
+    {
+      name: 'export',
+      title: 'Export',
+      effect: 'external',
+      rule: 'approval',
+      packRule: 'approval',
+      stepUp: ['credential'],
+    },
+    {
+      name: 'delete-note',
+      title: 'Delete note',
+      effect: 'delete',
+      rule: 'approval',
+      packRule: 'approval',
+      stepUp: 'device',
+    },
+    {
+      name: 'archive',
+      title: 'Archive note',
+      effect: 'write',
+      rule: 'approval',
+      packRule: 'approval',
+      stepUp: ['email', 'face-match'],
+    },
+  ],
+}
 /** The CRM with no provider: removed from a space whose template adds it, `off` (PROF-TOOL-005, PROF-TOOL-033). */
 const CRM_OFF = {
   feature: CRM_FEATURE,
@@ -409,6 +451,19 @@ describe("the owner's Tools segment (UI-CONV-050)", () => {
     expect(el.querySelector('.tool-section[aria-label="What each tool asks"] .settings-save')?.textContent).toBe('Save')
     expect(byText(el, '.tool-section .rule-line', 'Only people of Northwind Logistics')).toBeTruthy()
     expect(byText(el, 'button', 'Remove from Sales EU')).toBeTruthy()
+  })
+
+  it("says each tool's step-up after its title: a check on the phone, or the methods of a re-authentication (profile 3.5.6)", async () => {
+    const { el } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ tools: [STEP_UPS] })]])
+    await until(() => el.querySelector('.tool-row'))
+    await open(el, 'Relaticle CRM')
+    expect([...el.querySelectorAll('.tool-rule-row .tool-rule-name')].map((r) => r.textContent)).toEqual([
+      'Get companyReads',
+      'Add a note, then a face checkWrites',
+      'Export, then a badge checkSends outside your organization',
+      'Delete note, then a check on your phoneDeletes',
+      'Archive note, then an email check and a face checkWrites',
+    ])
   })
 
   it('sends the token, empties the field at once, shows the code and waits; the phone confirms: Saved, Ready', async () => {
@@ -1732,6 +1787,17 @@ describe('the tools a member reads in About (UI-CONV-031, UI-CONV-049)', () => {
     expect(el.querySelector('.about-tool-description')?.textContent).toBe(NEXTCLOUD.description)
     expect(el.querySelector('.about-tool-rules')?.textContent).toBe(
       "Runs without asking: Read a file · Asks you first: Replace a file's content"
+    )
+  })
+
+  it("names a re-authentication's methods after their tool's title, as a check on the phone is (profile 3.5.6)", async () => {
+    const { el } = await ownersTools([[`GET ${TOOLS_PATH}`, () => json({ tools: [STEP_UPS] })]], {
+      segment: 'about',
+    })
+    await until(() => el.querySelector('.about-tool'))
+    expect(el.querySelector('.about-tool-rules')?.textContent).toBe(
+      'Runs without asking: Get company · Asks you first: Add a note, then a face check · Needs your approval: ' +
+        'Export, then a badge check, Delete note, then a check on your phone, Archive note, then an email check and a face check'
     )
   })
 

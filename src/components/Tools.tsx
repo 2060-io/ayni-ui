@@ -28,6 +28,7 @@ import {
   type SpaceTool,
   sourceNameOf,
   sourcesOf,
+  stepUpWords,
   type ToolAccountKind,
   type ToolAction,
   type ToolRuleGroup,
@@ -458,7 +459,7 @@ function groupWords(
           : space.owner
             ? t('tools.rule.approval', { name: space.owner.name })
             : t('tools.ownerRule.approval')
-  const titles = group.tools.map((x) => `${x.title}${x.stepUp ? t(`tools.stepUp.${x.stepUp}`) : ''}`)
+  const titles = group.tools.map((x) => `${x.title}${stepUpWords(x.stepUp, t)}`)
   return `${rule}: ${titles.join(', ')}`
 }
 

@@ -75,6 +75,7 @@ import {
   type SpaceToolLocation,
   type SpaceToolProvider,
   sourceNameOf,
+  stepUpWords,
   type ToolRule,
   timeLeftOf,
   toolRefusalOf,
@@ -1340,7 +1341,7 @@ function FeaturePanel({
                     {/* the step-up is the agent-pack's: said after the title, not chosen (UI-CONV-049) */}
                     <span>
                       {x.title}
-                      {x.stepUp ? <span className="tool-step-up">{t(`tools.stepUp.${x.stepUp}`)}</span> : null}
+                      {x.stepUp ? <span className="tool-step-up">{stepUpWords(x.stepUp, t)}</span> : null}
                     </span>
                     <span className="muted small">{t(`tools.effect.${x.effect}`)}</span>
                     {/* a policy that needs attention, on the tool's line (UI-CONV-067) */}
