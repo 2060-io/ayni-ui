@@ -1143,7 +1143,8 @@
       `notice`. The badge is the agent's count, as for any item.
     - **Activity** (UI-CONV-051). A line names no folder (profile §3.7): the folder of its feature as the space's tools
       name it now, else the space's title, after which the agent names the folder it makes (D149); an earlier name, or
-      the folder of a released one, is not on the wire.
+      the folder of a released one, is not on the wire. (Decision 58: from package 3.5.11 the line carries its folder,
+      and this reading is kept for a line that carries none.)
     - **Removing Files, changing its provider** (TOOL-FEAT-032). The release line is added to both questions before
       anything is sent; the kind of folder is "shared drive" for `managedWith: "owner"` and "team folder" for
       `"manager"`, as the agent words its phone's text by its `manage.as`.
@@ -1251,5 +1252,24 @@
       order, a type said twice, what is not a type, the words of each method and of several);
       `tests/spaceTools.test.tsx` (the owner's What each tool asks and About with `["face-match"]`, `["credential"]`,
       `["email", "face-match"]`, `device` and none).
-58. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+58. **The folder a line of the activity names** (2026-11-27, found while building a later phase; PROF-TOOL-043,
+    UI-CONV-051; stacked on decision 57, built against ayni-agent fix/activity-folder-name, its decision 88, not merged
+    yet, whose profile package 3.5.11 is not on npm). Core 0.20.0.
+    - **The profile package.** Both `package.json` take `^3.5.11`; the lockfile is regenerated, and committed on its
+      own, once 3.5.11 is on npm. Until then the work was built and tested against the package packed from a copy of the
+      agent's branch, through a local override that is not committed.
+    - **The bug.** A line of the managed folder carried no folder, so decision 55 named the folder as the space's tools
+      name it now, else the space's title: a line from before a rename read the new name, and the lines of a released
+      folder the space's title.
+    - **The reading.** `SpaceActivityItem.folder` (`{ title }`), the folder's title when the line happened, the new one
+      for a rename (the words of `folder-renamed` name no former one, and the agent gives none). An empty title, or a
+      `folder` that is not an object, names none. `activityFolderOf` names the folder the line carries; only a line that
+      carries none, which an agent recorded before 3.5.11, keeps decision 55's reading. The Activity segment reads the
+      space's tools for a change of provider and for such a line alone: a page whose every line of the folder carries its
+      name asks for no tools.
+    - **Tests.** `packages/core/tests/managedFolder.test.ts` (the folder read from each line, an empty or wrong one as
+      none, each line's own name whatever the space's tools name now, or none, and the earlier reading for a line with
+      none); `tests/managedFolder.test.tsx` (the five lines with their names though the space's tools name another
+      folder, a line recorded before reading the tools; the same lines with no folder in the tools, which are not read).
+59. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
