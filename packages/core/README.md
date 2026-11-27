@@ -275,8 +275,9 @@ or a folder that already exists, whose members it never changes. The rules are i
   (`FolderAccessNotice`) and no `notice`: `GovernanceNoticeKind` leaves it out. `isFolderAccessItem`,
   `folderAccessControlOf` (Try again while it waits).
 - `SPACE_ACTIVITY_KINDS` holds `folder-created`, `folder-renamed`, `folder-released`, `access-failed` and
-  `manager-needed`; a line names no folder, so `activityFolderOf` takes it from the space's tools, else the space's
-  title.
+  `manager-needed`; from package 3.5.11 such a line carries `folder` (`SpaceActivityItem.folder`, its title as it was
+  then), which `activityFolderOf` names; a line that carries none, recorded before, takes it from the space's tools,
+  else the space's title.
 
 | Surface | Functions |
 | --- | --- |
