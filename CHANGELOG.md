@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.26.1](https://github.com/2060-io/ayni-ui/compare/v0.26.0...v0.26.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **activity:** each line of a managed folder reads the folder's name of its time (UI-CONV-051) ([03239de](https://github.com/2060-io/ayni-ui/commit/03239de528fce0b99f8696316108e728b440289c))
+* **activity:** each line of the managed folder reads the folder's name of its time, and the space's tools only for a line with none (UI-CONV-051, PROF-TOOL-043) ([1dc2179](https://github.com/2060-io/ayni-ui/commit/1dc2179a0e3b09567df3720f85a041dd17007d08))
+* **core:** a line of the managed folder names the folder it carries, as it was named then (PROF-TOOL-043, UI-CONV-051; core 0.20.0) ([e51651a](https://github.com/2060-io/ayni-ui/commit/e51651a1fdc28a68308f877d0fc8da464ce6606b))
+* **core:** a tool's step-up given as a list of methods reads as that step-up, with its words (UI-CONV-049, PROF-TOOL-001; core 0.19.0) ([10ecec0](https://github.com/2060-io/ayni-ui/commit/10ecec0aa5ba4bdef7ac13f83316cb289ce6884d))
+* **tools:** a tool's step-up given as a list of methods reads with its words (UI-CONV-049) ([0975f12](https://github.com/2060-io/ayni-ui/commit/0975f1293364975f3d992407b1f6c5d10e523ee4))
+* **tools:** What each tool asks and About name a re-authentication's methods after the tool's title (UI-CONV-049, UI-CONV-050) ([2c9810e](https://github.com/2060-io/ayni-ui/commit/2c9810e1b7704273f485ff748f0bbfdc78419417))
+
 ## [0.26.0](https://github.com/2060-io/ayni-ui/compare/v0.25.1...v0.26.0) (2026-11-26)
 
 
