@@ -1221,5 +1221,35 @@
       the key service); `tests/personalAccounts.test.tsx` (the card of `why: "allow"`: Allow for the source of `allow`,
       then connected; not connected; already allowed; the words of UI-CONV-063 in the four languages);
       `tests/managedFolder.test.tsx` (Allow for the provider, not the account, the outcome on the account's row).
-57. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
+57. **A step-up given as a list of methods** (2026-11-27, found while building a later phase; AG-UI profile 3.5.6,
+    PROF-TOOL-001; agent D127; UI-CONV-049, UI-CONV-050). Core 0.19.0.
+    - **The bug.** Since package 3.5.6 the agent gives a tool's `stepUp` as `null`, `device`, or the list of the types of
+      the methods a re-authentication asks (`["face-match"]`). The core read a string alone (`device`, `face-match`,
+      `document`), so a list read as no step-up: the owner's "What each tool asks" and About's grouped tools said no
+      step-up for such a tool, ", then a face check" included.
+    - **The reading.** `stepUpOf` reads `device`, or a list of the types of `identity.authentication.methods`
+      (`credential`, `email`, `document`, `face-match`, `authenticator-app`, `passkey`, `STEP_UP_METHODS`), in the agent's
+      order, each type once: every method of the list is asked (the agent asks the whole set, `stepUp.authentication`).
+      A value that is not one of these types is left out, and a list left empty is no step-up: the agent checks at
+      start-up that each method a step-up names is enabled, so it gives types, never a method's name (`["badge"]` is
+      not on the wire: a badge method is `type: credential`, and arrives as `["credential"]`). A bare `face-match` or
+      `document`, from before 3.5.6, is no step-up (no backward compatibility).
+    - **The words.** `stepUpWords` in the core, used by both screens and written for the app as well: `device` reads
+      ", then a check on your phone"; a list reads ", then " and each method's check, joined by " and ", in the agent's
+      order. UI-CONV-049 words three: `device`, `face-match` (", then a face check") and `document` (", then a passport
+      check"), which these keep. **Not in the spec, this client's own, the narrowest reading:** each other method is
+      named as the spec names those two, "a <thing> check", the thing being what the phone's authentication sheet
+      calls it (APP-SESS-015): `credential` "a badge check" (the wire gives the type, not the method's name, and the
+      spec's only credential method is the badge), `email` "an email check", `authenticator-app` "an authenticator app
+      check", `passkey` "a passkey check"; several methods are joined by "and" as the policy's names are
+      (`policy.and`): ", then an email check and a face check". The spec is to word these, and a credential that is not
+      a badge, which the wire cannot tell apart.
+    - **Words.** `TOOLS_COPY`: `tools.stepUp.device`, `tools.stepUp.then`, `tools.stepUp.and` and
+      `tools.stepUp.method.<type>` in place of `tools.stepUp.face-match` and `tools.stepUp.document`, in the four
+      languages.
+    - **Tests.** `packages/core/tests/stepUp.test.ts` (the list read from a member's answer and in About's groups, the
+      order, a type said twice, what is not a type, the words of each method and of several);
+      `tests/spaceTools.test.tsx` (the owner's What each tool asks and About with `["face-match"]`, `["credential"]`,
+      `["email", "face-match"]`, `device` and none).
+58. **Not done.** Browser-side calls, push notifications (by design), E2E encrypted cache (v4),
     automated accessibility audit in CI (axe) and a browser end-to-end test suite.
