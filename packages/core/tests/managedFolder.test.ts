@@ -495,6 +495,55 @@ describe('the activity of a managed folder (UI-CONV-051, PROF-TOOL-043)', () => 
     ).toBe('Project Alpha')
     expect(activityFolderOf(line, null, 'Project Alpha')).toBe('Project Alpha')
   })
+
+  it('names the folder a line carries, as it was named then, whatever the space tools name now (package 3.5.11)', () => {
+    const at = (i: number) => `2026-11-26T10:0${i}:00Z`
+    const ref = { tool: { source: 'drive', title: 'Google Drive' }, feature: { id: 'files', title: 'Files' } }
+    const page = spaceActivityOf({
+      activity: [
+        { id: 'act_3', at: at(3), kind: 'folder-released', ...ref, folder: { title: 'Alpha Files' } },
+        { id: 'act_2', at: at(2), kind: 'folder-renamed', ...ref, folder: { title: 'Alpha Files' } },
+        { id: 'act_1', at: at(1), kind: 'folder-created', ...ref, folder: { title: 'Alpha' } },
+        // recorded before 3.5.11, or a title that names nothing: no folder
+        { id: 'act_0', at: at(0), kind: 'manager-needed', ...ref },
+        { id: 'act_e', at: at(0), kind: 'access-failed', ...ref, folder: { title: '' } },
+        { id: 'act_n', at: at(0), kind: 'access-failed', ...ref, folder: 'Alpha' },
+      ],
+      nextBefore: null,
+    })
+    expect(page.activity.map((a) => a.folder)).toEqual([
+      { title: 'Alpha Files' },
+      { title: 'Alpha Files' },
+      { title: 'Alpha' },
+      undefined,
+      undefined,
+      undefined,
+    ])
+    // the space's tools name another folder now, or none: each line keeps its own
+    const now = [tool({ ...MANAGED, folder: { ...OWNER_FOLDER, title: 'Team drive now' } })]
+    const none = [tool({ ...MANAGED, location: 'existing', folder: undefined })]
+    expect(page.activity.map((a) => activityFolderOf(a, now, 'Project Alpha'))).toEqual([
+      'Alpha Files',
+      'Alpha Files',
+      'Alpha',
+      'Team drive now',
+      'Team drive now',
+      'Team drive now',
+    ])
+    expect(page.activity.map((a) => activityFolderOf(a, none, 'Project Alpha'))).toEqual([
+      'Alpha Files',
+      'Alpha Files',
+      'Alpha',
+      'Project Alpha',
+      'Project Alpha',
+      'Project Alpha',
+    ])
+    expect(page.activity.map((a) => activityFolderOf(a, null, 'Project Alpha')).slice(0, 3)).toEqual([
+      'Alpha Files',
+      'Alpha Files',
+      'Alpha',
+    ])
+  })
 })
 
 describe('the refusals at their field (UI-CONV-052, PROF-TOOL-040, PROF-TOOL-043)', () => {

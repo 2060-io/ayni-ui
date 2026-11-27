@@ -190,6 +190,11 @@ export interface SpaceActivityItem {
   tool?: { source: string; title: string; formerSource?: string }
   /** the feature it concerns (package 3.5.8, PROF-TOOL-006) */
   feature?: { id: string; title: string }
+  /**
+   * a line of the managed folder (package 3.5.11, PROF-TOOL-043): the folder's title when it happened, the new title for
+   * a rename; absent on a line the agent recorded before
+   */
+  folder?: { title: string }
   by?: { name: string }
   /** an `owner-changed`: how (profile 3.5.4), and a steward's reason (PROF-SPACE-009) */
   how?: OwnerChange
@@ -396,6 +401,8 @@ export function spaceActivityOf(body: unknown): SpaceActivityPage {
         ...(typeof obj(a.feature).id === 'string'
           ? { feature: { id: str(obj(a.feature).id), title: str(obj(a.feature).title, str(obj(a.feature).id)) } }
           : {}),
+        // the folder as it was named then (package 3.5.11); an empty title names none
+        ...(str(obj(a.folder).title) ? { folder: { title: str(obj(a.folder).title) } } : {}),
         ...(obj(a.by).name ? { by: { name: str(obj(a.by).name) } } : {}),
         ...(a.how === 'handover' || a.how === 'succession' || a.how === 'steward' ? { how: a.how } : {}),
         ...(typeof a.reason === 'string' && a.reason ? { reason: a.reason } : {}),

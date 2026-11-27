@@ -1089,6 +1089,77 @@ describe('the activity of the managed folder (UI-CONV-051, PROF-TOOL-043)', () =
     await until(() => texts(el).length === 1)
     expect(texts(el)).toEqual(['Fleet support stopped managing the folder Project Alpha'])
   })
+
+  /** The lines as the agent gives them from package 3.5.11, each with the folder as it was named then, newest first. */
+  const named = (tool: Record<string, unknown>) =>
+    [
+      { kind: 'folder-released', by: { name: 'Jonas Weber' }, folder: { title: 'Alpha Files' } },
+      {
+        kind: 'access-failed',
+        member: { name: 'Piet de Vries' },
+        reason: 'not-allowed',
+        folder: { title: 'Alpha Files' },
+      },
+      { kind: 'folder-renamed', by: { name: 'Jonas Weber' }, folder: { title: 'Alpha Files' } },
+      { kind: 'manager-needed', folder: { title: 'Alpha' } },
+      { kind: 'folder-created', by: { name: 'Jonas Weber' }, folder: { title: 'Alpha' } },
+    ].map((a, i) => ({
+      id: `act_n${i}`,
+      at: `2026-11-26T10:0${5 - i}:00Z`,
+      tool: { source: 'drive', title: 'Google Drive' },
+      feature: { id: 'files', title: 'Files' },
+      ...a,
+      ...tool,
+    }))
+
+  it("names the folder each line carries, as it was named then, though the space's tools name another now (package 3.5.11)", async () => {
+    // a line recorded before the agent kept the name, the oldest, is the one that reads the space's tools
+    const before = {
+      id: 'act_old',
+      at: '2026-11-20T10:00:00Z',
+      kind: 'manager-needed',
+      tool: { source: 'drive', title: 'Google Drive' },
+      feature: { id: 'files', title: 'Files' },
+    }
+    const { el, agent } = await alpha(
+      [
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [folderOf({ title: 'Team drive now' })] })],
+        [/^GET \/spaces\/spc_alpha\/activity/, () => json({ activity: [...named({}), before], nextBefore: null })],
+      ],
+      { segment: 'activity' }
+    )
+    await until(() => texts(el).at(-1)?.includes('Team drive now'))
+    expect(texts(el)).toEqual([
+      'Fleet support stopped managing the folder Alpha Files',
+      'Piet de Vries has no access to the folder Alpha Files yet',
+      'Jonas Weber renamed the folder to Alpha Files',
+      'Fleet support can no longer manage the folder Alpha',
+      'Fleet support made the folder Alpha at Google Drive',
+      'Fleet support can no longer manage the folder Team drive now',
+    ])
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(1)
+  })
+
+  it("names the folder each line carries once the space's tools hold none, and reads no tools for it", async () => {
+    const { el, agent } = await alpha(
+      [
+        [`GET ${TOOLS_PATH}`, () => json({ tools: [OFFERED] })],
+        [/^GET \/spaces\/spc_alpha\/activity/, () => json({ activity: named({}), nextBefore: null })],
+      ],
+      { segment: 'activity' }
+    )
+    await until(() => texts(el).length === 5)
+    expect(texts(el)).toEqual([
+      'Fleet support stopped managing the folder Alpha Files',
+      'Piet de Vries has no access to the folder Alpha Files yet',
+      'Jonas Weber renamed the folder to Alpha Files',
+      'Fleet support can no longer manage the folder Alpha',
+      'Fleet support made the folder Alpha at Google Drive',
+    ])
+    // every line names its folder: neither the space's tools nor its title are needed
+    expect(agent.find('GET', TOOLS_PATH)).toHaveLength(0)
+    expect(texts(el).join(' ')).not.toContain('Project Alpha')
+  })
 })
 
 // ---------------------------------------------------------------------------------------------- the release

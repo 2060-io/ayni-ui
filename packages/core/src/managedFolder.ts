@@ -405,15 +405,17 @@ export function isFolderActivity(kind: string): kind is FolderActivityKind {
 }
 
 /**
- * The folder a line of activity names (UI-CONV-051). A line carries no name of the folder (profile §3.7): it is the
- * folder of the line's feature as the space's tools name it now, else the space's title, after which the agent names
+ * The folder a line of activity names (UI-CONV-051): the folder the line carries, as it was named then (package 3.5.11,
+ * PROF-TOOL-043), whatever the space's tools name now. Only a line that carries none, recorded by an agent before, names
+ * the folder of the line's feature as the space's tools name it now, else the space's title, after which the agent names
  * the folder it makes (agent D149).
  */
 export function activityFolderOf(
-  line: { feature?: { id: string }; tool?: { source: string } },
+  line: { feature?: { id: string }; tool?: { source: string }; folder?: { title: string } },
   tools: readonly Pick<SpaceTool, 'feature' | 'source' | 'folder'>[] | null | undefined,
   spaceTitle: string
 ): string {
+  if (line.folder?.title) return line.folder.title
   const tool = (tools ?? []).find(
     (x) => (line.feature?.id ? x.feature.id === line.feature.id : x.source === line.tool?.source) && x.folder
   )
