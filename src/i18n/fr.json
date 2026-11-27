@@ -873,8 +873,16 @@
     },
     "stepUp": {
       "device": ", puis une vérification sur votre téléphone",
-      "face-match": ", puis une vérification du visage",
-      "document": ", puis une vérification du passeport"
+      "then": ", puis {{checks}}",
+      "and": " et ",
+      "method": {
+        "face-match": "une vérification du visage",
+        "document": "une vérification du passeport",
+        "credential": "une vérification du badge",
+        "email": "une vérification de l'adresse e-mail",
+        "authenticator-app": "une vérification de l'application d'authentification",
+        "passkey": "une vérification de la clé d'accès"
+      }
     },
     "state": {
       "notAdded": "Non ajouté",

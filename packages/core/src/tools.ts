@@ -49,7 +49,16 @@ export type ToolAccountKind = 'none' | 'agent' | 'space' | 'personal'
 export type ToolEffect = 'read' | 'write' | 'delete' | 'external'
 /** What a call needs before it runs; `off`: the tool is not given to the model in this space (agent D99, D98). */
 export type ToolRule = 'none' | 'confirm' | 'approval' | 'off'
-export type ToolStepUp = 'device' | 'face-match' | 'document'
+/**
+ * The type of a method that a step-up's re-authentication asks (profile 3.5.6, PROF-TOOL-001; agent D127): the agent
+ * gives each method of the step-up by its type, never by its name, so a badge is a `credential`.
+ */
+export type StepUpMethod = 'credential' | 'email' | 'document' | 'face-match' | 'authenticator-app' | 'passkey'
+/**
+ * A tool's step-up in the settings of a space (PROF-TOOL-001): `device`, a check on the phone, or the methods a
+ * re-authentication asks, every one of them, in the agent's order and each type once.
+ */
+export type ToolStepUp = 'device' | StepUpMethod[]
 export type SpaceToolState = 'available' | 'setup' | 'ready' | 'off'
 
 /**
@@ -359,8 +368,45 @@ const list = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.ma
 
 const RULES: readonly ToolRule[] = ['none', 'confirm', 'approval', 'off']
 const EFFECTS: readonly ToolEffect[] = ['read', 'write', 'delete', 'external']
-const STEP_UPS: readonly ToolStepUp[] = ['device', 'face-match', 'document']
 const STATES: readonly SpaceToolState[] = ['available', 'setup', 'ready', 'off']
+
+/** The types of the methods of a step-up (agent D127: the types of the agent's authentication methods). */
+export const STEP_UP_METHODS: readonly StepUpMethod[] = [
+  'credential',
+  'email',
+  'document',
+  'face-match',
+  'authenticator-app',
+  'passkey',
+]
+
+/**
+ * A tool's step-up as the agent gives it (profile 3.5.6, PROF-TOOL-001): `device`, or the list of the types of the
+ * methods a re-authentication asks (`["face-match"]`), else none. A type the profile does not name is left out, a type
+ * said twice is read once, and a list left with no type is no step-up.
+ */
+export function stepUpOf(v: unknown): ToolStepUp | null {
+  if (v === 'device') return 'device'
+  if (!Array.isArray(v)) return null
+  const methods = STEP_UP_METHODS.filter((m) => v.includes(m)).sort((a, b) => v.indexOf(a) - v.indexOf(b))
+  return methods.length ? methods : null
+}
+
+/** What fills the words of a step-up: a translation function, or `fillText` over `TOOLS_COPY` for the app. */
+export type StepUpText = (key: string, values?: Record<string, string>) => string
+
+/**
+ * A step-up in words, said after the tool's title, never after the rule's (UI-CONV-049): ", then a check on your
+ * phone" for `device`; for the methods of a re-authentication ", then " and each method's check, joined by "and", so
+ * `["face-match"]` reads ", then a face check" and `["email", "face-match"]` ", then an email check and a face check"
+ * (decision 57); nothing for none.
+ */
+export function stepUpWords(stepUp: ToolStepUp | null, t: StepUpText): string {
+  if (stepUp === null) return ''
+  if (stepUp === 'device') return t('tools.stepUp.device')
+  const checks = stepUp.map((m) => t(`tools.stepUp.method.${m}`)).join(t('tools.stepUp.and'))
+  return checks ? t('tools.stepUp.then', { checks }) : ''
+}
 
 const ruleOf = (v: unknown, fallback: ToolRule): ToolRule =>
   RULES.includes(v as ToolRule) ? (v as ToolRule) : fallback
@@ -538,7 +584,7 @@ export function spaceToolOf(value: unknown): SpaceTool | null {
           effect: EFFECTS.includes(x.effect as ToolEffect) ? (x.effect as ToolEffect) : 'delete',
           rule,
           ...(x.packRule !== undefined ? { packRule: ruleOf(x.packRule, 'approval') } : {}),
-          stepUp: STEP_UPS.includes(x.stepUp as ToolStepUp) ? (x.stepUp as ToolStepUp) : null,
+          stepUp: stepUpOf(x.stepUp),
           ...(approval ? { approval } : {}),
         }
       }),

@@ -860,8 +860,16 @@
     },
     "stepUp": {
       "device": ", then a check on your phone",
-      "face-match": ", then a face check",
-      "document": ", then a passport check"
+      "then": ", then {{checks}}",
+      "and": " and ",
+      "method": {
+        "face-match": "a face check",
+        "document": "a passport check",
+        "credential": "a badge check",
+        "email": "an email check",
+        "authenticator-app": "an authenticator app check",
+        "passkey": "a passkey check"
+      }
     },
     "state": {
       "notAdded": "Not added",
