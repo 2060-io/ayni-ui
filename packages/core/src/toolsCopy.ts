@@ -17,6 +17,11 @@
  * included where a language needs it. Two texts are this client's own, for what the table does not word:
  * `notices.folderAccessNoReason` (the item of a reason the table does not word, the words of `access-failed`) and
  * `tools.folder.choice` (the name of the choice of the two modes, for a screen reader).
+ *
+ * A step-up (UI-CONV-049, profile 3.5.6) is `tools.stepUp.device`, or `tools.stepUp.then` with each method's check of
+ * `tools.stepUp.method.*` joined by `tools.stepUp.and` (`stepUpWords`): the face check and the passport check are the
+ * spec's; the checks of a badge (`credential`), an email, an authenticator app and a passkey, and the joining of
+ * several, are this client's own, for what UI-CONV-049 does not word (decision 57).
  */
 export const TOOLS_COPY = {
   'spaces.segments.tools': 'Tools',
@@ -50,8 +55,14 @@ export const TOOLS_COPY = {
   'tools.ownerRule.approval': 'Needs approval',
   'tools.ownerRule.off': 'Off in this space',
   'tools.stepUp.device': ', then a check on your phone',
-  'tools.stepUp.face-match': ', then a face check',
-  'tools.stepUp.document': ', then a passport check',
+  'tools.stepUp.then': ', then {{checks}}',
+  'tools.stepUp.and': ' and ',
+  'tools.stepUp.method.face-match': 'a face check',
+  'tools.stepUp.method.document': 'a passport check',
+  'tools.stepUp.method.credential': 'a badge check',
+  'tools.stepUp.method.email': 'an email check',
+  'tools.stepUp.method.authenticator-app': 'an authenticator app check',
+  'tools.stepUp.method.passkey': 'a passkey check',
   'tools.state.notAdded': 'Not added',
   'tools.state.needsSetup': 'Needs setup',
   'tools.state.ready': 'Ready',

@@ -873,8 +873,16 @@
     },
     "stepUp": {
       "device": ", luego una comprobación en tu teléfono",
-      "face-match": ", luego una comprobación facial",
-      "document": ", luego una comprobación del pasaporte"
+      "then": ", luego {{checks}}",
+      "and": " y ",
+      "method": {
+        "face-match": "una comprobación facial",
+        "document": "una comprobación del pasaporte",
+        "credential": "una comprobación de la credencial",
+        "email": "una comprobación del correo",
+        "authenticator-app": "una comprobación de la app de autenticación",
+        "passkey": "una comprobación de la llave de acceso"
+      }
     },
     "state": {
       "notAdded": "No añadida",

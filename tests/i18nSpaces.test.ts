@@ -55,7 +55,8 @@ describe('the translation files', () => {
     expect(TOOLS_COPY['tools.account.space']).toBe("Uses the space's account")
     expect(TOOLS_COPY['tools.effect.external']).toBe('Sends outside your organization')
     expect(TOOLS_COPY['tools.ownerRule.confirm']).toBe('Asks the person first')
-    expect(TOOLS_COPY['tools.stepUp.document']).toBe(', then a passport check')
+    expect(TOOLS_COPY['tools.stepUp.device']).toBe(', then a check on your phone')
+    expect(TOOLS_COPY['tools.stepUp.method.document']).toBe('a passport check')
     expect(TOOLS_COPY['tools.card.untrusted']).toBe(
       'This reply read content from outside your organization: {{sources}}. Check the action before you allow it.'
     )

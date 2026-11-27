@@ -95,6 +95,7 @@ to the card it names, where it is (status, scope, end of an allowance), signals 
 | --- | --- |
 | The owner's Tools segment (UI-CONV-050, UI-CONV-049) | `takesTools` (`features.tools`), `spaceSegmentsOf(space, { tools })`, `toolRowStateOf`, `missingOf`, `canAdd`, `isAdded`, `ruleChoicesFor` (no looser than the agent-pack's), `loosens`, `bindingValueFits`, `tokenFits`, `timeLeftOf`, `changeOutcomeKeyOf`, `toolRefusalOf` (at the field a `422` names, or the panel's) |
 | The tools in About (UI-CONV-031, UI-CONV-049) | `readyToolsOf`, `ruleGroupsOf` (by rule, loosest first, each tool with its own step-up, `off` left out) |
+| A tool's step-up (UI-CONV-049, profile 3.5.6) | `stepUpOf` (`device`, or the types of the methods a re-authentication asks, `STEP_UP_METHODS`), `stepUpWords` (", then a check on your phone", ", then a face check", ", then an email check and a face check", from `TOOLS_COPY` or a translation) |
 | The confirmation card (UI-CONV-045, UI-CONV-046) | `isConfirmation`, `confirmationOf`, `confirmationOutcomeOf`, `canStopAllowing`, `looksLikeJson`, `fieldsInOrder`, `awaitsConfirmation` (no working indicator under a card that waits), `withApprovalUpdate`, `withDecided`, `withAllowanceEnded` |
 | The approval of a tool call (UI-APPR-006) | `toolApprovalOf`, `requesterNameOf` |
 | Sources (UI-CONV-047, UI-CONV-048) | `sourcesOf` (undefined for a reply received live, not read back yet), `withUsageFrom` (history's sources too) |
